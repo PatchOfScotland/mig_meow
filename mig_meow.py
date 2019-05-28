@@ -3,7 +3,6 @@ import json
 import re
 import copy
 
-
 PATTERNS_DIR = '.workflow_patterns_home'
 
 OBJECT_TYPE = 'object_type'
@@ -44,15 +43,25 @@ WORKFLOW_NODE = {
 }
 
 
-
-def help():
-    print('Managing Event-Oriented Workflows has been installed correctly. '
-          '\nMEOW is a package used for defining event based workflows. It is designed to work with the MiG system.')
+def info():
+    message = 'Managing Event-Oriented Workflows has been installed correctly. \nMEOW is a package used for defining event based workflows. It is designed to work with the MiG system.'
+    print(message)
+    return message
 
 
 def build_workflow(patterns):
-    message = ''
-    # TODO validation on input
+    """Builds a workflow dict from a list of provided patterns"""
+
+    if not patterns:
+        return (False, None, 'A pattern list was not provided')
+
+    if not isinstance(patterns, list):
+        return (False, None, 'The provided patterns were not in a list')
+
+    for pattern in patterns:
+        valid, _ = __is_valid_pattern(pattern)
+        if not valid:
+            return (False, None, 'Pattern %s was incorrectly formatted' % pattern)
 
     nodes = {}
     # create all required nodes
@@ -74,7 +83,7 @@ def build_workflow(patterns):
                         if re.match(value, input):
                             nodes[pattern[NAME]][ANCESTORS][other_pattern[NAME]] = nodes[other_pattern[NAME]]
                             nodes[other_pattern[NAME]][DESCENDENTS][pattern[NAME]] = nodes[pattern[NAME]]
-    return (True, nodes, message)
+    return (True, nodes, '')
 
 
 def __is_valid_workflow(to_test):
@@ -125,7 +134,8 @@ def retrieve_current_patterns():
                 try:
                     with open(file_path) as file:
                         input_dict = json.load(file)
-                        if __is_valid_pattern(input_dict):
+                        valid, _ = __is_valid_pattern(input_dict)
+                        if valid:
                             all_patterns.append(input_dict)
                         else:
                             message += '%s did not contain a valid pattern definition.' % path
