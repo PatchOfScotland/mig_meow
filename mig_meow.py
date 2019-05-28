@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import copy
 
 
 PATTERNS_DIR = '.workflow_patterns_home'
@@ -16,8 +17,11 @@ OUTPUT = 'output'
 RECIPES = 'recipes'
 VARIABLES = 'variables'
 VGRIDS = 'vgrids'
+
 ANCESTORS = 'ancestors'
-DESCENDETS = 'descendets'
+DESCENDENTS = 'descendents'
+
+OUTPUT_MAGIC_CHAR = '*'
 
 VALID_PATTERN = {
     OBJECT_TYPE: str,
@@ -34,59 +38,80 @@ VALID_PATTERN = {
 }
 
 
+WORKFLOW_NODE = {
+    ANCESTORS: {},
+    DESCENDENTS: {}
+}
+
+
+
 def help():
     print('Managing Event-Oriented Workflows has been installed correctly. '
           '\nMEOW is a package used for defining event based workflows. It is designed to work with the MiG system.')
 
 
 def build_workflow(patterns):
-    workflow = []
     message = ''
     # TODO validation on input
 
-    # TODO sort out what is going on here
     nodes = {}
+    # create all required nodes
     for pattern in patterns:
-        workflowNode = {
-            NAME: pattern[NAME],
-            ANCESTORS: [],
-            DESCENDETS: []
-        }
+        workflow_node = copy.deepcopy(WORKFLOW_NODE)
+        nodes[pattern[NAME]] = workflow_node
+    # populate nodes with ancestors and descendents
+    for pattern in patterns:
         input_regex_list = pattern[TRIGGER_PATHS]
-        output_dict = pattern[OUTPUT]
         for other_pattern in patterns:
-            other_input_regex_list = other_pattern[TRIGGER_PATHS]
             other_output_dict = other_pattern[OUTPUT]
             for input in input_regex_list:
                 for key, value in other_output_dict.items():
                     if re.match(input, value):
-                        print('%s leads into %s' % (other_pattern[NAME], pattern[NAME]))
-                pass
+                        nodes[pattern[NAME]][ANCESTORS][other_pattern[NAME]] = nodes[other_pattern[NAME]]
+                        nodes[other_pattern[NAME]][DESCENDENTS][pattern[NAME]] = nodes[pattern[NAME]]
+                    if OUTPUT_MAGIC_CHAR in value:
+                        value = value.replace(OUTPUT_MAGIC_CHAR, '.*')
+                        if re.match(value, input):
+                            nodes[pattern[NAME]][ANCESTORS][other_pattern[NAME]] = nodes[other_pattern[NAME]]
+                            nodes[other_pattern[NAME]][DESCENDENTS][pattern[NAME]] = nodes[pattern[NAME]]
+    return (True, nodes, message)
 
 
-    return (True, workflow, message)
+def __is_valid_workflow(to_test):
+    """Validates that a workflow object is correctly formatted"""
+
+    if not to_test:
+        return (False, 'A workflow was not provided')
+
+    if not isinstance(to_test, dict):
+        return (False, 'The provided workflow was incorrectly formatted')
+
+    for node in to_test.keys():
+        for key, value in WORKFLOW_NODE.items():
+            message = 'A workflow node %s was incorrectly formatted' % node
+            if key not in node.keys():
+                return (False, message)
+            if not isinstance(node[key], type(value)):
+                return (False, message)
+    return (True, '')
 
 
 def __is_valid_pattern(to_test):
     """Validates that the workflow pattern object is correctly formatted"""
-    contact_msg = "please contact support so that we can help resolve this " \
-                  "issue"
 
     if not to_test:
-        msg = "A workflow pattern was not provided, " + contact_msg
-        return (False, msg)
+        return (False, 'A workflow pattern was not provided')
 
     if not isinstance(to_test, dict):
-        msg = "The workflow pattern was incorrectly formatted, " + contact_msg
-        return (False, msg)
+        return (False, 'The workflow pattern was incorrectly formatted')
 
-    msg = "The workflow pattern had an incorrect structure, " + contact_msg
+    message = 'The workflow pattern had an incorrect structure'
     for k, v in to_test.items():
         if k not in VALID_PATTERN:
-            return (False, msg)
+            return (False, message)
         # TODO alter this so is not producing error
         if not isinstance(v, VALID_PATTERN[k]):
-            return (False, msg)
+            return (False, message)
     return (True, '')
 
 
