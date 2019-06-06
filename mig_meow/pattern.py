@@ -46,16 +46,18 @@ class Pattern:
         This takes no input and only raises warnings rather than Exceptions
         so that multiple problems may easily be identified at once"""
         warning = ''
+        if self.name is None:
+            return (False, "A pattern name must be defined.")
         if self.input_file is None:
             return (False, "An input file must be defined. This is the file "
                            "that is used to trigger any processing and can be "
                            "defined using the methods '.add_single_input' or "
-                           "'add_multiple_input")
+                           "'add_gathering_input")
         if len(self.trigger_paths) == 0:
             return (False, "At least one input path must be defined. This is "
                            "the path to the file that is used to trigger any "
                            "processing and can be defined using the methods "
-                           "'.add_single_input' or 'add_multiple_input")
+                           "'.add_single_input' or 'add_gathering_input")
         if len(self.outputs) == 0:
             warning += '\n No output has been set, meaning no resulting ' \
                        'data will be copied back into the vgrid. ANY OUTPUT ' \

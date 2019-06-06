@@ -1,13 +1,13 @@
 
 import ipywidgets as widgets
-from IPython.display import Javascript
 from shutil import copyfile
 import os
 import json
 
 from .input import check_input
 from .constants import PATTERNS_DIR, RECIPES_DIR, EXPORT_DIR, ANCESTORS, \
-    DESCENDENTS, NAME, PERSISTENCE_ID, TRIGGER_PATHS, OUTPUT, PLACEHOLDER
+    DESCENDENTS, NAME, PERSISTENCE_ID, TRIGGER_PATHS, OUTPUT, \
+    NOTEBOOK_EXTENSION, PATTERN_EXTENSION
 from .workflows import build_workflow
 from .pattern import Pattern
 from .recipe import is_valid_recipe_dict
@@ -26,38 +26,127 @@ def is_in_vgrid():
                         'correct functionality')
 
 
-def export_current_notebook():
+def __check_export_location(location, source, type):
+    if os.path.exists(location):
+        raise Exception('Another export sharing the same name currently is '
+                        'waiting to be imported into the MiG. Either rename '
+                        'the %s to create a different %s, or wait '
+                        'for the existing import to complete. If the problem '
+                        'persists, please check the MiG is still running '
+                        'correctly' % (source, type))
+
+
+def __prepare_recipe_export(notebook):
     """
-    Sends a copy of the current saved notebook to the MiG. This will only run
-    if there is not already a file awaiting import.
+    Checks that a recipe note book exists and is not already staged for
+    import.
+
+    Takes 1 argument, 'notebook' being the path to a jupyter notebook. File
+    extension does not need to be included.
+
+    Returns the filename of the notebook and the destination for the notebook
+    to be copied to.
     """
-    is_in_vgrid()
+    if NOTEBOOK_EXTENSION not in notebook:
+        if '.' in notebook:
+            extension = notebook[notebook.rfind('.'):]
+            raise Exception('%s is not a supported format. Only jupyter '
+                            'notebooks may be exported as recipes.'
+                            % extension)
+        notebook += NOTEBOOK_EXTENSION
+
+    if not os.path.exists(notebook):
+        raise Exception('Notebook was identified as %s, but this '
+                        'appears to not exist' % notebook)
 
     if not os.path.exists(EXPORT_DIR):
         os.mkdir(EXPORT_DIR)
 
-    current_notebook = PLACEHOLDER
-    Javascript('IPython.notebook.kernel.execute('
-               '"current_notebook = '
-               '" + "\'"+IPython.notebook.notebook_name+"\'");')
+    recipe_name = notebook
+    if os.path.sep in notebook:
+        recipe_name = notebook[notebook.rfind(os.path.sep)+1:]
 
-    if current_notebook == PLACEHOLDER:
-        raise Exception('Could not find name of current notebook. '
-                        'Is the kernel running?')
+    destination = os.path.join(EXPORT_DIR, recipe_name)
+    __check_export_location(destination, 'notebook', 'recipe')
 
-    if not os.path.exists(current_notebook):
-        raise Exception('Current notebook was identified as %s, but this '
-                        'appears to not exist' % current_notebook)
+    return recipe_name, destination
 
-    destination = os.path.join(EXPORT_DIR, current_notebook)
-    if os.path.exists(destination):
-        print('Another export sharing the same name currently is waiting to '
-              'be imported into the MiG. Either rename the current notebook '
-              'to create a different recipe, or wait for the existing import '
-              'to complete. If the problem persists, please check the MiG is '
-              'still running correctly')
 
-    copyfile(current_notebook, destination)
+def export_recipe(notebook):
+    """
+    Sends a copy of the given notebook to the MiG. This will only run
+    if there is not already a file awaiting import of the same name.
+
+    Takes 1 argument, 'notebook' which is the path to a jupyter notebook.
+    File extension does not need to be included.
+    """
+    is_in_vgrid()
+    check_input(notebook, str)
+    name, destination = __prepare_recipe_export(notebook)
+    copyfile(notebook, destination)
+
+
+def export_recipes(notebooks):
+    """
+    Sends a copy of the given notebooks to the MiG. This will only run
+    if there is not already a file awaiting import of the same name.
+
+    Takes 1 argument, 'notebooks' which is a list of paths to jupyter
+    notebooks. File extensions do not need to be included.
+    """
+    is_in_vgrid()
+    check_input(notebooks, list)
+    valid_notebooks = []
+    for notebook in notebooks:
+        check_input(notebook, str)
+        name, destination = __prepare_recipe_export(notebook)
+        for valid_name, _ in valid_notebooks:
+            if valid_name == name:
+                raise Exception('Attempting to copy multiple recipes of the '
+                                'same name :%s' % name)
+        valid_notebooks.append((notebook, destination))
+
+    for notebook, destination in valid_notebooks:
+        copyfile(notebook, destination)
+
+
+def export_pattern(pattern):
+    """
+    Sends a patterns to the MiG. This will only run if the MiG
+    is not currently waiting to process an existing pattern definition.
+
+    Takes 1 argument, 'pattern' which is a pattern object.
+    """
+    is_in_vgrid()
+    check_input(pattern, Pattern)
+    status, message = pattern.integrity_check()
+
+    if not status:
+        raise Exception('Pattern %s is incomplete. %s' % (pattern, message))
+    if message:
+        print(message)
+
+    if not os.path.exists(EXPORT_DIR):
+        os.mkdir(EXPORT_DIR)
+
+    destination = os.path.join(EXPORT_DIR, pattern.name + PATTERN_EXTENSION)
+    __check_export_location(destination, 'pattern', 'pattern')
+
+    pattern_as_json = json.dumps(pattern.__dict__)
+    with open(destination, 'w') as json_file:
+        json_file.write(pattern_as_json)
+
+
+def export_patterns(patterns):
+    """
+    Sends multiple patterns to the MiG.
+    
+    Takes 1 argument, 'patterns', that being a dict of patterns.
+    """
+    is_in_vgrid()
+    check_input(patterns, dict)
+    for pattern in patterns.values():
+        export_pattern(pattern)
 
 
 def retrieve_current_recipes(debug=False):

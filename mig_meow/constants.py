@@ -1,5 +1,7 @@
 
-DEFAULT_JOB_NAME = 'wf_job.ipynb'
+NOTEBOOK_EXTENSION = '.ipynb'
+DEFAULT_JOB_NAME = 'wf_job' + NOTEBOOK_EXTENSION
+PATTERN_EXTENSION = '.pattern'
 
 PATTERNS_DIR = '.workflow_patterns_home'
 RECIPES_DIR = '.workflow_recipes_home'
