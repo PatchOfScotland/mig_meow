@@ -224,7 +224,7 @@ class Pattern:
         Takes two arguments. 'variable_name' is the name of the variable and
         must be a string, 'variable_value' can be any valid python variable
         """
-        check_input(variable_name)
+        check_input(variable_name, str)
         if variable_name not in self.variables.keys():
             self.variables[variable_name] = variable_value
         else:

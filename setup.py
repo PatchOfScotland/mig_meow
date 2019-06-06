@@ -4,7 +4,7 @@ with open('README.md', 'r') as readme:
     long_description = readme.read()
 
 setup(name='mig_meow',
-      version='0.1.1',
+      version='0.1.2',
       author='David Marchant',
       author_email='d.marchant@ed-alumni.net',
       description='MiG based manager for event oriented workflows',
