@@ -6,6 +6,7 @@ PATTERN_EXTENSION = '.pattern'
 PATTERNS_DIR = '.workflow_patterns_home'
 RECIPES_DIR = '.workflow_recipes_home'
 EXPORT_DIR = '.meow_export_home'
+FILES_DIR = 'vgrid_files_home'
 
 OBJECT_TYPE = 'object_type'
 PERSISTENCE_ID = 'persistence_id'
@@ -53,6 +54,9 @@ ANCESTORS = 'ancestors'
 DESCENDENTS = 'descendents'
 
 WORKFLOW_NODE = {
-    ANCESTORS: {},
-    DESCENDENTS: {}
+    DESCENDENTS: []
 }
+
+CHAR_LOWERCASE = 'abcdefghijklmnopqrstuvwxyz'
+CHAR_UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+CHAR_NUMERIC = '0123456789'
