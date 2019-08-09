@@ -474,29 +474,27 @@ class WorkflowWidget:
 
     def on_new_pattern_clicked(self, button):
         self.disable_top_buttons()
-        self._refresh_form(self.pattern_form, self.pattern_form_old_values, self.pattern_form_rows, self.pattern_form_line_counts, self.populate_new_pattern_form, self.process_pattern_values)
+        self._refresh_new_form(self.pattern_form, self.pattern_form_old_values, self.pattern_form_rows, self.pattern_form_line_counts, self.populate_new_pattern_form, self.process_pattern_values)
         self.clear_feedback()
 
     def on_edit_pattern_clicked(self, button):
         self.disable_top_buttons()
-        self._refresh_form(self.pattern_form, self.pattern_form_old_values, self.pattern_form_rows, self.pattern_form_line_counts, self.populate_new_pattern_form, self.process_pattern_values)
+        self._refresh_edit_form(self.pattern_form, "Pattern", self.patterns)
         self.clear_feedback()
 
     def on_new_recipe_clicked(self, button):
         self.disable_top_buttons()
-        self._refresh_form(self.recipe_form, self.recipe_form_old_values, self.recipe_form_rows, {}, self.populate_new_recipe_form, self.process_recipe_values)
+        self._refresh_new_form(self.recipe_form, self.recipe_form_old_values, self.recipe_form_rows, {}, self.populate_new_recipe_form, self.process_recipe_values)
         self.clear_feedback()
 
     def on_edit_recipe_clicked(self, button):
         self.disable_top_buttons()
-        self._refresh_form(self.recipe_form, self.recipe_form_old_values, self.recipe_form_rows, {}, self.populate_new_recipe_form, self.process_recipe_values)
+        self._refresh_edit_form(self.recipe_form, "Recipe", self.recipes)
         self.clear_feedback()
 
-    # self.pattern_form - self.recipe_form
-    # self.pattern_form_old_values  - self.recipe_form_old_values
-    # self.pattern_form_rows  - self.recipe_form_rows
-    def _refresh_form(self, form, form_old_values, form_rows, form_line_counts,
-                      population_function, done_function):
+    def _refresh_new_form(self, form, form_old_values, form_rows,
+                          form_line_counts, population_function,
+                          done_function):
         if form:
             form_old_values = {}
             for key in form_rows.keys():
@@ -550,7 +548,7 @@ class WorkflowWidget:
 
         def cancel_button_click(button):
             if isinstance(self.displayed_form, widgets.VBox):
-                # form_old_values = {}
+                form_old_values = {}
                 for key in form_rows.keys():
                     form_old_values[key] = \
                         form_rows[key]
@@ -565,6 +563,104 @@ class WorkflowWidget:
         ]
         bottom_row = widgets.HBox(bottom_row_items)
         items.append(bottom_row)
+
+        self.displayed_form = widgets.VBox(items)
+
+        form_id = display(self.displayed_form, display_id=True)
+
+    def _refresh_edit_form(self, form, label_text, display_dict):
+        form = {}
+        if self.displayed_form:
+            self.displayed_form.close()
+
+        options = []
+        for key in display_dict:
+            options.append(key)
+
+        dropdown = widgets.Dropdown(
+            options=options,
+            value=None,
+            description="%s: " % label_text,
+            disabled=False,
+        )
+
+        def on_dropdown_select(change):
+            if change['type'] == 'change' and change['name'] == 'value':
+                print("changed to %s" % change['new'])
+
+        dropdown.observe(on_dropdown_select)
+
+        top_row_items = [
+            dropdown
+        ]
+        top_row = widgets.HBox(top_row_items)
+
+        form["reset_button"] = widgets.Button(
+            value=False,
+            description="Reset",
+            disabled=False,
+            button_style='',
+            tooltip='Here is a tooltip for this button'
+        )
+
+        def reset_button_click(button):
+            pass
+
+        form["reset_button"].on_click(reset_button_click)
+
+        form["done_button"] = widgets.Button(
+            value=False,
+            description="Done",
+            disabled=False,
+            button_style='',
+            tooltip='Here is a tooltip for this button'
+        )
+
+        def done_button_click(button):
+            pass
+
+        form["done_button"].on_click(done_button_click)
+
+        form["delete_button"] = widgets.Button(
+            value=False,
+            description="Delete",
+            disabled=False,
+            button_style='',
+            tooltip='Here is a tooltip for this button'
+        )
+
+        def delete_button_click(button):
+            pass
+
+        form["delete_button"].on_click(delete_button_click)
+
+        form["cancel_button"] = widgets.Button(
+            value=False,
+            description="Cancel",
+            disabled=False,
+            button_style='',
+            tooltip='Here is a tooltip for this button'
+        )
+
+        def cancel_button_click(button):
+            if isinstance(self.displayed_form, widgets.VBox):
+                self.close_form()
+                self.clear_feedback()
+
+        form["cancel_button"].on_click(cancel_button_click)
+
+        bottom_row_items = [
+            form["reset_button"],
+            form["done_button"],
+            form["delete_button"],
+            form["cancel_button"]
+        ]
+        bottom_row = widgets.HBox(bottom_row_items)
+
+        items = [
+            top_row,
+            bottom_row
+        ]
 
         self.displayed_form = widgets.VBox(items)
 
@@ -669,12 +765,12 @@ class WorkflowWidget:
                 line_counts[key] += 1
             else:
                 line_counts[key] = 1
-            self._refresh_form(form,
-                               old_values,
-                               rows,
-                               line_counts,
-                               population_function,
-                               done_function)
+            self._refresh_new_form(form,
+                                   old_values,
+                                   rows,
+                                   line_counts,
+                                   population_function,
+                                   done_function)
 
         add_button.on_click(add_button_click)
 
@@ -689,12 +785,12 @@ class WorkflowWidget:
         def remove_button_click(button):
             if key in line_counts.keys():
                 line_counts[key] -= 1
-            self._refresh_form(form,
-                               old_values,
-                               rows,
-                               line_counts,
-                               population_function,
-                               done_function)
+            self._refresh_new_form(form,
+                                   old_values,
+                                   rows,
+                                   line_counts,
+                                   population_function,
+                                   done_function)
 
         if key in line_counts.keys():
             if line_counts[key] == 0:
