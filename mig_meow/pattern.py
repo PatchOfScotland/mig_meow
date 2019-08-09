@@ -38,6 +38,34 @@ class Pattern:
         raise Exception('Pattern requires either a str input as a name for a '
                         'new pattern, or a dict defining a complete pattern')
 
+    def __str__(self):
+        string = 'Name: %s, ' \
+                 'Input(s): %s, ' \
+                 'Trigger(s): %s, ' \
+                 'Output(s): %s, ' \
+                 'Recipe(s): %s, ' \
+                 'Variable(s): %s' \
+                 % (self.name,
+                    self.input_file,
+                    self.trigger_paths,
+                    self.outputs,
+                    self.recipes,
+                    self.variables)
+        return string
+
+    def _image_str(self):
+        string = 'Name: %s\n' \
+                 'Input(s): %s\n' \
+                 'Trigger(s): %s\n' \
+                 'Output(s): %s\n' \
+                 'Recipe(s): %s' \
+                 % (self.name,
+                    self.input_file,
+                    self.trigger_paths,
+                    self.outputs,
+                    self.recipes)
+        return string
+
     def integrity_check(self):
         """Performs some basic checks on the data within a pattern to check
         that all required fields have been filled out as it is currently very
@@ -47,23 +75,23 @@ class Pattern:
         so that multiple problems may easily be identified at once"""
         warning = ''
         if self.name is None:
-            return (False, "A pattern name must be defined.")
+            return (False, "A pattern name must be defined. ")
         if self.input_file is None:
             return (False, "An input file must be defined. This is the file "
                            "that is used to trigger any processing and can be "
                            "defined using the methods '.add_single_input' or "
-                           "'add_gathering_input")
+                           "'add_gathering_input. ")
         if len(self.trigger_paths) == 0:
             return (False, "At least one input path must be defined. This is "
                            "the path to the file that is used to trigger any "
                            "processing and can be defined using the methods "
-                           "'.add_single_input' or 'add_gathering_input")
+                           "'.add_single_input' or 'add_gathering_input. ")
         if len(self.outputs) == 0:
-            warning += '\n No output has been set, meaning no resulting ' \
+            warning += 'No output has been set, meaning no resulting ' \
                        'data will be copied back into the vgrid. ANY OUTPUT ' \
-                       'WILL BE LOST.'
+                       'WILL BE LOST. '
         if len(self.recipes) == 0:
-            return (False, "No recipes have been defined")
+            return (False, "No recipes have been defined. ")
         return (True, warning)
 
     def add_single_input(self, input_file, regex_path, output_path=None):
@@ -103,9 +131,9 @@ class Pattern:
         output to output_dir/filename.hdf5
         """
 
-        check_input(input_file, str)
-        check_input(regex_path, str)
-        check_input(output_path, str, or_none=True)
+        check_input(input_file, str, 'input_file')
+        check_input(regex_path, str, 'regex_path')
+        check_input(output_path, str, 'output_path', or_none=True)
 
         if len(self.trigger_paths) == 0:
             self.input_file = input_file
@@ -146,11 +174,11 @@ class Pattern:
         When triggered by a file called 'filename.txt' this would copy the
         output to output_dir/filename.hdf5
         """
-        check_input(input_file, str)
-        check_input(path_list, list)
+        check_input(input_file, str, 'input_file')
+        check_input(path_list, list, 'path_list')
         for entry in path_list:
-            check_input(entry, str)
-        check_input(output_path, str, or_none=True)
+            check_input(entry, str, 'path_list entry')
+        check_input(output_path, str, 'output_path', or_none=True)
 
         if len(self.trigger_paths) == 0:
             if output_path:
@@ -183,8 +211,8 @@ class Pattern:
         When triggered by a file called 'filename.txt' this would copy the
         output to output_dir/filename.hdf5
         """
-        check_input(output_name, str)
-        check_input(output_location, str)
+        check_input(output_name, str, 'output_name')
+        check_input(output_location, str, 'output_location')
 
         if output_name not in self.outputs.keys():
             self.outputs[output_name] = output_location
@@ -207,7 +235,7 @@ class Pattern:
         When triggered by a file called 'filename.txt' this would copy the
         output to output_dir/filename.hdf5
         """
-        check_input(output_location, str)
+        check_input(output_location, str, 'output_location')
         self.add_output(DEFAULT_JOB_NAME, output_location)
 
     def add_recipe(self, recipe):
@@ -215,7 +243,7 @@ class Pattern:
         Adds a recipe to the pattern. This is the code that runs as part of a
         workflow job, and is triggered by the patterns specified trigger.
         """
-        check_input(recipe, str)
+        check_input(recipe, str, 'recipe')
         self.recipes.append(recipe)
 
     def add_variable(self, variable_name, variable_value):
@@ -226,12 +254,24 @@ class Pattern:
         Takes two arguments. 'variable_name' is the name of the variable and
         must be a string, 'variable_value' can be any valid python variable
         """
-        check_input(variable_name, str)
+        check_input(variable_name, str, 'variable_name')
         if variable_name not in self.variables.keys():
             self.variables[variable_name] = variable_value
         else:
             raise Exception('Could not create variable %s as it is already '
                             'defined' % variable_name)
+
+
+def is_valid_pattern_object(to_test):
+    """Validates that the passed object expresses a pattern object"""
+
+    if not to_test:
+        return (False, 'A workflow pattern was not provided')
+
+    if not isinstance(to_test, Pattern):
+        return (False, 'The workflow pattern was incorrectly formatted')
+
+    return (True, '')
 
 
 def is_valid_pattern_dict(to_test):

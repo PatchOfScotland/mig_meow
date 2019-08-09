@@ -22,6 +22,32 @@ RECIPES = 'recipes'
 VARIABLES = 'variables'
 VGRIDS = 'vgrids'
 
+INPUT_NAME = "input_name"
+INPUT_TRIGGER_FILE = "input_trigger_file"
+INPUT_TRIGGER_PATH = "input_trigger_path"
+INPUT_TRIGGER_OUTPUT = "input_trigger_output"
+INPUT_NOTEBOOK_OUTPUT = "input_notebook_output"
+INPUT_INPUT = "input_input"
+INPUT_OUTPUT = "input_output"
+INPUT_RECIPES = "input_recipes"
+INPUT_VARIABLES = "input_variables"
+ALL_PATTERN_INPUTS = [
+    INPUT_NAME,
+    INPUT_TRIGGER_FILE,
+    INPUT_TRIGGER_PATH,
+    INPUT_TRIGGER_OUTPUT,
+    INPUT_NOTEBOOK_OUTPUT,
+    # INPUT_INPUT,
+    INPUT_OUTPUT,
+    INPUT_RECIPES,
+    INPUT_VARIABLES
+]
+INPUT_SOURCE = "input_source"
+ALL_RECIPE_INPUTS = [
+    INPUT_SOURCE,
+    INPUT_NAME
+]
+
 OUTPUT_MAGIC_CHAR = '*'
 
 PLACEHOLDER = ''
@@ -41,13 +67,13 @@ VALID_PATTERN = {
 }
 
 VALID_RECIPE = {
-    OBJECT_TYPE: str,
-    PERSISTENCE_ID: str,
-    TRIGGERS: dict,
-    OWNER: str,
+    # OBJECT_TYPE: str,
+    # PERSISTENCE_ID: str,
+    # TRIGGERS: dict,
+    # OWNER: str,
     NAME: str,
     RECIPE: dict,
-    VGRIDS: str
+    # VGRIDS: str
 }
 
 ANCESTORS = 'ancestors'
@@ -60,3 +86,11 @@ WORKFLOW_NODE = {
 CHAR_LOWERCASE = 'abcdefghijklmnopqrstuvwxyz'
 CHAR_UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 CHAR_NUMERIC = '0123456789'
+
+DEFAULT_WORKFLOW_FILENAME = 'meow_workflow_file'
+
+WORKFLOW_IMAGE_EXTENSION = ".png"
+
+NOTEBOOK_EXTENSIONS = [
+    NOTEBOOK_EXTENSION
+]

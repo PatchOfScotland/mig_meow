@@ -1,33 +1,59 @@
 import re
 
 from .input import check_input, valid_string
-from .constants import WORKFLOW_NODE, OUTPUT_MAGIC_CHAR
-from .pattern import Pattern
+from .constants import WORKFLOW_NODE, OUTPUT_MAGIC_CHAR, \
+    DEFAULT_WORKFLOW_FILENAME
+from .pattern import is_valid_pattern_object
+from .recipe import is_valid_recipe_dict
 from graphviz import Digraph
 
 
-def build_workflow(patterns):
+def build_workflow_object(patterns, recipes, filename=None):
+    # TODO update this description
     """
     Builds a workflow dict from a dict of provided patterns. Workflow is a
-    dictionary of different nodes each with a set of descendents.
+    dictionary of different nodes each with a set of descendents. Displays the
+    workflow using graphviz.
+
+    Optional file_name may be provided. This is the name of the .gv and .pdf
+    file created by graphviz. Optional display may be provided to display
+    produced workflow within a widget, image or not at all.
     """
 
     if not patterns:
         raise Exception('A pattern dict was not provided')
-
     if not isinstance(patterns, dict):
         raise Exception('The provided patterns were not in a dict')
-
     for pattern in patterns.values():
-        if not isinstance(pattern, Pattern):
-            raise Exception('Pattern %s was incorrectly formatted. Expected '
-                            '%s but got %s'
-                            % (pattern, Pattern, type(pattern)))
+        valid, feedback = is_valid_pattern_object(pattern)
+        if not valid:
+            raise Exception('Pattern %s was not valid. %s'
+                            % (pattern, feedback))
 
-    nodes = {}
+    if not recipes:
+        raise Exception('A recipes dict was not provided')
+    if not isinstance(recipes, dict):
+        raise Exception('The provided recipes were not in a dict')
+    for recipe in recipes.values():
+        valid, feedback = is_valid_recipe_dict(recipe)
+        if not valid:
+            raise Exception('Recipe %s was not valid. %s'
+                            % (recipe, feedback))
+
+    if filename:
+        check_input(filename, str, 'filename')
+        valid_string(filename, 'filename')
+    else:
+        filename = DEFAULT_WORKFLOW_FILENAME
+    # display_options = ['notebook', 'none', 'image', 'file']
+    # if display not in display_options:
+    #     raise Exception('Display is not valid. May only be %s'
+    #                     % display_options)
+
+    workflow = {}
     # create all required nodes
     for pattern in patterns.values():
-        nodes[pattern.name] = set()
+        workflow[pattern.name] = set()
     # populate nodes with ancestors and descendents
     for pattern in patterns.values():
         input_regex_list = pattern.trigger_paths
@@ -36,53 +62,61 @@ def build_workflow(patterns):
             for input in input_regex_list:
                 for key, value in other_output_dict.items():
                     if re.match(input, value):
-                        nodes[other_pattern.name].add(pattern.name)
+                        workflow[other_pattern.name].add(pattern.name)
                     if OUTPUT_MAGIC_CHAR in value:
                         value = value.replace(OUTPUT_MAGIC_CHAR, '.*')
                         if re.match(value, input):
-                            nodes[other_pattern.name].add(pattern.name)
-    return nodes
+                            workflow[other_pattern.name].add(pattern.name)
 
+    # if not isinstance(display, bool):
+    #     raise Exception('display is not of expected type. Should be %s but '
+    #                     'is %s. ' % (type(bool), type(display)))
 
-def display_workflow(workflow, filename=None):
-    """
-    Displays a workflow using graphviz. Takes as input a dictionary or
-    workflow nodes, each containing a set of descendent nodes.
-
-    optional file_name may be provided. This is the name of the .gv and .pdf
-    file created by graphviz.
-    """
-    if not workflow:
-        raise Exception('A workflow dict was not provided')
-
-    if not isinstance(workflow, dict):
-        raise Exception('The provided workflow was not a dict')
-
-    for descendents in workflow.values():
-        if not isinstance(descendents, set):
-            raise Exception('A provided patterns were not formatted correctly.'
-                            ' Is expected to contain %s, but instead is %s'
-                            % (type(set()), type(descendents)))
-        for descendent in descendents:
-            print('inspecting descendet %s' % descendent)
-            if descendent not in workflow.keys():
-                raise Exception('Phantom descendent %s has no connecting '
-                                'node' % descendent)
-
-    if filename:
-        check_input(filename, str)
-        valid_string(filename)
-    else:
-        filename = 'workflow'
-
-    dot = Digraph(comment='Workflow')
+    dot = Digraph(comment='Workflow', format='png')
+    colours = ['green', 'red']
 
     for pattern, descendents in workflow.items():
-        dot.node(pattern, pattern)
+        if pattern_has_recipes(patterns[pattern], recipes):
+            dot.node(pattern, patterns[pattern]._image_str(), color=colours[0])
+        else:
+            dot.node(pattern, patterns[pattern]._image_str(), color=colours[1])
         for descendent in descendents:
             dot.edge(pattern, descendent)
 
-    dot.render(filename, view=True)
+    dot.render(filename)
+
+    return workflow
+
+
+def pattern_has_recipes(pattern, recipes):
+    """Checks that a pattern has all required recipes in the workflow for it
+    to be triggerable"""
+
+    valid, feedback = is_valid_pattern_object(pattern)
+
+    if not valid:
+        raise Exception("Pattern %s is not valid. %s" % (pattern, feedback))
+
+    if not recipes:
+        return (False, 'Recipes was not provided')
+
+    if not isinstance(recipes, dict):
+        return (False, 'The provided workflow was incorrectly formatted. '
+                       'Should be a dict.')
+
+    for recipe in recipes.values():
+        if not isinstance(recipe, dict):
+            raise Exception('Recipe %s was incorrectly formatted. Expected '
+                            '%s but got %s'
+                            % (recipe, dict, type(recipe)))
+        valid, feedback = is_valid_recipe_dict(recipe)
+        if not valid:
+            raise Exception("Recipe %s is not valid. %s" % (recipe, feedback))
+
+    for recipe in pattern.recipes:
+        if recipe not in recipes:
+            return False
+    return True
 
 
 def is_valid_workflow(to_test):
