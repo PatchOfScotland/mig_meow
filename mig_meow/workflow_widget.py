@@ -17,7 +17,7 @@ from .constants import INPUT_NAME, INPUT_OUTPUT, INPUT_RECIPES, \
     NOTEBOOK_EXTENSIONS
 from .pattern import Pattern, is_valid_pattern_object
 from .recipe import is_valid_recipe_dict, create_recipe_from_notebook
-from .workflows import build_workflow_object
+from .workflows import build_workflow_object, create_workflow_image
 from .notebook import list_current_recipes
 
 
@@ -62,12 +62,11 @@ class WorkflowWidget:
         self.filename = filename
         extended_filename = filename + WORKFLOW_IMAGE_EXTENSION
         if patterns and recipes:
-            self.workflow = \
-                build_workflow_object(patterns, recipes, filename=filename)
+            self.workflow = build_workflow_object(patterns, recipes)
         else:
-            blank_image = Image.new('RGB', (1, 1), (255, 255, 255))
-            blank_image.save(extended_filename, 'PNG')
             self.workflow = {}
+
+        create_workflow_image(self.workflow, self.patterns, self.recipes, filename=filename)
 
         if os.path.isfile(extended_filename):
             file = open(extended_filename, "rb")
@@ -160,9 +159,13 @@ class WorkflowWidget:
         self.new_pattern_button.disabled = False
         if self.patterns:
             self.edit_pattern_button.disabled = False
+        else:
+            self.edit_pattern_button.disabled = True
         self.new_recipe_button.disabled = False
         if self.recipes:
-            self.edit_recipe_button = False
+            self.edit_recipe_button.disabled = False
+        else:
+            self.edit_recipe_button.disabled = True
         self.import_from_vgrid_button.disabled = False
         self.export_to_vgrid_button.disabled = False
 
@@ -412,19 +415,12 @@ class WorkflowWidget:
                 valid, warnings = pattern.integrity_check()
                 if valid:
                     self.patterns[pattern.name] = pattern
-                    self.workflow = \
-                        build_workflow_object(self.patterns, self.recipes,
-                                              filename=self.filename)
-
-                    extended_filename = self.filename + WORKFLOW_IMAGE_EXTENSION
-                    file = open(extended_filename, "rb")
-                    image = file.read()
-                    self.workflow_display.value = image
-                    file.close()
                     msg = "pattern %s created. " % pattern.name
                     if warnings:
                         msg += "\n%s" % warnings
                     self.feedback.value = msg
+                    self.update_workflow_image()
+                    self.close_form(self.pattern_form)
                 else:
                     msg = "pattern is not valid. "
                     if warnings:
@@ -449,9 +445,7 @@ class WorkflowWidget:
                 for key in self.pattern_form_rows.keys():
                     self.pattern_form_old_values[key] = \
                         self.pattern_form_rows[key]
-                self.pattern_form.close()
-                self.pattern_form = {}
-                self.enable_top_buttons()
+                self.close_form(self.pattern_form)
                 self.clear_feedback()
 
         self.pattern_form["cancel_button"].on_click(cancel_button_click)
@@ -558,6 +552,8 @@ class WorkflowWidget:
                     recipe = create_recipe_from_notebook(notebook, name)
                     self.recipes[name] = recipe
                     self.feedback.value = "Recipe %s created. " % name
+                self.update_workflow_image()
+                self.close_form(self.recipe_form)
             except Exception as e:
                 self.feedback.value = str(e)
 
@@ -577,9 +573,7 @@ class WorkflowWidget:
                 for key in self.recipe_form_rows.keys():
                     self.recipe_form_old_values[key] = \
                         self.recipe_form_rows[key]
-                self.recipe_form.close()
-                self.recipe_form = {}
-                self.enable_top_buttons()
+                self.close_form(self.recipe_form)
                 self.clear_feedback()
 
         self.recipe_form["cancel_button"].on_click(cancel_button_click)
@@ -795,6 +789,24 @@ class WorkflowWidget:
     def clear_feedback(self):
         self.feedback.value = ""
 
+    def close_form(self, form):
+        form.close()
+        form = {}
+        self.enable_top_buttons()
+
+    def update_workflow_image(self):
+        try:
+            self.workflow = build_workflow_object(self.patterns, self.recipes)
+        except:
+            self.workflow = {}
+        create_workflow_image(self.workflow, self.patterns, self.recipes,
+                              filename=self.filename)
+        extended_filename = self.filename + WORKFLOW_IMAGE_EXTENSION
+        file = open(extended_filename, "rb")
+        image = file.read()
+        self.workflow_display.value = image
+        file.close()
+
     def display_widget(self):
         # TODO update this
         """Displays a widget for workflow defitions. Can optionally take a
@@ -814,5 +826,6 @@ class WorkflowWidget:
         ]
         feedback_row = widgets.HBox(feedback_items)
         widget = widgets.VBox([image_row, button_row, feedback_row])
+        self.enable_top_buttons()
         return widget
 
