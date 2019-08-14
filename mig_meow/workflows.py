@@ -31,15 +31,15 @@ def build_workflow_object(patterns, recipes, filename=None):
             raise Exception('Pattern %s was not valid. %s'
                             % (pattern, feedback))
 
-    if not recipes:
-        raise Exception('A recipes dict was not provided')
+
     if not isinstance(recipes, dict):
         raise Exception('The provided recipes were not in a dict')
-    for recipe in recipes.values():
-        valid, feedback = is_valid_recipe_dict(recipe)
-        if not valid:
-            raise Exception('Recipe %s was not valid. %s'
-                            % (recipe, feedback))
+    else:
+        for recipe in recipes.values():
+            valid, feedback = is_valid_recipe_dict(recipe)
+            if not valid:
+                raise Exception('Recipe %s was not valid. %s'
+                                % (recipe, feedback))
 
     # if filename:
     #     check_input(filename, str, 'filename')
@@ -125,11 +125,10 @@ def pattern_has_recipes(pattern, recipes):
         raise Exception("Pattern %s is not valid. %s" % (pattern, feedback))
 
     if not recipes:
-        return (False, 'Recipes was not provided')
+        return False
 
     if not isinstance(recipes, dict):
-        return (False, 'The provided workflow was incorrectly formatted. '
-                       'Should be a dict.')
+        return False
 
     for recipe in recipes.values():
         if not isinstance(recipe, dict):

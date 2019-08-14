@@ -1,10 +1,6 @@
 
 import json
 import ipywidgets as widgets
-import numpy as n
-from PIL import Image
-import matplotlib
-import matplotlib.pyplot as plt
 import os
 
 from IPython.display import display
@@ -14,7 +10,7 @@ from .constants import INPUT_NAME, INPUT_OUTPUT, INPUT_RECIPES, \
     INPUT_TRIGGER_PATH, INPUT_VARIABLES, INPUT_TRIGGER_FILE, \
     INPUT_TRIGGER_OUTPUT, INPUT_NOTEBOOK_OUTPUT, ALL_PATTERN_INPUTS, \
     DEFAULT_WORKFLOW_FILENAME, WORKFLOW_IMAGE_EXTENSION, INPUT_SOURCE, \
-    NOTEBOOK_EXTENSIONS
+    NOTEBOOK_EXTENSIONS, PATTERN, RECIPE, NAME
 from .pattern import Pattern, is_valid_pattern_object
 from .recipe import is_valid_recipe_dict, create_recipe_from_notebook
 from .workflows import build_workflow_object, create_workflow_image
@@ -80,6 +76,8 @@ class WorkflowWidget:
             # TODO don't show anything here at all if no input defined?
             self.workflow_display = widgets.Image()
 
+        self.display_area = widgets.Output()
+
         self.new_pattern_button = widgets.Button(
             value=False,
             description="New Pattern",
@@ -138,6 +136,11 @@ class WorkflowWidget:
 
         self.feedback = widgets.HTML()
 
+        self.display_area = widgets.Output()
+
+        # TODO update so all forms use this?
+        self.current_form = {}
+
         self.pattern_form = {}
         self.pattern_form_line_counts = {}
         self.pattern_form_rows = {}
@@ -148,6 +151,8 @@ class WorkflowWidget:
         self.recipe_form_old_values = {}
 
         self.displayed_form = None
+        self.editting_area = None
+        self.editting = None
 
     def disable_top_buttons(self):
         self.new_pattern_button.disabled = True
@@ -372,7 +377,7 @@ class WorkflowWidget:
             extra_func=list_current_recipes()
         )
 
-    def process_pattern_values(self, values, form):
+    def process_pattern_values(self, values):
         try:
             pattern = Pattern(values[INPUT_NAME])
             if values[INPUT_NAME] in self.patterns:
@@ -418,22 +423,29 @@ class WorkflowWidget:
                                         "in %s" % output)
             valid, warnings = pattern.integrity_check()
             if valid:
+                if pattern.name in self.patterns:
+                    word = 'updated'
+                else:
+                    word = 'created'
                 self.patterns[pattern.name] = pattern
-                msg = "pattern %s created. " % pattern.name
+                msg = "pattern %s %s. " % (pattern.name, word)
                 if warnings:
                     msg += "\n%s" % warnings
                 self.feedback.value = msg
                 self.update_workflow_image()
                 self.close_form()
+                return True
             else:
                 msg = "pattern is not valid. "
                 if warnings:
                     msg += "\n%s" % warnings
                 self.feedback.value = msg
+                return False
         except Exception as e:
             self.feedback.value = str(e)
+            return False
 
-    def process_recipe_values(self, values, form):
+    def process_recipe_values(self, values, ignore_conflicts=False):
         try:
             source = values[INPUT_SOURCE]
             name = values[INPUT_NAME]
@@ -454,23 +466,31 @@ class WorkflowWidget:
                 return
             if name:
                 valid_string(name, 'Name')
-                if name in self.recipes:
-                    msg = "recipe name is not valid as another recipe " \
-                          "is already registered with that name. Please " \
-                          "try again using a different name. "
-                    self.feedback.value = msg
-                    return
+                if not ignore_conflicts:
+                    if name in self.recipes:
+                        msg = "recipe name is not valid as another recipe " \
+                              "is already registered with that name. Please " \
+                              "try again using a different name. "
+                        self.feedback.value = msg
+                        return
             self.feedback.value = "Everything seems in order. "
 
             with open(source, "r") as read_file:
                 notebook = json.load(read_file)
                 recipe = create_recipe_from_notebook(notebook, name)
+                if name in self.recipes:
+                    word = 'updated'
+                else:
+                    word = 'created'
                 self.recipes[name] = recipe
-                self.feedback.value = "Recipe %s created. " % name
+                self.feedback.value = "Recipe %s %s. " % (name, word)
             self.update_workflow_image()
             self.close_form()
+            return True
         except Exception as e:
-            self.feedback.value = str(e)
+            self.feedback.value = "Something went wrong with recipe " \
+                                  "generation. %s " % str(e)
+            return False
 
     def on_new_pattern_clicked(self, button):
         self.disable_top_buttons()
@@ -479,7 +499,7 @@ class WorkflowWidget:
 
     def on_edit_pattern_clicked(self, button):
         self.disable_top_buttons()
-        self._refresh_edit_form(self.pattern_form, "Pattern", self.patterns)
+        self._refresh_edit_form(self.pattern_form, PATTERN, self.patterns)
         self.clear_feedback()
 
     def on_new_recipe_clicked(self, button):
@@ -489,19 +509,21 @@ class WorkflowWidget:
 
     def on_edit_recipe_clicked(self, button):
         self.disable_top_buttons()
-        self._refresh_edit_form(self.recipe_form, "Recipe", self.recipes)
+        self._refresh_edit_form(self.recipe_form, RECIPE, self.recipes)
         self.clear_feedback()
 
     def _refresh_new_form(self, form, form_old_values, form_rows,
                           form_line_counts, population_function,
-                          done_function):
+                          done_function, wait=False):
+
         if form:
             form_old_values = {}
             for key in form_rows.keys():
                 form_old_values[key] = form_rows[key]
         form = {}
-        if self.displayed_form:
-            self.displayed_form.close()
+        # if self.displayed_form:
+        #     self.displayed_form.close()
+        self.display_area.clear_output(wait=wait)
 
         population_function(form,
                             form_rows,
@@ -534,7 +556,7 @@ class WorkflowWidget:
                 else:
                     values[key] = form_rows[key].value
 
-            done_function(values, form)
+            done_function(values)
 
         form["done_button"].on_click(done_button_click)
 
@@ -548,11 +570,10 @@ class WorkflowWidget:
 
         def cancel_button_click(button):
             if isinstance(self.displayed_form, widgets.VBox):
-                form_old_values = {}
-                for key in form_rows.keys():
-                    form_old_values[key] = \
-                        form_rows[key]
                 self.close_form()
+                form_old_values = {}
+                for text_key in form_rows.keys():
+                    form_old_values[text_key] = form_rows[text_key]
                 self.clear_feedback()
 
         form["cancel_button"].on_click(cancel_button_click)
@@ -566,12 +587,14 @@ class WorkflowWidget:
 
         self.displayed_form = widgets.VBox(items)
 
-        form_id = display(self.displayed_form, display_id=True)
+        with self.display_area:
+            form_id = display(self.displayed_form, display_id=True)
 
-    def _refresh_edit_form(self, form, label_text, display_dict):
+    def _refresh_edit_form(self, form, editting, display_dict):
         form = {}
-        if self.displayed_form:
-            self.displayed_form.close()
+        # if self.displayed_form:
+        #     self.displayed_form.close()
+        self.display_area.clear_output()
 
         options = []
         for key in display_dict:
@@ -580,13 +603,18 @@ class WorkflowWidget:
         dropdown = widgets.Dropdown(
             options=options,
             value=None,
-            description="%s: " % label_text,
+            description="%s: " % editting,
             disabled=False,
         )
 
         def on_dropdown_select(change):
             if change['type'] == 'change' and change['name'] == 'value':
-                print("changed to %s" % change['new'])
+                to_edit = display_dict[change['new']]
+                if editting is RECIPE:
+                    self.editting = (editting, to_edit)
+                    self.recipe_editor()
+                elif editting is PATTERN:
+                    self.pattern_editor(to_edit)
 
         dropdown.observe(on_dropdown_select)
 
@@ -595,76 +623,104 @@ class WorkflowWidget:
         ]
         top_row = widgets.HBox(top_row_items)
 
-        form["reset_button"] = widgets.Button(
-            value=False,
-            description="Reset",
-            disabled=False,
-            button_style='',
-            tooltip='Here is a tooltip for this button'
-        )
-
-        def reset_button_click(button):
-            pass
-
-        form["reset_button"].on_click(reset_button_click)
-
-        form["done_button"] = widgets.Button(
-            value=False,
-            description="Done",
-            disabled=False,
-            button_style='',
-            tooltip='Here is a tooltip for this button'
-        )
-
-        def done_button_click(button):
-            pass
-
-        form["done_button"].on_click(done_button_click)
-
-        form["delete_button"] = widgets.Button(
-            value=False,
-            description="Delete",
-            disabled=False,
-            button_style='',
-            tooltip='Here is a tooltip for this button'
-        )
-
-        def delete_button_click(button):
-            pass
-
-        form["delete_button"].on_click(delete_button_click)
-
-        form["cancel_button"] = widgets.Button(
-            value=False,
-            description="Cancel",
-            disabled=False,
-            button_style='',
-            tooltip='Here is a tooltip for this button'
-        )
-
-        def cancel_button_click(button):
-            if isinstance(self.displayed_form, widgets.VBox):
-                self.close_form()
-                self.clear_feedback()
-
-        form["cancel_button"].on_click(cancel_button_click)
-
-        bottom_row_items = [
-            form["reset_button"],
-            form["done_button"],
-            form["delete_button"],
-            form["cancel_button"]
-        ]
-        bottom_row = widgets.HBox(bottom_row_items)
-
         items = [
-            top_row,
-            bottom_row
+            top_row
         ]
 
         self.displayed_form = widgets.VBox(items)
 
-        form_id = display(self.displayed_form, display_id=True)
+        with self.display_area:
+            form_id = display(self.displayed_form, display_id=True)
+
+    def recipe_editor(self):
+        if not self.editting_area:
+            label = widgets.Label(
+                value='Update source:'
+            )
+            source = widgets.Text()
+            self.current_form = {
+                INPUT_SOURCE: source
+            }
+            input_items = [
+                label,
+                source
+            ]
+            input_row = widgets.HBox(input_items)
+
+            apply = widgets.Button(
+                value=False,
+                description="Apply Changes",
+                disabled=False,
+                button_style='',
+                tooltip='TODO'
+            )
+            apply.on_click(self.on_apply_recipe_changes_clicked)
+
+            delete = widgets.Button(
+                value=False,
+                description="Delete recipe",
+                disabled=False,
+                button_style='',
+                tooltip='TODO'
+            )
+            delete.on_click(self.on_delete_recipe_clicked)
+
+            cancel = widgets.Button(
+                value=False,
+                description="Cancel",
+                disabled=False,
+                button_style='',
+                tooltip='TODO'
+            )
+            cancel.on_click(self.on_cancel_clicked)
+
+            button_items = [
+                apply,
+                delete,
+                cancel
+            ]
+            button_row = widgets.HBox(button_items)
+
+            editting_items = [
+                input_row,
+                button_row
+            ]
+
+            self.editting_area = widgets.VBox(editting_items)
+
+            with self.display_area:
+                display(self.editting_area)
+
+    def pattern_editor(self, to_edit_object):
+        pass
+
+    def on_apply_recipe_changes_clicked(self, button):
+        values = {
+            INPUT_NAME: self.editting[1][NAME],
+            INPUT_SOURCE: self.current_form[INPUT_SOURCE].value
+        }
+        if self.process_recipe_values(values, ignore_conflicts=True):
+            self.done_editting()
+
+    def on_delete_recipe_clicked(self, button):
+        to_delete = self.editting[1][NAME]
+        if to_delete in self.recipes.keys():
+            self.recipes.pop(to_delete)
+        self.feedback.value = "Recipe %s deleted. " % to_delete
+        self.update_workflow_image()
+        self.done_editting()
+
+
+    # TODO poss also use this in recipe form
+    def on_cancel_clicked(self, button):
+        if isinstance(self.displayed_form, widgets.VBox):
+            self.done_editting()
+            self.clear_feedback()
+
+    def done_editting(self):
+        self.close_form()
+        self.editting_area = None
+        self.editting = None
 
     def make_help_button(self, help_text, extra_text, extra_func):
         help_button = widgets.Button(
@@ -739,6 +795,7 @@ class WorkflowWidget:
             value="%s(s): " % msg
         )
         input = widgets.Text()
+
         help_button, help_text = self.make_help_button(help,
                                                        extra_text=extra_text,
                                                        extra_func=extra_func)
@@ -770,7 +827,8 @@ class WorkflowWidget:
                                    rows,
                                    line_counts,
                                    population_function,
-                                   done_function)
+                                   done_function,
+                                   wait=True)
 
         add_button.on_click(add_button_click)
 
@@ -790,7 +848,8 @@ class WorkflowWidget:
                                    rows,
                                    line_counts,
                                    population_function,
-                                   done_function)
+                                   done_function,
+                                   wait=True)
 
         if key in line_counts.keys():
             if line_counts[key] == 0:
@@ -877,7 +936,9 @@ class WorkflowWidget:
         self.feedback.value = ""
 
     def close_form(self):
-        self.displayed_form.close()
+        # self.displayed_form.close()
+        self.displayed_form = None
+        self.display_area.clear_output()
         self.enable_top_buttons()
 
     def update_workflow_image(self):
@@ -900,6 +961,7 @@ class WorkflowWidget:
 
         workflow_image = [self.workflow_display]
         image_row = widgets.HBox(workflow_image)
+
         button_row_items = [self.new_pattern_button,
                             self.edit_pattern_button,
                             self.new_recipe_button,
@@ -907,10 +969,24 @@ class WorkflowWidget:
                             self.import_from_vgrid_button,
                             self.export_to_vgrid_button]
         button_row = widgets.HBox(button_row_items)
+
         feedback_items = [
             self.feedback
         ]
         feedback_row = widgets.HBox(feedback_items)
-        widget = widgets.VBox([image_row, button_row, feedback_row])
+
+        display_items = [
+            self.display_area
+        ]
+        display_row = widgets.HBox(display_items)
+
+        widget = widgets.VBox(
+            [
+                image_row,
+                button_row,
+                display_row,
+                feedback_row
+            ]
+        )
         self.enable_top_buttons()
         return widget
