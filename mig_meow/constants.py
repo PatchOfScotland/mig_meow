@@ -1,6 +1,7 @@
 
 NOTEBOOK_EXTENSION = '.ipynb'
-DEFAULT_JOB_NAME = 'wf_job' + NOTEBOOK_EXTENSION
+DEFAULT_JOB_NAME = 'wf_job'
+DEFAULT_JOB_NAME_EXTENSION = DEFAULT_JOB_NAME + NOTEBOOK_EXTENSION
 PATTERN_EXTENSION = '.pattern'
 
 PATTERN = 'Pattern'
@@ -24,6 +25,7 @@ RECIPE = 'recipe'
 RECIPES = 'recipes'
 VARIABLES = 'variables'
 VGRIDS = 'vgrids'
+SOURCE = 'source'
 
 INPUT_NAME = "input_name"
 INPUT_TRIGGER_FILE = "input_trigger_file"
@@ -76,6 +78,7 @@ VALID_RECIPE = {
     # OWNER: str,
     NAME: str,
     RECIPE: dict,
+    SOURCE: str,
     # VGRIDS: str
 }
 

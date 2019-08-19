@@ -1,11 +1,12 @@
 
 from .constants import VALID_RECIPE, OBJECT_TYPE, PERSISTENCE_ID, TRIGGERS, \
-    OWNER, NAME, RECIPE, VGRIDS
+    OWNER, NAME, RECIPE, VGRIDS, SOURCE
 
 
-def create_recipe_from_notebook(notebook, name):
+def create_recipe_from_notebook(notebook, name, source):
     recipe = {
         NAME: name,
+        SOURCE: source,
         # OBJECT_TYPE: "",
         # PERSISTENCE_ID: "",
         # OWNER: "",

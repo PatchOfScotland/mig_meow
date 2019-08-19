@@ -10,7 +10,7 @@ from .constants import INPUT_NAME, INPUT_OUTPUT, INPUT_RECIPES, \
     INPUT_TRIGGER_PATH, INPUT_VARIABLES, INPUT_TRIGGER_FILE, \
     INPUT_TRIGGER_OUTPUT, INPUT_NOTEBOOK_OUTPUT, ALL_PATTERN_INPUTS, \
     DEFAULT_WORKFLOW_FILENAME, WORKFLOW_IMAGE_EXTENSION, INPUT_SOURCE, \
-    NOTEBOOK_EXTENSIONS, PATTERN, RECIPE, NAME
+    NOTEBOOK_EXTENSIONS, PATTERN, RECIPE, NAME, DEFAULT_JOB_NAME, SOURCE
 from .pattern import Pattern, is_valid_pattern_object
 from .recipe import is_valid_recipe_dict, create_recipe_from_notebook
 from .workflows import build_workflow_object, create_workflow_image
@@ -138,21 +138,14 @@ class WorkflowWidget:
 
         self.display_area = widgets.Output()
 
-        # TODO update so all forms use this?
         self.current_form = {}
-
-        self.pattern_form = {}
-        self.pattern_form_line_counts = {}
-        self.pattern_form_rows = {}
-        self.pattern_form_old_values = {}
-
-        self.recipe_form = {}
-        self.recipe_form_rows = {}
-        self.recipe_form_old_values = {}
+        self.current_old_values = {}
+        self.current_form_rows = {}
+        self.current_form_line_counts = {}
 
         self.displayed_form = None
-        self.editting_area = None
-        self.editting = None
+        self.editing_area = None
+        self.editing = None
 
     def disable_top_buttons(self):
         self.new_pattern_button.disabled = True
@@ -176,10 +169,8 @@ class WorkflowWidget:
         self.import_from_vgrid_button.disabled = False
         self.export_to_vgrid_button.disabled = False
 
-    def populate_new_pattern_form(self, form, form_rows, form_old_values,
-                                  form_line_counts, population_function,
-                                  done_function):
-        form[INPUT_NAME] = self._create_form_single_input(
+    def populate_new_pattern_form(self, population_function, done_function):
+        self.current_form[INPUT_NAME] = self._create_form_single_input(
             "Name",
             "Pattern Name. This is used to identify the pattern and so "
             "should be a unique string."
@@ -187,11 +178,9 @@ class WorkflowWidget:
             "Example: <b>pattern_1</b>"
             "<br/>"
             "In this example this pattern is given the name 'pattern_1'.",
-            INPUT_NAME,
-            form_rows,
-            form_old_values
+            INPUT_NAME
         )
-        form[INPUT_TRIGGER_PATH] = self._create_form_single_input(
+        self.current_form[INPUT_TRIGGER_PATH] = self._create_form_single_input(
             "Trigger path",
             "Triggering path for file events which are used to schedule "
             "jobs. This is expressed as a regular expression against which "
@@ -207,11 +196,9 @@ class WorkflowWidget:
             "the 'dir' directory. The 'dir' directory in this case should be "
             "located in he vgrid home directory. So if you are operating in "
             "the 'test' vgrid, the structure should be 'test/dir'.",
-            INPUT_TRIGGER_PATH,
-            form_rows,
-            form_old_values
+            INPUT_TRIGGER_PATH
         )
-        form[INPUT_TRIGGER_FILE] = self._create_form_single_input(
+        self.current_form[INPUT_TRIGGER_FILE] = self._create_form_single_input(
             "Trigger file",
             "This is the variable name used to identify the triggering file "
             "within the job processing."
@@ -221,12 +208,9 @@ class WorkflowWidget:
             "In this the triggering file will be copied into the job as "
             "'input_file'. This can then be opened or manipulated as "
             "necessary by the job processing.",
-            INPUT_TRIGGER_FILE,
-            form_rows,
-            form_old_values
+            INPUT_TRIGGER_FILE
         )
-        form[
-            INPUT_TRIGGER_OUTPUT] = self._create_form_single_input(
+        self.current_form[INPUT_TRIGGER_OUTPUT] = self._create_form_single_input(
             "Trigger output",
             "Trigger output is an optional parameter used to define if the "
             "triggering file is returned. This is defined by the path for the "
@@ -240,12 +224,9 @@ class WorkflowWidget:
             "If the job was triggered on 'test.txt' then the output file "
             "would be called 'test_output.txt",
             INPUT_TRIGGER_OUTPUT,
-            form_rows,
-            form_old_values,
             optional=True
         )
-        form[
-            INPUT_NOTEBOOK_OUTPUT] = self._create_form_single_input(
+        self.current_form[INPUT_NOTEBOOK_OUTPUT] = self._create_form_single_input(
             "Notebook output",
             "Notebook output is an optional parameter used to define if the "
             "notebook used for job processing is returned. This is defined as "
@@ -259,11 +240,9 @@ class WorkflowWidget:
             "directory. If the job was triggered on 'test.txt' then the "
             "output notebook would be called 'test_output.ipynb",
             INPUT_NOTEBOOK_OUTPUT,
-            form_rows,
-            form_old_values,
             optional=True
         )
-        form[INPUT_OUTPUT] = self._create_form_multi_input(
+        self.current_form[INPUT_OUTPUT] = self._create_form_multi_input(
             "Output",
             "Output data to be saved after job completion. Anything not "
             "saved will be lost. Zero or more files can be copied and should "
@@ -285,15 +264,12 @@ class WorkflowWidget:
             "extension. If the triggering file was 'sample.txt' then the "
             "output will be called 'sample.ipynb'.",
             INPUT_OUTPUT,
-            form,
-            form_rows,
-            form_old_values,
-            form_line_counts,
             population_function,
-            done_function,
+            self._refresh_new_form,
+            done_function=done_function,
             optional=True
         )
-        form[INPUT_RECIPES] = self._create_form_multi_input(
+        self.current_form[INPUT_RECIPES] = self._create_form_multi_input(
             "Recipe",
             "Recipe(s) to be used for job definition. These should be recipe "
             "names and may be recipes already defined in the system or "
@@ -306,16 +282,13 @@ class WorkflowWidget:
             "In this example, the recipe 'recipe_1' is used as the definition "
             "of any job processing.",
             INPUT_RECIPES,
-            form,
-            form_rows,
-            form_old_values,
-            form_line_counts,
             population_function,
-            done_function,
+            self._refresh_new_form,
+            done_function=done_function,
             extra_text="<br/>Current defined recipes are: ",
             extra_func=list_current_recipes()
         )
-        form[INPUT_VARIABLES] = self._create_form_multi_input(
+        self.current_form[INPUT_VARIABLES] = self._create_form_multi_input(
             "Variable",
             "Variable(s) accessible to the job at runtime. These are passed "
             "to the job using papermill to run a parameterised notebook. Zero "
@@ -330,19 +303,153 @@ class WorkflowWidget:
             "In this example a list of numbers is created and named 'list_a'."
             ,
             INPUT_VARIABLES,
-            form,
-            form_rows,
-            form_old_values,
-            form_line_counts,
             population_function,
-            done_function,
+            self._refresh_new_form,
+            done_function=done_function,
             optional=True
         )
 
-    def populate_new_recipe_form(self, form, form_rows, form_old_values,
-                                 form_line_counts, population_function,
-                                  done_function):
-        form[INPUT_SOURCE] = self._create_form_single_input(
+    def populate_editing_pattern_form(self, population_function, editing, display_dict):
+        self.current_form[INPUT_TRIGGER_PATH] = self._create_form_single_input(
+            "Trigger path",
+            "Triggering path for file events which are used to schedule "
+            "jobs. This is expressed as a regular expression against which "
+            "file events are matched. It can be as broad or specific as "
+            "required. Any matches between file events and the path given "
+            "will cause a scheduled job. File paths are taken relative to the "
+            "vgrid home directory. "
+            "<br/>"
+            "Example: <b>dir/input_file_*\\.txt</b>"
+            "<br/>"
+            "In this example pattern jobs will trigger on an '.txt' files "
+            "whose file name starts with 'input_file_' and is located in "
+            "the 'dir' directory. The 'dir' directory in this case should be "
+            "located in he vgrid home directory. So if you are operating in "
+            "the 'test' vgrid, the structure should be 'test/dir'.",
+            INPUT_TRIGGER_PATH
+        )
+        self.current_form[INPUT_TRIGGER_FILE] = self._create_form_single_input(
+            "Trigger file",
+            "This is the variable name used to identify the triggering file "
+            "within the job processing."
+            "<br/>"
+            "Example: <b>input_file</b>"
+            "<br/>"
+            "In this the triggering file will be copied into the job as "
+            "'input_file'. This can then be opened or manipulated as "
+            "necessary by the job processing.",
+            INPUT_TRIGGER_FILE
+        )
+        self.current_form[INPUT_TRIGGER_OUTPUT] = self._create_form_single_input(
+            "Trigger output",
+            "Trigger output is an optional parameter used to define if the "
+            "triggering file is returned. This is defined by the path for the "
+            "file to be copied to at job completion. If it is not provided "
+            "then any changes made to it are lost, but other output may still "
+            "be saved if defined in the output parameter."
+            "<br/>"
+            "Example: <b>dir/*_output.txt</b>"
+            "<br/>"
+            "In this example data file is saved within the 'dir' directory. "
+            "If the job was triggered on 'test.txt' then the output file "
+            "would be called 'test_output.txt",
+            INPUT_TRIGGER_OUTPUT,
+            optional=True
+        )
+        self.current_form[INPUT_NOTEBOOK_OUTPUT] = self._create_form_single_input(
+            "Notebook output",
+            "Notebook output is an optional parameter used to define if the "
+            "notebook used for job processing is returned. This is defined as "
+            "a path for the notebook to be copied to at job completion. If it "
+            "is not provided then the notebook is destroyed, but other output "
+            "may still be saved if defined in the output parameter."
+            "<br/>"
+            "Example: <b>dir/*_output.ipynb</b>"
+            "<br/>"
+            "In this example the job notebook is saved within the 'dir' "
+            "directory. If the job was triggered on 'test.txt' then the "
+            "output notebook would be called 'test_output.ipynb",
+            INPUT_NOTEBOOK_OUTPUT,
+            optional=True
+        )
+        self.current_form[INPUT_OUTPUT] = self._create_form_multi_input(
+            "Output",
+            "Output data to be saved after job completion. Anything not "
+            "saved will be lost. Zero or more files can be copied and should "
+            "be expressed in two parts as a variable declaration. The "
+            "variable name is the name of the output file within the job, "
+            "whilst the value is the file location to which it shall be "
+            "copied. In the output string a '*' character can be used to "
+            "dynamically create file names, with the * being replaced at "
+            "runtime by the triggering files filename. Each output should be "
+            "defined in its own text box, and the 'Add output file' button "
+            "can be used to create additional text boxes as needed."
+            "<br/>"
+            "Example: <b>job_output = dir/some_output/*.ipynb</b>"
+            "<br/>"
+            "In this example, the file 'job_output' is created by the job and "
+            "copied to the 'some_output' directory in 'dir'. If 'some_output' "
+            "does not already exist it is created. The file will be named "
+            "according to the triggering file, and given the '.ipynb' file "
+            "extension. If the triggering file was 'sample.txt' then the "
+            "output will be called 'sample.ipynb'.",
+            INPUT_OUTPUT,
+            population_function,
+            self._refresh_edit_form,
+            editing=editing,
+            display_dict=display_dict,
+            apply_function=self.on_apply_pattern_changes_clicked,
+            delete_function=self.on_delete_pattern_clicked,
+            optional=True
+        )
+        self.current_form[INPUT_RECIPES] = self._create_form_multi_input(
+            "Recipe",
+            "Recipe(s) to be used for job definition. These should be recipe "
+            "names and may be recipes already defined in the system or "
+            "additional ones yet to be added. Each recipe should be defined "
+            "in its own text box, and the 'Add recipe' button can be used to "
+            "create additional text boxes as needed."
+            "<br/>"
+            "Example: <b>recipe_1</b>"
+            "<br/>"
+            "In this example, the recipe 'recipe_1' is used as the definition "
+            "of any job processing.",
+            INPUT_RECIPES,
+            population_function,
+            self._refresh_edit_form,
+            editing=editing,
+            display_dict=display_dict,
+            apply_function=self.on_apply_pattern_changes_clicked,
+            delete_function=self.on_delete_pattern_clicked,
+            extra_text="<br/>Current defined recipes are: ",
+            extra_func=list_current_recipes()
+        )
+        self.current_form[INPUT_VARIABLES] = self._create_form_multi_input(
+            "Variable",
+            "Variable(s) accessible to the job at runtime. These are passed "
+            "to the job using papermill to run a parameterised notebook. Zero "
+            "or more variables can be defined and should be declared as "
+            "variable definitions. The variable name will be used as the "
+            "variable name within the job notebook, and the vraiable value "
+            "will be its value. Any Python data structure can be defined as "
+            "long as it can be declared in a single line."
+            "<br/>"
+            "Example: <b>list_a=[1,2,3]</b>"
+            "<br/>"
+            "In this example a list of numbers is created and named 'list_a'."
+            ,
+            INPUT_VARIABLES,
+            population_function,
+            self._refresh_edit_form,
+            editing=editing,
+            display_dict=display_dict,
+            apply_function=self.on_apply_pattern_changes_clicked,
+            delete_function=self.on_delete_pattern_clicked,
+            optional=True
+        )
+
+    def populate_new_recipe_form(self, population_function, done_function):
+        self.current_form[INPUT_SOURCE] = self._create_form_single_input(
             "Source",
             "The Jupyter Notebook to be used as a source for the recipe. This "
             "should be expressed as a path to the notebook. Note that if a "
@@ -354,12 +461,10 @@ class WorkflowWidget:
             "In this example this notebook 'notebook_1' in the 'dir' ."
             "directory is imported as a recipe. ",
             INPUT_SOURCE,
-            form_rows,
-            form_old_values,
             extra_text="<br/>Current defined recipes are: ",
             extra_func=list_current_recipes()
         )
-        form[INPUT_NAME] = self._create_form_single_input(
+        self.current_form[INPUT_NAME] = self._create_form_single_input(
             "Name",
             "Optional recipe name. This is used to identify the recipe and so "
             "must be unique. If not provided then the notebook filename is "
@@ -370,21 +475,35 @@ class WorkflowWidget:
             "In this example this recipe is given the name 'recipe_1', "
             "regardless of the name of the source notebook.",
             INPUT_NAME,
-            form_rows,
-            form_old_values,
             optional=True,
             extra_text="<br/>Current defined recipes are: ",
             extra_func=list_current_recipes()
         )
 
-    def process_pattern_values(self, values):
+    def populate_editing_recipe_form(self, population_function, editing, display_dict):
+        self.current_form[INPUT_NAME] = self._create_form_single_input(
+            "Source",
+            "The Jupyter Notebook to be used as a source for the recipe. "
+            "This should be expressed as a path to the notebook. Note "
+            "that if a name is not provided below then the notebook "
+            "filename will be used as the recipe name"
+            "<br/>"
+            "Example: <b>dir/notebook_1.ipynb</b>"
+            "<br/>"
+            "In this example this notebook 'notebook_1' in the 'dir' ."
+            "directory is imported as a recipe. ",
+            INPUT_SOURCE
+        )
+
+    def process_pattern_values(self, values, ignore_conflicts=False):
         try:
             pattern = Pattern(values[INPUT_NAME])
-            if values[INPUT_NAME] in self.patterns:
-                msg = "Pattern name is not valid as another pattern is " \
-                      "already registered with that name. "
-                self.feedback.value = msg
-                return
+            if not ignore_conflicts:
+                if values[INPUT_NAME] in self.patterns:
+                    msg = "Pattern name is not valid as another pattern is " \
+                          "already registered with that name. "
+                    self.feedback.value = msg
+                    return
             file_name = values[INPUT_TRIGGER_FILE]
             trigger_path = values[INPUT_TRIGGER_PATH]
             trigger_output = values[INPUT_TRIGGER_OUTPUT]
@@ -442,7 +561,8 @@ class WorkflowWidget:
                 self.feedback.value = msg
                 return False
         except Exception as e:
-            self.feedback.value = str(e)
+            self.feedback.value = "Something went wrong with pattern " \
+                                  "generation. %s" % str(e)
             return False
 
     def process_recipe_values(self, values, ignore_conflicts=False):
@@ -477,7 +597,7 @@ class WorkflowWidget:
 
             with open(source, "r") as read_file:
                 notebook = json.load(read_file)
-                recipe = create_recipe_from_notebook(notebook, name)
+                recipe = create_recipe_from_notebook(notebook, name, source)
                 if name in self.recipes:
                     word = 'updated'
                 else:
@@ -494,49 +614,45 @@ class WorkflowWidget:
 
     def on_new_pattern_clicked(self, button):
         self.disable_top_buttons()
-        self._refresh_new_form(self.pattern_form, self.pattern_form_old_values, self.pattern_form_rows, self.pattern_form_line_counts, self.populate_new_pattern_form, self.process_pattern_values)
+        self.clear_current_form()
+        self._refresh_new_form(self.populate_new_pattern_form, self.process_pattern_values)
         self.clear_feedback()
 
     def on_edit_pattern_clicked(self, button):
         self.disable_top_buttons()
-        self._refresh_edit_form(self.pattern_form, PATTERN, self.patterns)
+        self.clear_current_form()
+        self._refresh_edit_form(PATTERN, self.patterns, self.populate_editing_pattern_form, self.on_apply_pattern_changes_clicked, self.on_delete_pattern_clicked)
         self.clear_feedback()
 
     def on_new_recipe_clicked(self, button):
         self.disable_top_buttons()
-        self._refresh_new_form(self.recipe_form, self.recipe_form_old_values, self.recipe_form_rows, {}, self.populate_new_recipe_form, self.process_recipe_values)
+        self.clear_current_form()
+        self._refresh_new_form(self.populate_new_recipe_form, self.process_recipe_values)
         self.clear_feedback()
 
     def on_edit_recipe_clicked(self, button):
         self.disable_top_buttons()
-        self._refresh_edit_form(self.recipe_form, RECIPE, self.recipes)
+        self.clear_current_form()
+        self._refresh_edit_form(RECIPE, self.recipes, self.populate_editing_recipe_form, self.on_apply_recipe_changes_clicked, self.on_delete_recipe_clicked)
         self.clear_feedback()
 
-    def _refresh_new_form(self, form, form_old_values, form_rows,
-                          form_line_counts, population_function,
-                          done_function, wait=False):
-
-        if form:
-            form_old_values = {}
-            for key in form_rows.keys():
-                form_old_values[key] = form_rows[key]
-        form = {}
+    def _refresh_new_form(self, population_function, done_function, wait=False):
+        if self.current_form:
+            self.current_old_values = {}
+            for key in self.current_form_rows.keys():
+                self.current_old_values[key] = self.current_form_rows[key]
+        self.current_form = {}
         # if self.displayed_form:
         #     self.displayed_form.close()
         self.display_area.clear_output(wait=wait)
 
-        population_function(form,
-                            form_rows,
-                            form_old_values,
-                            form_line_counts,
-                            population_function,
-                            done_function)
+        population_function(population_function, done_function)
 
         items = []
-        for key in form.keys():
-            items.append(form[key])
+        for key in self.current_form.keys():
+            items.append(self.current_form[key])
 
-        form["done_button"] = widgets.Button(
+        self.current_form["done_button"] = widgets.Button(
             value=False,
             description="Done",
             disabled=False,
@@ -546,21 +662,21 @@ class WorkflowWidget:
 
         def done_button_click(button):
             values = {}
-            for key in form_rows.keys():
-                row = form_rows[key]
+            for key in self.current_form_rows.keys():
+                row = self.current_form_rows[key]
                 if isinstance(row, list):
                     values_list = []
                     for element in row:
                         values_list.append(element.value)
                     values[key] = values_list
                 else:
-                    values[key] = form_rows[key].value
+                    values[key] = self.current_form_rows[key].value
 
             done_function(values)
 
-        form["done_button"].on_click(done_button_click)
+        self.current_form["done_button"].on_click(done_button_click)
 
-        form["cancel_button"] = widgets.Button(
+        self.current_form["cancel_button"] = widgets.Button(
             value=False,
             description="Cancel",
             disabled=False,
@@ -571,16 +687,17 @@ class WorkflowWidget:
         def cancel_button_click(button):
             if isinstance(self.displayed_form, widgets.VBox):
                 self.close_form()
-                form_old_values = {}
-                for text_key in form_rows.keys():
-                    form_old_values[text_key] = form_rows[text_key]
+                self.current_old_values = {}
+                for text_key in self.current_form_rows.keys():
+                    self.current_old_values[text_key] = \
+                        self.current_form_rows[text_key]
                 self.clear_feedback()
 
-        form["cancel_button"].on_click(cancel_button_click)
+        self.current_form["cancel_button"].on_click(cancel_button_click)
 
         bottom_row_items = [
-            form["done_button"],
-            form["cancel_button"]
+            self.current_form["done_button"],
+            self.current_form["cancel_button"]
         ]
         bottom_row = widgets.HBox(bottom_row_items)
         items.append(bottom_row)
@@ -590,11 +707,14 @@ class WorkflowWidget:
         with self.display_area:
             form_id = display(self.displayed_form, display_id=True)
 
-    def _refresh_edit_form(self, form, editting, display_dict):
-        form = {}
+    def _refresh_edit_form(self, editing, display_dict, population_function,
+                           apply_function, delete_function, wait=False,
+                           default=None):
+        self.current_form = {}
         # if self.displayed_form:
         #     self.displayed_form.close()
-        self.display_area.clear_output()
+        self.display_area.clear_output(wait=wait)
+        self.editing_area = None
 
         options = []
         for key in display_dict:
@@ -603,18 +723,43 @@ class WorkflowWidget:
         dropdown = widgets.Dropdown(
             options=options,
             value=None,
-            description="%s: " % editting,
+            description="%s: " % editing,
             disabled=False,
         )
 
         def on_dropdown_select(change):
             if change['type'] == 'change' and change['name'] == 'value':
                 to_edit = display_dict[change['new']]
-                if editting is RECIPE:
-                    self.editting = (editting, to_edit)
-                    self.recipe_editor()
-                elif editting is PATTERN:
-                    self.pattern_editor(to_edit)
+                self.editing = (editing, to_edit)
+
+                # update row counts
+                if isinstance(to_edit, Pattern) and not default:
+                    pattern = to_edit
+                    extra_outputs = []
+                    for out in pattern.outputs.keys():
+                        if out != DEFAULT_JOB_NAME and out != pattern.input_file:
+                            extra_outputs.append(out)
+                    if len(extra_outputs) > 1:
+                        self.current_form_line_counts[INPUT_OUTPUT] = len(extra_outputs) - 1
+                    else:
+                        self.current_form_line_counts[INPUT_OUTPUT] = 0
+
+                    if len(pattern.recipes) > 1:
+                        self.current_form_line_counts[INPUT_OUTPUT] = len(pattern.recipes) - 1
+                    else:
+                        self.current_form_line_counts[INPUT_OUTPUT] = 0
+
+                    extra_variables = []
+                    for variable in pattern.variables.keys():
+                        if variable != pattern.input_file and variable != DEFAULT_JOB_NAME:
+                            extra_variables.append(variable)
+                    if len(extra_variables) > 1:
+                        self.current_form_line_counts[INPUT_VARIABLES] = len(extra_variables) - 1
+                    else:
+                        self.current_form_line_counts[INPUT_VARIABLES] = 0
+
+                if not default:
+                    self._refresh_edit_form(editing, display_dict, population_function, apply_function, delete_function, wait=False, default=to_edit)
 
         dropdown.observe(on_dropdown_select)
 
@@ -632,20 +777,24 @@ class WorkflowWidget:
         with self.display_area:
             form_id = display(self.displayed_form, display_id=True)
 
-    def recipe_editor(self):
-        if not self.editting_area:
-            label = widgets.Label(
-                value='Update source:'
-            )
-            source = widgets.Text()
-            self.current_form = {
-                INPUT_SOURCE: source
-            }
-            input_items = [
-                label,
-                source
-            ]
-            input_row = widgets.HBox(input_items)
+        # TODO fix this to distinguish between patterns and recipes
+        if default:
+            if isinstance(default, Pattern):
+                default_name = default.name
+            else:
+                default_name = default[NAME]
+            if default_name in options:
+                dropdown.value = default_name
+                self._editor(population_function, editing, display_dict, apply_function, delete_function)
+                default = None
+
+    def _editor(self, population_function, editing, display_dict, apply_function, delete_function):
+        if not self.editing_area:
+            population_function(population_function, editing, display_dict)
+
+            items = []
+            for key in self.current_form.keys():
+                items.append(self.current_form[key])
 
             apply = widgets.Button(
                 value=False,
@@ -654,16 +803,16 @@ class WorkflowWidget:
                 button_style='',
                 tooltip='TODO'
             )
-            apply.on_click(self.on_apply_recipe_changes_clicked)
+            apply.on_click(apply_function)
 
             delete = widgets.Button(
                 value=False,
-                description="Delete recipe",
+                description="Delete",
                 disabled=False,
                 button_style='',
                 tooltip='TODO'
             )
-            delete.on_click(self.on_delete_recipe_clicked)
+            delete.on_click(delete_function)
 
             cancel = widgets.Button(
                 value=False,
@@ -680,47 +829,103 @@ class WorkflowWidget:
                 cancel
             ]
             button_row = widgets.HBox(button_items)
+            self.current_form['buttons'] = button_row
 
-            editting_items = [
-                input_row,
-                button_row
-            ]
+            items.append(button_row)
 
-            self.editting_area = widgets.VBox(editting_items)
+            self.editing_area = widgets.VBox(items)
 
             with self.display_area:
-                display(self.editting_area)
+                display(self.editing_area)
 
-    def pattern_editor(self, to_edit_object):
-        pass
+        if isinstance(self.editing[1], Pattern):
+            pattern = self.editing[1]
+
+            self.current_form_rows[INPUT_TRIGGER_FILE].value = pattern.input_file
+
+            if pattern.trigger_paths:
+                # TODO note this deletes any extra paths as currently only one at a time. change this
+                self.current_form_rows[INPUT_TRIGGER_PATH].value = pattern.trigger_paths[0]
+
+            if pattern.input_file in pattern.outputs.keys():
+                self.current_form_rows[INPUT_TRIGGER_OUTPUT].value = pattern.outputs[pattern.input_file]
+
+            if DEFAULT_JOB_NAME in pattern.outputs.keys():
+                self.current_form_rows[INPUT_NOTEBOOK_OUTPUT].value = pattern.outputs[DEFAULT_JOB_NAME]
+
+            extra_outputs = []
+            for out in pattern.outputs.keys():
+                if out != DEFAULT_JOB_NAME and out != pattern.input_file:
+                    extra_outputs.append(out)
+            if extra_outputs:
+                for i in range(0, len(self.current_form_rows[INPUT_OUTPUT])):
+                    self.current_form_rows[INPUT_OUTPUT][i].value = "%s=%s" % (extra_outputs[i], pattern.outputs[extra_outputs[i]])
+
+            for i in range(0, len(self.current_form_rows[INPUT_RECIPES])):
+                self.current_form_rows[INPUT_RECIPES][i].value = "%s" % pattern.recipes[i]
+
+            extra_variables = []
+            for variable in pattern.variables.keys():
+                if variable != pattern.input_file and variable != DEFAULT_JOB_NAME:
+                    extra_variables.append(variable)
+            if extra_variables:
+                for i in range(0, len(self.current_form_rows[INPUT_VARIABLES])):
+                    self.current_form_rows[INPUT_VARIABLES][i].value = "%s=%s" % (extra_variables[i], pattern.variables[extra_variables[i]])
+        else:
+            recipe = self.editing[1]
+            self.current_form_rows[INPUT_SOURCE].value = recipe[SOURCE]
 
     def on_apply_recipe_changes_clicked(self, button):
         values = {
-            INPUT_NAME: self.editting[1][NAME],
+            INPUT_NAME: self.editing[1][NAME],
             INPUT_SOURCE: self.current_form[INPUT_SOURCE].value
         }
         if self.process_recipe_values(values, ignore_conflicts=True):
-            self.done_editting()
+            self.done_editing()
 
     def on_delete_recipe_clicked(self, button):
-        to_delete = self.editting[1][NAME]
+        to_delete = self.editing[1][NAME]
         if to_delete in self.recipes.keys():
             self.recipes.pop(to_delete)
         self.feedback.value = "Recipe %s deleted. " % to_delete
         self.update_workflow_image()
-        self.done_editting()
+        self.done_editing()
 
+    def on_apply_pattern_changes_clicked(self, button):
+        print('Goes nowhere does nothing')
+        values = {
+            INPUT_NAME: self.editing[1].name
+        }
+        for key in self.current_form_rows.keys():
+            row = self.current_form_rows[key]
+            if isinstance(row, list):
+                values_list = []
+                for element in row:
+                    values_list.append(element.value)
+                values[key] = values_list
+            else:
+                values[key] = self.current_form_rows[key].value
+        if self.process_pattern_values(values, ignore_conflicts=True):
+            self.done_editing()
+
+    def on_delete_pattern_clicked(self, button):
+        to_delete = self.editing[1].name
+        if to_delete in self.patterns.keys():
+            self.patterns.pop(to_delete)
+        self.feedback.value = "Pattern %s deleted. " % to_delete
+        self.update_workflow_image()
+        self.done_editing()
 
     # TODO poss also use this in recipe form
     def on_cancel_clicked(self, button):
         if isinstance(self.displayed_form, widgets.VBox):
-            self.done_editting()
+            self.done_editing()
             self.clear_feedback()
 
-    def done_editting(self):
+    def done_editing(self):
         self.close_form()
-        self.editting_area = None
-        self.editting = None
+        self.editing_area = None
+        self.editing = None
 
     def make_help_button(self, help_text, extra_text, extra_func):
         help_button = widgets.Button(
@@ -748,8 +953,7 @@ class WorkflowWidget:
 
         return help_button, help_html
 
-    def _create_form_single_input(self, text, help_text, key, form,
-                                  old_values, extra_text=None,
+    def _create_form_single_input(self, text, help_text, key, extra_text=None,
                                   extra_func=None, optional=False):
         msg = text
         if optional:
@@ -759,10 +963,12 @@ class WorkflowWidget:
         )
 
         input = widgets.Text()
-        if key in old_values:
-            input.value = old_values[key].value
-            old_values.pop(key, None)
-        form[key] = input
+        if key in self.current_old_values:
+            input.value = self.current_old_values[key].value
+            self.current_old_values.pop(key, None)
+
+        # self.current_form[key] = input
+        self.current_form_rows[key] = input
 
         help_button, help_text = self.make_help_button(help_text,
                                                        extra_text=extra_text,
@@ -784,9 +990,11 @@ class WorkflowWidget:
         input_widget = widgets.VBox(items)
         return input_widget
 
-    def _create_form_multi_input(self, text, help, key, form, rows, old_values,
-                                 line_counts, population_function,
-                                 done_function, extra_text=None,
+    def _create_form_multi_input(self, text, help_text, key,
+                                 population_function, refresh_function,
+                                 done_function=None, display_dict=None,
+                                 editing=None, apply_function=None,
+                                 delete_function=None, extra_text=None,
                                  extra_func=None, optional=False):
         msg = text
         if optional:
@@ -796,18 +1004,18 @@ class WorkflowWidget:
         )
         input = widgets.Text()
 
-        help_button, help_text = self.make_help_button(help,
+        help_button, help_text = self.make_help_button(help_text,
                                                        extra_text=extra_text,
                                                        extra_func=extra_func)
 
         input_old_values = []
-        if key in old_values:
-            input_old_values = old_values[key]
+        if key in self.current_old_values:
+            input_old_values = self.current_old_values[key]
         if input_old_values:
             input.value = input_old_values[0].value
             del input_old_values[0]
 
-        rows[key] = [input]
+        self.current_form_rows[key] = [input]
 
         add_button = widgets.Button(
             value=False,
@@ -818,17 +1026,22 @@ class WorkflowWidget:
         )
 
         def add_button_click(button):
-            if key in line_counts.keys():
-                line_counts[key] += 1
+            if key in self.current_form_line_counts.keys():
+                self.current_form_line_counts[key] += 1
             else:
-                line_counts[key] = 1
-            self._refresh_new_form(form,
-                                   old_values,
-                                   rows,
-                                   line_counts,
-                                   population_function,
-                                   done_function,
-                                   wait=True)
+                self.current_form_line_counts[key] = 1
+            if refresh_function == self._refresh_new_form:
+                self._refresh_new_form(population_function,
+                                       done_function,
+                                       wait=True)
+            elif refresh_function == self._refresh_edit_form:
+                self._refresh_edit_form(editing,
+                                        display_dict,
+                                        population_function,
+                                        apply_function,
+                                        delete_function,
+                                        wait=True,
+                                        default=self.editing[1])
 
         add_button.on_click(add_button_click)
 
@@ -841,18 +1054,24 @@ class WorkflowWidget:
         )
 
         def remove_button_click(button):
-            if key in line_counts.keys():
-                line_counts[key] -= 1
-            self._refresh_new_form(form,
-                                   old_values,
-                                   rows,
-                                   line_counts,
-                                   population_function,
-                                   done_function,
-                                   wait=True)
+            if key in self.current_form_line_counts.keys():
+                if self.current_form_line_counts[key] > 0:
+                    self.current_form_line_counts[key] -= 1
+            if refresh_function == self._refresh_new_form:
+                self._refresh_new_form(population_function,
+                                       done_function,
+                                       wait=True)
+            elif refresh_function == self._refresh_edit_form:
+                self._refresh_edit_form(editing,
+                                        display_dict,
+                                        population_function,
+                                        apply_function,
+                                        delete_function,
+                                        wait=True,
+                                        default=self.editing[1])
 
-        if key in line_counts.keys():
-            if line_counts[key] == 0:
+        if key in self.current_form_line_counts.keys():
+            if self.current_form_line_counts[key] == 0:
                 remove_button.disabled = True
         else:
             remove_button.disabled = True
@@ -867,8 +1086,9 @@ class WorkflowWidget:
         top_row = widgets.HBox(top_row_items)
 
         extra_rows = []
-        if key in line_counts.keys():
-            extra_rows_count = line_counts[key]
+
+        if key in self.current_form_line_counts.keys():
+            extra_rows_count = self.current_form_line_counts[key]
             for x in range(0, extra_rows_count):
                 extra_input = widgets.Text()
                 if input_old_values:
@@ -880,13 +1100,13 @@ class WorkflowWidget:
                 extra_row = widgets.HBox(extra_row_items)
                 extra_rows.append(extra_row)
 
-                rows[key].append(extra_input)
+                self.current_form_rows[key].append(extra_input)
 
                 # if key in form:
                 #     form[key].append(extra_input)
 
-        if key in old_values:
-            old_values.pop(key, None)
+        if key in self.current_old_values:
+            self.current_old_values.pop(key, None)
 
         bottom_row_items = [
             add_button,
@@ -940,6 +1160,13 @@ class WorkflowWidget:
         self.displayed_form = None
         self.display_area.clear_output()
         self.enable_top_buttons()
+        self.clear_current_form()
+
+    def clear_current_form(self):
+        self.current_form = {}
+        self.current_old_values = {}
+        self.current_form_rows = {}
+        self.current_form_line_counts = {}
 
     def update_workflow_image(self):
         try:
