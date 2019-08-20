@@ -1,7 +1,8 @@
 
 from .constants import DEFAULT_JOB_NAME, VALID_PATTERN, NAME, INPUT_FILE, \
-    TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES
-from .input import check_input
+    TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, CHAR_UPPERCASE, \
+    CHAR_LOWERCASE, CHAR_NUMERIC,CHAR_LINES
+from .input import check_input, valid_string
 
 
 class Pattern:
@@ -18,6 +19,12 @@ class Pattern:
         # if given only a string use this as a name, it is the basis of a
         # completely new pattern
         if isinstance(input, str):
+            valid_string(input,
+                         'pattern_name',
+                         CHAR_UPPERCASE
+                         + CHAR_LOWERCASE
+                         + CHAR_NUMERIC
+                         + CHAR_LINES)
             self.name = input
             self.input_file = None
             self.trigger_paths = []
@@ -254,7 +261,12 @@ class Pattern:
         Takes two arguments. 'variable_name' is the name of the variable and
         must be a string, 'variable_value' can be any valid python variable
         """
-        check_input(variable_name, str, 'variable_name')
+        valid_string(variable_name,
+                     'variable name',
+                     CHAR_UPPERCASE
+                     + CHAR_LOWERCASE
+                     + CHAR_NUMERIC
+                     + CHAR_LINES)
         if variable_name not in self.variables.keys():
             self.variables[variable_name] = variable_value
         else:

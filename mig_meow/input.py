@@ -26,16 +26,16 @@ def check_input(variable, expected_type, name, or_none=False):
                             % (name, expected_type, type(variable)))
 
 
-def valid_string(string, name):
-    check_input(string, str, name)
+def valid_string(variable, name, valid_chars):
+    check_input(variable, str, name)
 
-    valid_chars = CHAR_NUMERIC + CHAR_UPPERCASE + CHAR_LOWERCASE + '-_'
+    # valid_chars = CHAR_NUMERIC + CHAR_UPPERCASE + CHAR_LOWERCASE + '-_'
 
-    for char in string:
+    for char in variable:
         if char not in valid_chars:
-            raise Exception('Invalid character %s in string %s for variable '
-                            '%s. Only valid characters are %s'
-                            % (char, string, name, valid_chars))
+            raise Exception("Invalid character %s in %s '%s'. "
+                            "Only valid characters are: %s"
+                            % (char, name, variable, valid_chars))
 
 
 def valid_path(path, name, extensions=None):

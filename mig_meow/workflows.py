@@ -9,7 +9,7 @@ from .recipe import is_valid_recipe_dict
 from graphviz import Digraph
 
 
-def build_workflow_object(patterns, recipes, filename=None):
+def build_workflow_object(patterns, recipes):
     # TODO update this description
     """
     Builds a workflow dict from a dict of provided patterns. Workflow is a
@@ -41,16 +41,6 @@ def build_workflow_object(patterns, recipes, filename=None):
                 raise Exception('Recipe %s was not valid. %s'
                                 % (recipe, feedback))
 
-    # if filename:
-    #     check_input(filename, str, 'filename')
-    #     valid_string(filename, 'filename')
-    # else:
-    #     filename = DEFAULT_WORKFLOW_FILENAME
-    # display_options = ['notebook', 'none', 'image', 'file']
-    # if display not in display_options:
-    #     raise Exception('Display is not valid. May only be %s'
-    #                     % display_options)
-
     workflow = {}
     # create all required nodes
     for pattern in patterns.values():
@@ -69,50 +59,33 @@ def build_workflow_object(patterns, recipes, filename=None):
                         if re.match(value, input):
                             workflow[other_pattern.name].add(pattern.name)
 
-    # if not isinstance(display, bool):
-    #     raise Exception('display is not of expected type. Should be %s but '
-    #                     'is %s. ' % (type(bool), type(display)))
-
-    # dot = Digraph(comment='Workflow', format='png')
-    # colours = ['green', 'red']
-    #
-    # for pattern, descendents in workflow.items():
-    #     if pattern_has_recipes(patterns[pattern], recipes):
-    #         dot.node(pattern, patterns[pattern]._image_str(), color=colours[0])
-    #     else:
-    #         dot.node(pattern, patterns[pattern]._image_str(), color=colours[1])
-    #     for descendent in descendents:
-    #         dot.edge(pattern, descendent)
-    #
-    # dot.render(filename)
-
     return workflow
 
 
-def create_workflow_image(workflow, patterns, recipes, filename=None):
-    if not patterns and not recipes:
-        extended_filename = filename + WORKFLOW_IMAGE_EXTENSION
-        blank_image = Image.new('RGB', (1, 1), (255, 255, 255))
-        blank_image.save(extended_filename, 'PNG')
-
-    if filename:
-        check_input(filename, str, 'filename')
-        valid_string(filename, 'filename')
-    else:
-        filename = DEFAULT_WORKFLOW_FILENAME
-
-    dot = Digraph(comment='Workflow', format='png')
-    colours = ['green', 'red']
-
-    for pattern, descendents in workflow.items():
-        if pattern_has_recipes(patterns[pattern], recipes):
-            dot.node(pattern, patterns[pattern]._image_str(), color=colours[0])
-        else:
-            dot.node(pattern, patterns[pattern]._image_str(), color=colours[1])
-        for descendent in descendents:
-            dot.edge(pattern, descendent)
-
-    dot.render(filename)
+# def create_workflow_image(workflow, patterns, recipes, filename=None):
+#     if not patterns and not recipes:
+#         extended_filename = filename + WORKFLOW_IMAGE_EXTENSION
+#         blank_image = Image.new('RGB', (1, 1), (255, 255, 255))
+#         blank_image.save(extended_filename, 'PNG')
+#
+#     if filename:
+#         check_input(filename, str, 'filename')
+#         valid_string(filename, 'filename')
+#     else:
+#         filename = DEFAULT_WORKFLOW_FILENAME
+#
+#     dot = Digraph(comment='Workflow', format='png')
+#     colours = ['green', 'red']
+#
+#     for pattern, descendents in workflow.items():
+#         if pattern_has_recipes(patterns[pattern], recipes):
+#             dot.node(pattern, patterns[pattern]._image_str(), color=colours[0])
+#         else:
+#             dot.node(pattern, patterns[pattern]._image_str(), color=colours[1])
+#         for descendent in descendents:
+#             dot.edge(pattern, descendent)
+#
+#     dot.render(filename)
 
 
 def pattern_has_recipes(pattern, recipes):

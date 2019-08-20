@@ -2,34 +2,35 @@
 import json
 import ipywidgets as widgets
 import os
+from bqplot import *
+from bqplot.marks import Graph
 
 from IPython.display import display
 
 from .input import check_input, valid_path, valid_string
 from .constants import INPUT_NAME, INPUT_OUTPUT, INPUT_RECIPES, \
     INPUT_TRIGGER_PATH, INPUT_VARIABLES, INPUT_TRIGGER_FILE, \
-    INPUT_TRIGGER_OUTPUT, INPUT_NOTEBOOK_OUTPUT, ALL_PATTERN_INPUTS, \
+    INPUT_TRIGGER_OUTPUT, INPUT_NOTEBOOK_OUTPUT, GREEN, RED, \
     DEFAULT_WORKFLOW_FILENAME, WORKFLOW_IMAGE_EXTENSION, INPUT_SOURCE, \
     NOTEBOOK_EXTENSIONS, PATTERN, RECIPE, NAME, DEFAULT_JOB_NAME, SOURCE
 from .pattern import Pattern, is_valid_pattern_object
 from .recipe import is_valid_recipe_dict, create_recipe_from_notebook
-from .workflows import build_workflow_object, create_workflow_image
 from .notebook import list_current_recipes
+from .workflows import build_workflow_object, pattern_has_recipes
 
 
-def create_widget(patterns=None, recipes=None, filename=None):
+def create_widget(patterns=None, recipes=None):
     # TODO update this
     """Displays a widget for workflow defitions. Can optionally take a
     predefined workflow as input"""
 
     widget = WorkflowWidget(patterns=patterns,
-                            recipes=recipes,
-                            filename=filename)
+                            recipes=recipes)
     return widget.display_widget()
 
 
 class WorkflowWidget:
-    def __init__(self, patterns={}, recipes={}, filename=None):
+    def __init__(self, patterns={}, recipes={}):
 
         if not isinstance(patterns, dict):
             raise Exception('The provided patterns were not in a dict')
@@ -49,33 +50,13 @@ class WorkflowWidget:
                                 % (recipe, feedback))
         self.recipes = recipes
 
-        if filename:
-            check_input(filename, str, 'filename')
-            valid_string(filename, 'filename')
-        else:
-            filename = DEFAULT_WORKFLOW_FILENAME
-
-        self.filename = filename
-        extended_filename = filename + WORKFLOW_IMAGE_EXTENSION
         if patterns and recipes:
             self.workflow = build_workflow_object(patterns, recipes)
         else:
             self.workflow = {}
 
-        create_workflow_image(self.workflow, self.patterns, self.recipes, filename=filename)
-
-        if os.path.isfile(extended_filename):
-            file = open(extended_filename, "rb")
-            image = file.read()
-            self.workflow_display = widgets.Image(
-                value=image,
-                format='png'
-            )
-            file.close()
-        else:
-            # TODO don't show anything here at all if no input defined?
-            self.workflow_display = widgets.Image()
-
+        self.visualisation_area = widgets.Output()
+        self.update_workflow_visualisation()
         self.display_area = widgets.Output()
 
         self.new_pattern_button = widgets.Button(
@@ -135,8 +116,6 @@ class WorkflowWidget:
         self.export_to_vgrid_button.on_click(self.on_export_to_vgrid_clicked)
 
         self.feedback = widgets.HTML()
-
-        self.display_area = widgets.Output()
 
         self.current_form = {}
         self.current_old_values = {}
@@ -551,7 +530,7 @@ class WorkflowWidget:
                 if warnings:
                     msg += "\n%s" % warnings
                 self.feedback.value = msg
-                self.update_workflow_image()
+                self.update_workflow_visualisation()
                 self.close_form()
                 return True
             else:
@@ -604,7 +583,7 @@ class WorkflowWidget:
                     word = 'created'
                 self.recipes[name] = recipe
                 self.feedback.value = "Recipe %s %s. " % (name, word)
-            self.update_workflow_image()
+            self.update_workflow_visualisation()
             self.close_form()
             return True
         except Exception as e:
@@ -619,10 +598,7 @@ class WorkflowWidget:
         self.clear_feedback()
 
     def on_edit_pattern_clicked(self, button):
-        self.disable_top_buttons()
-        self.clear_current_form()
-        self._refresh_edit_form(PATTERN, self.patterns, self.populate_editing_pattern_form, self.on_apply_pattern_changes_clicked, self.on_delete_pattern_clicked)
-        self.clear_feedback()
+        self.construct_new_edit_form()
 
     def on_new_recipe_clicked(self, button):
         self.disable_top_buttons()
@@ -710,6 +686,10 @@ class WorkflowWidget:
     def _refresh_edit_form(self, editing, display_dict, population_function,
                            apply_function, delete_function, wait=False,
                            default=None):
+        if self.current_form:
+            self.current_old_values = {}
+            for key in self.current_form_rows.keys():
+                self.current_old_values[key] = self.current_form_rows[key]
         self.current_form = {}
         # if self.displayed_form:
         #     self.displayed_form.close()
@@ -788,7 +768,8 @@ class WorkflowWidget:
                 self._editor(population_function, editing, display_dict, apply_function, delete_function)
                 default = None
 
-    def _editor(self, population_function, editing, display_dict, apply_function, delete_function):
+    def _editor(self, population_function, editing, display_dict,
+                apply_function, delete_function):
         if not self.editing_area:
             population_function(population_function, editing, display_dict)
 
@@ -859,10 +840,12 @@ class WorkflowWidget:
                     extra_outputs.append(out)
             if extra_outputs:
                 for i in range(0, len(self.current_form_rows[INPUT_OUTPUT])):
-                    self.current_form_rows[INPUT_OUTPUT][i].value = "%s=%s" % (extra_outputs[i], pattern.outputs[extra_outputs[i]])
+                    if i < len(extra_outputs):
+                        self.current_form_rows[INPUT_OUTPUT][i].value = "%s=%s" % (extra_outputs[i], pattern.outputs[extra_outputs[i]])
 
             for i in range(0, len(self.current_form_rows[INPUT_RECIPES])):
-                self.current_form_rows[INPUT_RECIPES][i].value = "%s" % pattern.recipes[i]
+                if i < len(pattern.recipes):
+                    self.current_form_rows[INPUT_RECIPES][i].value = "%s" % pattern.recipes[i]
 
             extra_variables = []
             for variable in pattern.variables.keys():
@@ -870,7 +853,8 @@ class WorkflowWidget:
                     extra_variables.append(variable)
             if extra_variables:
                 for i in range(0, len(self.current_form_rows[INPUT_VARIABLES])):
-                    self.current_form_rows[INPUT_VARIABLES][i].value = "%s=%s" % (extra_variables[i], pattern.variables[extra_variables[i]])
+                    if i < len(extra_variables):
+                        self.current_form_rows[INPUT_VARIABLES][i].value = "%s=%s" % (extra_variables[i], pattern.variables[extra_variables[i]])
         else:
             recipe = self.editing[1]
             self.current_form_rows[INPUT_SOURCE].value = recipe[SOURCE]
@@ -888,11 +872,10 @@ class WorkflowWidget:
         if to_delete in self.recipes.keys():
             self.recipes.pop(to_delete)
         self.feedback.value = "Recipe %s deleted. " % to_delete
-        self.update_workflow_image()
+        self.update_workflow_visualisation()
         self.done_editing()
 
     def on_apply_pattern_changes_clicked(self, button):
-        print('Goes nowhere does nothing')
         values = {
             INPUT_NAME: self.editing[1].name
         }
@@ -913,10 +896,9 @@ class WorkflowWidget:
         if to_delete in self.patterns.keys():
             self.patterns.pop(to_delete)
         self.feedback.value = "Pattern %s deleted. " % to_delete
-        self.update_workflow_image()
+        self.update_workflow_visualisation()
         self.done_editing()
 
-    # TODO poss also use this in recipe form
     def on_cancel_clicked(self, button):
         if isinstance(self.displayed_form, widgets.VBox):
             self.done_editing()
@@ -1168,25 +1150,108 @@ class WorkflowWidget:
         self.current_form_rows = {}
         self.current_form_line_counts = {}
 
-    def update_workflow_image(self):
+    def update_workflow_visualisation(self):
         try:
-            self.workflow = build_workflow_object(self.patterns, self.recipes)
+            self.workflow = build_workflow_object(
+                self.patterns,
+                self.recipes
+            )
         except:
             self.workflow = {}
-        create_workflow_image(self.workflow, self.patterns, self.recipes,
-                              filename=self.filename)
-        extended_filename = self.filename + WORKFLOW_IMAGE_EXTENSION
-        file = open(extended_filename, "rb")
-        image = file.read()
-        self.workflow_display.value = image
-        file.close()
+        visualisation = self.get_workflow_visualisation(
+            self.patterns,
+            self.recipes,
+            self.workflow
+        )
+        self.visualisation_area.clear_output(wait=True)
+
+        with self.visualisation_area:
+            display(visualisation)
+
+    def _set_node_date(self, pattern):
+        node_dict = {
+            'label': pattern.name,
+            'Name': pattern.name,
+            'Recipe(s)': str(pattern.recipes),
+            'Trigger Path(s)': str(pattern.trigger_paths),
+            'Outputs(s)': str(pattern.outputs),
+            'Input File': pattern.input_file,
+            'Variable(s)': str(pattern.variables),
+            'shape': 'circle',
+            'shape_attrs': {'r': 30}
+        }
+        return node_dict
+
+    def _get_index(self, pattern, nodes):
+        for index in range(0, len(nodes)):
+            if nodes[index]['Name'] == pattern:
+                return index
+        return -1
+
+    def visualisation_element_click(self, graph, element):
+        # pattern = self.patterns[element['data']['label']]
+        # self.construct_new_edit_form(default=pattern)
+        pass
+
+    def construct_new_edit_form(self, default=None):
+        self.disable_top_buttons()
+        self.clear_current_form()
+        self._refresh_edit_form(PATTERN, self.patterns, self.populate_editing_pattern_form, self.on_apply_pattern_changes_clicked, self.on_delete_pattern_clicked, default=default)
+        self.clear_feedback()
+
+    def get_workflow_visualisation(self, patterns, recipes, workflow):
+        fig_layout = widgets.Layout(width='900px', height='500px')
+
+        pattern_display = []
+
+        for pattern in workflow.keys():
+            pattern_display.append(self._set_node_date(patterns[pattern]))
+
+        link_display = []
+        colour_display = [RED] * len(pattern_display)
+
+        for pattern, descendants in workflow.items():
+            pattern_index = self._get_index(pattern, pattern_display)
+            if pattern_has_recipes(patterns[pattern], recipes):
+                colour_display[pattern_index] = GREEN
+            else:
+                colour_display[pattern_index] = RED
+            for descendant in descendants:
+                descendant_index = self._get_index(descendant, pattern_display)
+
+                link_display.append({
+                    'source': pattern_index,
+                    'target': descendant_index
+                })
+
+        graph = Graph(
+            node_data=pattern_display,
+            link_data=link_display,
+            charge=-400,
+            colors=colour_display
+        )
+        tooltip = Tooltip(
+            fields=[
+                'Name',
+                'Recipe(s)',
+                'Trigger Path(s)',
+                'Outputs(s)',
+                'Input File',
+                'Variable(s)'
+            ],
+            # formats=['', '', '']
+        )
+        graph.tooltip = tooltip
+        graph.on_element_click(self.visualisation_element_click)
+
+        return Figure(marks=[graph], layout=fig_layout)
 
     def display_widget(self):
         # TODO update this
         """Displays a widget for workflow defitions. Can optionally take a
         predefined workflow as input"""
 
-        workflow_image = [self.workflow_display]
+        workflow_image = [self.visualisation_area]
         image_row = widgets.HBox(workflow_image)
 
         button_row_items = [self.new_pattern_button,
