@@ -14,9 +14,9 @@ from .constants import INPUT_NAME, INPUT_OUTPUT, INPUT_RECIPES, \
     NOTEBOOK_EXTENSIONS, NAME, DEFAULT_JOB_NAME, SOURCE, PATTERN_NAME, \
     RECIPE_NAME, OBJECT_TYPE, VGRID_PATTERN_OBJECT_TYPE, \
     VGRID_RECIPE_OBJECT_TYPE, VGRID_WORKFLOWS_OBJECT
+from .mig import vgrid_json_call
 from .pattern import Pattern, is_valid_pattern_object
 from .recipe import is_valid_recipe_dict, create_recipe_from_notebook
-from .notebook import get_containing_vgrid
 from .workflows import build_workflow_object, pattern_has_recipes
 
 
@@ -1113,43 +1113,17 @@ class WorkflowWidget:
         return form_row
 
     def on_import_from_vgrid_clicked(self, button):
-        # TODO, change these to avoid hard coding
-        url = 'https://sid.migrid.test/cgi-sid/workflowjsoninterface.py?output_format=json'
-        session_id = '92c2f0735e8cc9dbf693160ad52052fb42d6d8c064876e80b6aae6e6da4cec0e'
 
         try:
-            vgrid = get_containing_vgrid()
-        except LookupError as exception:
-            self.set_feedback("Cannot identify Vgrid to import from. "
-                              "%s" % exception)
+            vgrid, _, response, _ = vgrid_json_call('read', 'any', )
+        except LookupError as error:
+            self.set_feedback(error)
             return
-
-        operation = 'read'
-        workflow_type = 'any'
-
-        # Here the attributes are used as search parameters
-        attributes = {
-            'vgrids': vgrid
-        }
-
-        data = {
-            'workflowsessionid': session_id,
-            'operation': operation,
-            'type': workflow_type,
-            'attributes': attributes
-        }
-
-        response = requests.post(url, json=data, verify=False)
-        # try:
-        json_response = response.json()
-        # except json.JSONDecodeError:
-        #     self.set_feedback("No response from vgrid. ")
-
         self.clear_feedback()
         response_patterns = {}
         response_recipes = {}
-        if VGRID_WORKFLOWS_OBJECT in json_response[1]:
-            for response_object in json_response[1][VGRID_WORKFLOWS_OBJECT]:
+        if VGRID_WORKFLOWS_OBJECT in response:
+            for response_object in response[VGRID_WORKFLOWS_OBJECT]:
                 if response_object[OBJECT_TYPE] == VGRID_PATTERN_OBJECT_TYPE:
                     response_patterns[response_object[NAME]] = response_object
                 elif response_object[OBJECT_TYPE] == VGRID_RECIPE_OBJECT_TYPE:
@@ -1171,29 +1145,8 @@ class WorkflowWidget:
             self.update_workflow_visualisation()
             self.enable_top_buttons()
         else:
-            print('Something unexpected happened')
-            print("Unexpected response: {}".format(json_response))
-
-        # status, patterns, message = retrieve_current_patterns()
-        #
-        # print(message)
-        # if not status:
-        #     return
-        #
-        # print('Found %d patterns' % len(patterns))
-        # for pattern in patterns:
-        #     print('%s (%s), inputs: %s, outputs: %s'
-        #           % (pattern[NAME], pattern[PERSISTENCE_ID],
-        #              pattern[TRIGGER_PATHS], pattern[OUTPUT]))
-        #
-        # print(message)
-        # if not status:
-        #     return
-        #
-        # print('displaying nodes:')
-        # for key, value in workflow.items():
-        #     print('node: %s, ancestors: %s, descendents: %s'
-        #           % (key, value[ANCESTORS].keys(), value[DESCENDENTS].keys()))
+            print('Got an unexpected response')
+            print("Unexpected response: {}".format(response))
 
     def on_export_to_vgrid_clicked(self, button):
         print("Goes nowhere, does nothing")
