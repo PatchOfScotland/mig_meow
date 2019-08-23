@@ -4,8 +4,12 @@ DEFAULT_JOB_NAME = 'wf_job'
 DEFAULT_JOB_NAME_EXTENSION = DEFAULT_JOB_NAME + NOTEBOOK_EXTENSION
 PATTERN_EXTENSION = '.pattern'
 
-PATTERN = 'Pattern'
-RECIPE = 'Recipe'
+PATTERN_NAME = 'Pattern'
+RECIPE_NAME = 'Recipe'
+
+VGRID_WORKFLOWS_OBJECT = 'workflows'
+VGRID_PATTERN_OBJECT_TYPE = 'workflowpattern'
+VGRID_RECIPE_OBJECT_TYPE = 'workflowrecipe'
 
 PATTERNS_DIR = '.workflow_patterns_home'
 RECIPES_DIR = '.workflow_recipes_home'

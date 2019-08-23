@@ -32,6 +32,23 @@ def is_in_vgrid():
     return True
 
 
+def get_containing_vgrid():
+    # TODO implement this in a more robust way
+
+    message = 'Notebook is not currently in a recognised vgrid. Notebook ' \
+              'should be stored within a vgrid to interact with it. '
+
+    path = os.getcwd().split(os.sep)
+
+    if FILES_DIR in path:
+        index = path.index(FILES_DIR)
+        vgrid_index = index + 1
+        if vgrid_index >= len(path):
+            raise LookupError(message)
+        return path[vgrid_index]
+    else:
+        raise LookupError(message)
+
 # def __check_export_location(location, source, export_type):
 #     if os.path.exists(location):
 #         file_name = location.replace(EXPORT_DIR + os.path.sep, '')
@@ -156,95 +173,59 @@ def is_in_vgrid():
 #         export_pattern(pattern)
 
 
-def retrieve_current_recipes(debug=False):
-    """
-    Will looking within the expected workflow recipe directory and return a
-    dict of all found recipes. If debug is set to true will also output any
-    warning messages.
-
-    Note that recipes are only listed as dicts as they are not meant to be
-    manipulated within the notebooks, they are the notebooks.
-    """
-    is_in_vgrid()
-    check_input(debug, bool, 'debug')
-
-    all_recipes = {}
-    message = ''
-    if os.path.isdir(RECIPES_DIR):
-        for path in os.listdir(RECIPES_DIR):
-            file_path = os.path.join(RECIPES_DIR, path)
-            if os.path.isfile(file_path):
-                try:
-                    with open(file_path) as file:
-                        input_dict = json.load(file)
-                        status, feedback = is_valid_recipe_dict(input_dict)
-                        if status:
-                            all_recipes[input_dict[NAME]] = input_dict
-                except Exception:
-                    message += '%s is unreadable, possibly corrupt.' % path
-    else:
-        if debug:
-            return ({}, 'No recipes found to import. Is the notebook in the '
-                        'top vgrid directory?')
-        return {}
-    if debug:
-        return all_recipes, message
-    return all_recipes
+# def retrieve_current_patterns(debug=False):
+#     """
+#     Will look within the expected workflow pattern directory and return a
+#     dict of all found patterns. If debug is set to true will also output
+#     warning messages.
+#     """
+#     is_in_vgrid()
+#     check_input(debug, bool, 'debug')
+#
+#     all_patterns = {}
+#     message = ''
+#     if os.path.isdir(PATTERNS_DIR):
+#         for path in os.listdir(PATTERNS_DIR):
+#             file_path = os.path.join(PATTERNS_DIR, path)
+#             if os.path.isfile(file_path):
+#                 try:
+#                     with open(file_path) as file:
+#                         input_dict = json.load(file)
+#                         pattern = Pattern(input_dict)
+#                         all_patterns[pattern.name] = pattern
+#                 except Exception:
+#                     message += '%s is unreadable, possibly corrupt.' % path
+#     else:
+#         if debug:
+#             return ({}, 'No patterns found to import. Is the notebook in the '
+#                         'top vgrid directory?')
+#         return {}
+#     if debug:
+#         return all_patterns, message
+#     return all_patterns
 
 
-def retrieve_current_patterns(debug=False):
-    """
-    Will look within the expected workflow pattern directory and return a
-    dict of all found patterns. If debug is set to true will also output
-    warning messages.
-    """
-    is_in_vgrid()
-    check_input(debug, bool, 'debug')
-
-    all_patterns = {}
-    message = ''
-    if os.path.isdir(PATTERNS_DIR):
-        for path in os.listdir(PATTERNS_DIR):
-            file_path = os.path.join(PATTERNS_DIR, path)
-            if os.path.isfile(file_path):
-                try:
-                    with open(file_path) as file:
-                        input_dict = json.load(file)
-                        pattern = Pattern(input_dict)
-                        all_patterns[pattern.name] = pattern
-                except Exception:
-                    message += '%s is unreadable, possibly corrupt.' % path
-    else:
-        if debug:
-            return ({}, 'No patterns found to import. Is the notebook in the '
-                        'top vgrid directory?')
-        return {}
-    if debug:
-        return all_patterns, message
-    return all_patterns
-
-
-def list_current_recipes():
-    """
-    Returns a list of the names of all currently registered recipes in a vgrid
-    """
-    all_recipes = retrieve_current_recipes()
-    output = ""
-    for key in all_recipes.keys():
-        if output is not "":
-            output += ", "
-        output += key
-    return output
-
-
-def list_current_patterns():
-    """
-    Returns a list of the names of all currently registered patterns in a vgrid
-    """
-    all_patterns = retrieve_current_patterns()
-    output = ""
-    for key in all_patterns.keys():
-        if output is not "":
-            output += ", "
-        output += key
-    return output
+# def list_current_recipes():
+#     """
+#     Returns a list of the names of all currently registered recipes in a vgrid
+#     """
+#     all_recipes = retrieve_current_recipes()
+#     output = ""
+#     for key in all_recipes.keys():
+#         if output is not "":
+#             output += ", "
+#         output += key
+#     return output
+#
+#
+# def list_current_patterns():
+#     """
+#     Returns a list of the names of all currently registered patterns in a vgrid
+#     """
+#     all_patterns = retrieve_current_patterns()
+#     output = ""
+#     for key in all_patterns.keys():
+#         if output is not "":
+#             output += ", "
+#         output += key
+#     return output
