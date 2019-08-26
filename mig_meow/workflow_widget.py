@@ -1,6 +1,4 @@
 
-import requests
-
 from bqplot import *
 from bqplot.marks import Graph
 
