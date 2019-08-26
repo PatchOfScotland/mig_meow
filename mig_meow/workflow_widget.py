@@ -13,7 +13,8 @@ from .constants import INPUT_NAME, INPUT_OUTPUT, INPUT_RECIPES, \
     DEFAULT_WORKFLOW_FILENAME, WORKFLOW_IMAGE_EXTENSION, INPUT_SOURCE, \
     NOTEBOOK_EXTENSIONS, NAME, DEFAULT_JOB_NAME, SOURCE, PATTERN_NAME, \
     RECIPE_NAME, OBJECT_TYPE, VGRID_PATTERN_OBJECT_TYPE, \
-    VGRID_RECIPE_OBJECT_TYPE, VGRID_WORKFLOWS_OBJECT
+    VGRID_RECIPE_OBJECT_TYPE, VGRID_WORKFLOWS_OBJECT, INPUT_FILE, \
+    TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, PATTERN_LIST, RECIPE_LIST
 from .mig import vgrid_json_call
 from .pattern import Pattern, is_valid_pattern_object
 from .recipe import is_valid_recipe_dict, create_recipe_from_notebook
@@ -1113,7 +1114,6 @@ class WorkflowWidget:
         return form_row
 
     def on_import_from_vgrid_clicked(self, button):
-
         try:
             vgrid, _, response, _ = vgrid_json_call('read', 'any', )
         except LookupError as error:
@@ -1136,11 +1136,27 @@ class WorkflowWidget:
                                  % (len(response_recipes), vgrid,
                                     list(response_recipes.keys())))
 
-            # TODO make some accounting for overwriting local patterns and
-            #  recipes?
+            # TODO make accounting for persistnce ids and such to keep
+            #  track of patterns. Names will do for now
             for key, pattern in response_patterns.items():
+                if key in self.patterns:
+                    old_pattern = self.patterns[key]
+                    old_pattern[NAME] = old_pattern[NAME] + "_backup"
+                    self.patterns[old_pattern[NAME]] = old_pattern
+                    self.add_to_feedback("%s is already present in the local "
+                                         "patterns, and is being imported. "
+                                         "Local pattern has been renamed to "
+                                         "%s" % (key, old_pattern[NAME]))
                 self.patterns[key] = Pattern(pattern)
             for key, recipe in response_recipes.items():
+                if key in self.recipes:
+                    old_recipe = self.recipes[key]
+                    old_recipe[NAME] = old_recipe[NAME] + "_backup"
+                    self.recipes[old_recipe[NAME]] = old_recipe
+                    self.add_to_feedback("%s is already present in the local "
+                                         "recipes, and is being imported. "
+                                         "Local recipe has been renamed to "
+                                         "%s" % (key, old_recipe[NAME]))
                 self.recipes[key] = recipe
             self.update_workflow_visualisation()
             self.enable_top_buttons()
@@ -1149,7 +1165,42 @@ class WorkflowWidget:
             print("Unexpected response: {}".format(response))
 
     def on_export_to_vgrid_clicked(self, button):
-        print("Goes nowhere, does nothing")
+        attributes = {
+            PATTERN_LIST: [],
+            RECIPE_LIST: []
+        }
+        # TODO implement
+        for key, pattern in self.patterns.items():
+            pattern_dict = {
+                NAME: pattern.name,
+                INPUT_FILE: pattern.input_file,
+                TRIGGER_PATHS: pattern.trigger_paths,
+                OUTPUT: pattern.outputs,
+                RECIPES: pattern.recipes,
+                VARIABLES: pattern.variables
+            }
+            attributes[PATTERN_LIST].append(pattern_dict)
+        for key, recipe in self.recipes.items():
+            attributes[RECIPE_LIST].append(recipe)
+        if not attributes:
+            self.set_feedback("Nothing to export to Vgrid")
+            return
+        try:
+            # operation = 'create'
+            # workflow_type = 'workflowpattern'
+            # attributes = {'name': 'test_pattern',
+            #               'vgrids': vgrid,
+            #               'input_file': 'hdf5_input',
+            #               'trigger_paths': ['test/path'],
+            #               'output': {'test_data': 'test/output'},
+            #               'recipes': ['test_recipe'],
+            #               'variables': {'test': True}}
+
+            # TODO write workflow to vgrid
+            vgrid, _, response, _ = vgrid_json_call('create', 'any', attributes=attributes)
+        except LookupError as error:
+            self.set_feedback(error)
+            return
 
     def add_to_feedback(self, to_add):
         if self.feedback.value:

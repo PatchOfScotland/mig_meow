@@ -7,6 +7,9 @@ PATTERN_EXTENSION = '.pattern'
 PATTERN_NAME = 'Pattern'
 RECIPE_NAME = 'Recipe'
 
+PATTERN_LIST = 'pattern_list'
+RECIPE_LIST = 'recipe_list'
+
 VGRID_WORKFLOWS_OBJECT = 'workflows'
 VGRID_PATTERN_OBJECT_TYPE = 'workflowpattern'
 VGRID_RECIPE_OBJECT_TYPE = 'workflowrecipe'
