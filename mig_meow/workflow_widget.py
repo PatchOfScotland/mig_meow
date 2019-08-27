@@ -1119,7 +1119,9 @@ class WorkflowWidget:
 
     def on_import_from_vgrid_clicked(self, button):
         try:
-            vgrid, _, response, _ = vgrid_json_call('read', 'any', )
+            vgrid, _, response, _ = vgrid_json_call('read',
+                                                    'any',
+                                                    print_feedback=False)
         except LookupError as error:
             self.set_feedback(error)
             return
@@ -1169,13 +1171,15 @@ class WorkflowWidget:
             print("Unexpected response: {}".format(response))
 
     def on_export_to_vgrid_clicked(self, button):
-        attributes = {
-            PATTERN_LIST: [],
-            RECIPE_LIST: []
-        }
-        # TODO implement
-        for key, pattern in self.patterns.items():
-            pattern_dict = {
+
+        self.disable_top_buttons()
+        self.clear_feedback()
+        if not self.patterns and not self.recipes:
+            self.set_feedback("Nothing to export to Vgrid")
+            return
+
+        for _, pattern in self.patterns.items():
+            attributes = {
                 NAME: pattern.name,
                 INPUT_FILE: pattern.input_file,
                 TRIGGER_PATHS: pattern.trigger_paths,
@@ -1183,27 +1187,40 @@ class WorkflowWidget:
                 RECIPES: pattern.recipes,
                 VARIABLES: pattern.variables
             }
-            attributes[PATTERN_LIST].append(pattern_dict)
-        for key, recipe in self.recipes.items():
-            attributes[RECIPE_LIST].append(recipe)
-        if not attributes:
-            self.set_feedback("Nothing to export to Vgrid")
-            return
-        try:
-            # TODO write workflow to vgrid
-            vgrid, _, response, _ = vgrid_json_call('create', 'any', attributes=attributes)
-        except LookupError as error:
-            self.set_feedback(error)
-            return
-        self.clear_feedback()
+            try:
+                vgrid, _, response, _ \
+                    = vgrid_json_call('create',
+                                      VGRID_PATTERN_OBJECT_TYPE,
+                                      attributes=attributes,
+                                      print_feedback=False)
+                if 'text' in response:
+                    feedback = response['text'].replace('\n', '<br/>')
+                    self.add_to_feedback(feedback)
+                if 'error_text' in response:
+                    feedback = response['error_text'].replace('\n', '<br/>')
+                    self.add_to_feedback(feedback)
 
-        if 'text' in response:
-            feedback = response['text'].replace('\n', '<br/>')
-            self.set_feedback(feedback)
-            self.enable_top_buttons()
-        else:
-            print('Got an unexpected response')
-            print("Unexpected response: {}".format(response))
+            except LookupError as error:
+                self.set_feedback(error)
+                return
+        for _, recipe in self.recipes.items():
+            try:
+                vgrid, _, response, _ \
+                    = vgrid_json_call('create',
+                                      VGRID_RECIPE_OBJECT_TYPE,
+                                      attributes=recipe,
+                                      print_feedback=False)
+                if 'text' in response:
+                    feedback = response['text'].replace('\n', '<br/>')
+                    self.add_to_feedback(feedback)
+                if 'error_text' in response:
+                    feedback = response['error_text'].replace('\n', '<br/>')
+                    self.add_to_feedback(feedback)
+            except LookupError as error:
+                self.set_feedback(error)
+                return
+
+        self.enable_top_buttons()
 
     def add_to_feedback(self, to_add):
         if self.feedback.value:
