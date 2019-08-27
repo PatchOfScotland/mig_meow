@@ -12,7 +12,8 @@ from .constants import INPUT_NAME, INPUT_OUTPUT, INPUT_RECIPES, \
     NOTEBOOK_EXTENSIONS, NAME, DEFAULT_JOB_NAME, SOURCE, PATTERN_NAME, \
     RECIPE_NAME, OBJECT_TYPE, VGRID_PATTERN_OBJECT_TYPE, \
     VGRID_RECIPE_OBJECT_TYPE, VGRID_WORKFLOWS_OBJECT, INPUT_FILE, \
-    TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, PATTERN_LIST, RECIPE_LIST
+    TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, PATTERN_LIST, RECIPE_LIST, \
+    CHAR_UPPERCASE, CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES
 from .mig import vgrid_json_call
 from .pattern import Pattern, is_valid_pattern_object
 from .recipe import is_valid_recipe_dict, create_recipe_from_notebook
@@ -567,7 +568,12 @@ class WorkflowWidget:
                 self.set_feedback("Source %s was not found. " % source)
                 return
             if name:
-                valid_string(name, 'Name')
+                valid_string(name,
+                             'Name',
+                             CHAR_UPPERCASE
+                             + CHAR_LOWERCASE
+                             + CHAR_NUMERIC
+                             + CHAR_LINES)
                 if not ignore_conflicts:
                     if name in self.recipes:
                         msg = "recipe name is not valid as another recipe " \
@@ -1139,12 +1145,12 @@ class WorkflowWidget:
             for key, pattern in response_patterns.items():
                 if key in self.patterns:
                     old_pattern = self.patterns[key]
-                    old_pattern[NAME] = old_pattern[NAME] + "_backup"
-                    self.patterns[old_pattern[NAME]] = old_pattern
+                    old_pattern.name = old_pattern.name + "_backup"
+                    self.patterns[old_pattern.name] = old_pattern
                     self.add_to_feedback("%s is already present in the local "
                                          "patterns, and is being imported. "
                                          "Local pattern has been renamed to "
-                                         "%s" % (key, old_pattern[NAME]))
+                                         "%s" % (key, old_pattern.name))
                 self.patterns[key] = Pattern(pattern)
             for key, recipe in response_recipes.items():
                 if key in self.recipes:
@@ -1184,21 +1190,20 @@ class WorkflowWidget:
             self.set_feedback("Nothing to export to Vgrid")
             return
         try:
-            # operation = 'create'
-            # workflow_type = 'workflowpattern'
-            # attributes = {'name': 'test_pattern',
-            #               'vgrids': vgrid,
-            #               'input_file': 'hdf5_input',
-            #               'trigger_paths': ['test/path'],
-            #               'output': {'test_data': 'test/output'},
-            #               'recipes': ['test_recipe'],
-            #               'variables': {'test': True}}
-
             # TODO write workflow to vgrid
             vgrid, _, response, _ = vgrid_json_call('create', 'any', attributes=attributes)
         except LookupError as error:
             self.set_feedback(error)
             return
+        self.clear_feedback()
+
+        if 'text' in response:
+            feedback = response['text'].replace('\n', '<br/>')
+            self.set_feedback(feedback)
+            self.enable_top_buttons()
+        else:
+            print('Got an unexpected response')
+            print("Unexpected response: {}".format(response))
 
     def add_to_feedback(self, to_add):
         if self.feedback.value:
