@@ -2,7 +2,7 @@ import re
 import os
 from PIL import Image
 
-from .input import check_input, valid_path
+from .input import _check_input, _valid_path
 from .constants import WORKFLOW_NODE, OUTPUT_MAGIC_CHAR, \
     DEFAULT_WORKFLOW_FILENAME, WORKFLOW_IMAGE_EXTENSION, CHAR_UPPERCASE, \
     CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES
@@ -14,13 +14,13 @@ from graphviz import Digraph
 def build_workflow_object(patterns, recipes):
     # TODO update this description
     """
-    Builds a workflow dict from a dict of provided patterns. Workflow is a
-    dictionary of different nodes each with a set of descendents. Displays the
-    workflow using graphviz.
+    Builds a workflow dict from a dict of provided patterns and recipes.
+    Workflow is a dictionary of different nodes each with a set of descendents.
+    Will return exceptions if patterns and recipes are not propperly formatted.
 
-    Optional file_name may be provided. This is the name of the .gv and .pdf
-    file created by graphviz. Optional display may be provided to display
-    produced workflow within a widget, image or not at all.
+    :param patterns:
+    :param recipes
+    :return Ddict of nodes connecting patterns together into workflow.
     """
 
     if not patterns:
@@ -65,14 +65,16 @@ def build_workflow_object(patterns, recipes):
 
 
 def create_workflow_dag(workflow, patterns, recipes, filename=None):
+    # TODO update this description
+
     if not patterns and not recipes:
         extended_filename = filename + WORKFLOW_IMAGE_EXTENSION
         blank_image = Image.new('RGB', (1, 1), (255, 255, 255))
         blank_image.save(extended_filename, 'PNG')
 
     if filename:
-        check_input(filename, str, 'filename')
-        valid_path(filename, 'filename')
+        _check_input(filename, str, 'filename')
+        _valid_path(filename, 'filename')
     else:
         filename = DEFAULT_WORKFLOW_FILENAME
 
@@ -121,6 +123,8 @@ def pattern_has_recipes(pattern, recipes):
 
 
 def is_valid_workflow(to_test):
+    # TODO update this description
+
     """Validates that a workflow object is correctly formatted"""
 
     if not to_test:

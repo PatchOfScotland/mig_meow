@@ -3,7 +3,18 @@ from .constants import VALID_RECIPE, OBJECT_TYPE, PERSISTENCE_ID, TRIGGERS, \
     OWNER, NAME, RECIPE, VGRIDS, SOURCE
 
 
-def create_recipe_from_notebook(notebook, name, source):
+def create_recipe_dict(notebook, name, source):
+    """
+    Creates a recipe dictionary from the given parameters.
+
+    :param notebook: Recipe code. Must be complete notebook.
+    :param name: Name of recipe, Must be str
+    :param source: Name of source notebook. Must be str
+    :return: recipe dict
+    """
+
+    # TODO input checking
+
     recipe = {
         NAME: name,
         SOURCE: source,
@@ -18,7 +29,13 @@ def create_recipe_from_notebook(notebook, name, source):
 
 
 def is_valid_recipe_dict(to_test):
-    """Validates that the passed dictionary expresses a recipe"""
+    """
+    Validates that the passed dictionary expresses a recipe.
+
+    :param to_test:
+    :return: returns tuple. First value is boolean. True = to_test is recipe,
+    False = to_test is not recipe. Second value is feedback string.
+    """
 
     if not to_test:
         return False, 'A workflow recipe was not provided. '

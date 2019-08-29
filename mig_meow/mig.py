@@ -1,4 +1,3 @@
-
 import requests
 from .constants import VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
     NAME, INPUT_FILE, TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES
@@ -8,13 +7,34 @@ from .recipe import is_valid_recipe_dict
 
 
 def export_to_vgrid(object, print=True):
+    """
+    Sets up exporting an object to a MiG base Vgrid. Will raise an exception
+    if the object provided is not supported.
+
+    :param object: object to be exported. Should be either a Pattern or
+    dict(recipe).
+    :param print: (optional) In the event of feedback sets if it is printed
+    to console or not. Default value is True.
+    :return: returns output form relevant export function.
+    """
     if isinstance(object, Pattern):
         return export_pattern_to_vgrid(object, print=print)
     elif isinstance(object, dict):
         return export_recipe_to_vgrid(object, print=print)
+    raise TypeError('Object %s is not a recognised object. Must be %s or '
+                    'dict' % (object, type(Pattern)))
 
 
 def export_pattern_to_vgrid(pattern, print=True):
+    """
+    Exports a given pattern to a MiG based Vgrid. Raises an exception if
+    the pattern object does not pass an integrity check before export.
+
+    :param pattern: Pattern object to export. Must a Pattern
+    :param print: (optional) In the event of feedback sets if it is printed
+    to console or not. Default value is True.
+    :return: returns output from _vgrid_json_call function
+    """
     if not isinstance(pattern, Pattern):
         raise TypeError("The provided object '%s' is a %s, not a Pattern "
                         "as expected" % (pattern, type(pattern)))
@@ -31,13 +51,22 @@ def export_pattern_to_vgrid(pattern, print=True):
         RECIPES: pattern.recipes,
         VARIABLES: pattern.variables
     }
-    return vgrid_json_call('create',
-                           VGRID_PATTERN_OBJECT_TYPE,
-                           attributes=attributes,
-                           print_feedback=print)
+    return _vgrid_json_call('create',
+                            VGRID_PATTERN_OBJECT_TYPE,
+                            attributes=attributes,
+                            print_feedback=print)
 
 
 def export_recipe_to_vgrid(recipe, print=True):
+    """
+    Exports a given recipe to a MiG based Vgrid. Raises an exception if
+    the recipe object does not a valid recipe.
+
+    :param recipe: Recipe object to export. Must a dict
+    :param print: (optional) In the event of feedback sets if it is printed
+    to console or not. Default value is True.
+    :return: returns output from _vgrid_json_call function
+    """
     if not isinstance(recipe, dict):
         raise TypeError("The provided object '%s' is a %s, not a dict "
                         "as expected" % (recipe, type(recipe)))
@@ -46,16 +75,37 @@ def export_recipe_to_vgrid(recipe, print=True):
         raise Exception('The provided recipe is not valid. '
                         '%s' % msg)
 
-    return vgrid_json_call('create',
-                           VGRID_RECIPE_OBJECT_TYPE,
-                           attributes=recipe,
-                           print_feedback=print)
+    return _vgrid_json_call('create',
+                            VGRID_RECIPE_OBJECT_TYPE,
+                            attributes=recipe,
+                            print_feedback=print)
 
 
-def vgrid_json_call(operation, workflow_type, attributes={}, print_feedback=True):
+def _vgrid_json_call(operation, workflow_type, attributes={},
+                     print_feedback=True):
+    """
+    Sends a message to a MiG based VGrid using the JSON format.
+
+
+    # TODO clarify this, curently also inludes 'delete' and 'update'.
+    :param operation: operation to perform. Can be 'create' or 'read'
+    # TODO check these
+    :param workflow_type: type of object being sent or requested. Must be
+    'workflows'
+    :param attributes: (optional) attributes of object being passed. Must be
+    a dict. Default is {}
+    :param print_feedback: (optional) If feedback is generated, print it to
+    command line. Default value is True.
+    :return: returns 4 part tuple. First value is vgrid communicated with.
+    Second is response message header. Third is response message body and
+    fourth is response message footer.
+    """
+
+    # TODO introduce more type checks
+
     # TODO, change these to avoid hard coding
     url = 'https://sid.migrid.test/cgi-sid/workflowjsoninterface.py?output_format=json'
-    session_id = '92c2f0735e8cc9dbf693160ad52052fb42d6d8c064876e80b6aae6e6da4cec0e'
+    session_id = 'd04c1047eb91a55836dd05fec08dbb1ad693090aca9983904acf7fd10f6bdb6e'
 
     try:
         vgrid = get_containing_vgrid()
@@ -64,9 +114,6 @@ def vgrid_json_call(operation, workflow_type, attributes={}, print_feedback=True
             print(exception)
         raise LookupError("Cannot identify Vgrid to import from. "
                           "%s" % exception)
-
-    # operation = 'read'
-    # workflow_type = 'any'
 
     # Here the attributes are used as search parameters
     attributes['vgrids'] = vgrid
@@ -79,10 +126,7 @@ def vgrid_json_call(operation, workflow_type, attributes={}, print_feedback=True
     }
 
     response = requests.post(url, json=data, verify=False)
-    # try:
     json_response = response.json()
-    # except json.JSONDecodeError:
-    #     self.set_feedback("No response from vgrid. ")
 
     header = json_response[0]
     body = json_response[1]

@@ -1,8 +1,8 @@
 
 from .constants import DEFAULT_JOB_NAME, VALID_PATTERN, NAME, INPUT_FILE, \
     TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, CHAR_UPPERCASE, \
-    CHAR_LOWERCASE, CHAR_NUMERIC,CHAR_LINES
-from .input import check_input, valid_string
+    CHAR_LOWERCASE, CHAR_NUMERIC,CHAR_LINES, PERSISTENCE_ID
+from .input import _check_input, _valid_string
 
 
 class Pattern:
@@ -19,12 +19,12 @@ class Pattern:
         # if given only a string use this as a name, it is the basis of a
         # completely new pattern
         if isinstance(input, str):
-            valid_string(input,
-                         'pattern_name',
-                         CHAR_UPPERCASE
-                         + CHAR_LOWERCASE
-                         + CHAR_NUMERIC
-                         + CHAR_LINES)
+            _valid_string(input,
+                          'pattern_name',
+                          CHAR_UPPERCASE
+                          + CHAR_LOWERCASE
+                          + CHAR_NUMERIC
+                          + CHAR_LINES)
             self.name = input
             self.input_file = None
             self.trigger_paths = []
@@ -35,6 +35,8 @@ class Pattern:
         # if given dict we are importing from a stored pattern object
         if isinstance(input, dict):
             valid, _ = is_valid_pattern_dict(input)
+            if PERSISTENCE_ID in input:
+                self.persistence_id = input[PERSISTENCE_ID]
             self.name = input[NAME]
             self.input_file = input[INPUT_FILE]
             self.trigger_paths = input[TRIGGER_PATHS]
@@ -138,9 +140,9 @@ class Pattern:
         output to output_dir/filename.hdf5
         """
 
-        check_input(input_file, str, 'input_file')
-        check_input(regex_path, str, 'regex_path')
-        check_input(output_path, str, 'output_path', or_none=True)
+        _check_input(input_file, str, 'input_file')
+        _check_input(regex_path, str, 'regex_path')
+        _check_input(output_path, str, 'output_path', or_none=True)
 
         if len(self.trigger_paths) == 0:
             self.input_file = input_file
@@ -181,11 +183,11 @@ class Pattern:
         When triggered by a file called 'filename.txt' this would copy the
         output to output_dir/filename.hdf5
         """
-        check_input(input_file, str, 'input_file')
-        check_input(path_list, list, 'path_list')
+        _check_input(input_file, str, 'input_file')
+        _check_input(path_list, list, 'path_list')
         for entry in path_list:
-            check_input(entry, str, 'path_list entry')
-        check_input(output_path, str, 'output_path', or_none=True)
+            _check_input(entry, str, 'path_list entry')
+        _check_input(output_path, str, 'output_path', or_none=True)
 
         if len(self.trigger_paths) == 0:
             if output_path:
@@ -218,8 +220,8 @@ class Pattern:
         When triggered by a file called 'filename.txt' this would copy the
         output to output_dir/filename.hdf5
         """
-        check_input(output_name, str, 'output_name')
-        check_input(output_location, str, 'output_location')
+        _check_input(output_name, str, 'output_name')
+        _check_input(output_location, str, 'output_location')
 
         if output_name not in self.outputs.keys():
             self.outputs[output_name] = output_location
@@ -242,7 +244,7 @@ class Pattern:
         When triggered by a file called 'filename.txt' this would copy the
         output to output_dir/filename.hdf5
         """
-        check_input(output_location, str, 'output_location')
+        _check_input(output_location, str, 'output_location')
         self.add_output(DEFAULT_JOB_NAME, output_location)
 
     def add_recipe(self, recipe):
@@ -250,7 +252,7 @@ class Pattern:
         Adds a recipe to the pattern. This is the code that runs as part of a
         workflow job, and is triggered by the patterns specified trigger.
         """
-        check_input(recipe, str, 'recipe')
+        _check_input(recipe, str, 'recipe')
         self.recipes.append(recipe)
 
     def add_variable(self, variable_name, variable_value):
@@ -261,12 +263,12 @@ class Pattern:
         Takes two arguments. 'variable_name' is the name of the variable and
         must be a string, 'variable_value' can be any valid python variable
         """
-        valid_string(variable_name,
-                     'variable name',
-                     CHAR_UPPERCASE
-                     + CHAR_LOWERCASE
-                     + CHAR_NUMERIC
-                     + CHAR_LINES)
+        _valid_string(variable_name,
+                      'variable name',
+                      CHAR_UPPERCASE
+                      + CHAR_LOWERCASE
+                      + CHAR_NUMERIC
+                      + CHAR_LINES)
         if variable_name not in self.variables.keys():
             self.variables[variable_name] = variable_value
         else:
@@ -275,7 +277,12 @@ class Pattern:
 
 
 def is_valid_pattern_object(to_test):
-    """Validates that the passed object expresses a pattern object"""
+    """Validates that the passed object is a Pattern
+
+    :param: to_test: object to be tested.
+    :return: returns tuple. First value is boolean. True = to_test is Pattern,
+    False = to_test is not Pattern. Second value is feedback string.
+    """
 
     if not to_test:
         return (False, 'A workflow pattern was not provided')
@@ -287,7 +294,13 @@ def is_valid_pattern_object(to_test):
 
 
 def is_valid_pattern_dict(to_test):
-    """Validates that the passed dictionary expresses a pattern object"""
+    """Validates that the passed dictionary can be used to create a new
+    Pattern object.
+
+    :param: to_test: object to be tested. Must be dict.
+    :return: returns tuple. First value is boolean. True = to_test is Pattern,
+    False = to_test is not Pattern. Second value is feedback string.
+    """
 
     if not to_test:
         return (False, 'A workflow pattern was not provided')
