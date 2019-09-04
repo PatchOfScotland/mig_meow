@@ -1,28 +1,10 @@
 import requests
+import json
 from .constants import VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
     NAME, INPUT_FILE, TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES
 from .notebook import get_containing_vgrid
 from .pattern import Pattern
 from .recipe import is_valid_recipe_dict
-
-
-def export_to_vgrid(object, print=True):
-    """
-    Sets up exporting an object to a MiG base Vgrid. Will raise an exception
-    if the object provided is not supported.
-
-    :param object: object to be exported. Should be either a Pattern or
-    dict(recipe).
-    :param print: (optional) In the event of feedback sets if it is printed
-    to console or not. Default value is True.
-    :return: returns output form relevant export function.
-    """
-    if isinstance(object, Pattern):
-        return export_pattern_to_vgrid(object, print=print)
-    elif isinstance(object, dict):
-        return export_recipe_to_vgrid(object, print=print)
-    raise TypeError('Object %s is not a recognised object. Must be %s or '
-                    'dict' % (object, type(Pattern)))
 
 
 def export_pattern_to_vgrid(pattern, print=True):
@@ -51,10 +33,10 @@ def export_pattern_to_vgrid(pattern, print=True):
         RECIPES: pattern.recipes,
         VARIABLES: pattern.variables
     }
-    return _vgrid_json_call('create',
-                            VGRID_PATTERN_OBJECT_TYPE,
-                            attributes=attributes,
-                            print_feedback=print)
+    return vgrid_json_call('create',
+                           VGRID_PATTERN_OBJECT_TYPE,
+                           attributes=attributes,
+                           print_feedback=print)
 
 
 def export_recipe_to_vgrid(recipe, print=True):
@@ -75,20 +57,20 @@ def export_recipe_to_vgrid(recipe, print=True):
         raise Exception('The provided recipe is not valid. '
                         '%s' % msg)
 
-    return _vgrid_json_call('create',
-                            VGRID_RECIPE_OBJECT_TYPE,
-                            attributes=recipe,
-                            print_feedback=print)
+    return vgrid_json_call('create',
+                           VGRID_RECIPE_OBJECT_TYPE,
+                           attributes=recipe,
+                           print_feedback=print)
 
 
-def _vgrid_json_call(operation, workflow_type, attributes={},
-                     print_feedback=True):
+def vgrid_json_call(operation, workflow_type, attributes={},
+                    print_feedback=True):
     """
     Sends a message to a MiG based VGrid using the JSON format.
 
 
-    # TODO clarify this, curently also inludes 'delete' and 'update'.
-    :param operation: operation to perform. Can be 'create' or 'read'
+    :param operation: operation to perform. Can be 'create', 'read', 'update'
+    or 'delete'.
     # TODO check these
     :param workflow_type: type of object being sent or requested. Must be
     'workflows'
@@ -105,7 +87,7 @@ def _vgrid_json_call(operation, workflow_type, attributes={},
 
     # TODO, change these to avoid hard coding
     url = 'https://sid.migrid.test/cgi-sid/workflowjsoninterface.py?output_format=json'
-    session_id = 'd04c1047eb91a55836dd05fec08dbb1ad693090aca9983904acf7fd10f6bdb6e'
+    session_id = '20fa14e5b13486b81592d1ed950dfcf4e8a581f3d8d0db25b60e850cfd9a1371'
 
     try:
         vgrid = get_containing_vgrid()
@@ -116,7 +98,7 @@ def _vgrid_json_call(operation, workflow_type, attributes={},
                           "%s" % exception)
 
     # Here the attributes are used as search parameters
-    attributes['vgrids'] = vgrid
+    attributes['vgrid'] = vgrid
 
     data = {
         'workflowsessionid': session_id,
@@ -126,8 +108,10 @@ def _vgrid_json_call(operation, workflow_type, attributes={},
     }
 
     response = requests.post(url, json=data, verify=False)
-    json_response = response.json()
-
+    try:
+        json_response = response.json()
+    except json.JSONDecodeError as err:
+        raise Exception('No feedback from MiG. %s' % err)
     header = json_response[0]
     body = json_response[1]
     footer = json_response[2]

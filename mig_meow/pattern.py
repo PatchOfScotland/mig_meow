@@ -2,7 +2,7 @@
 from .constants import DEFAULT_JOB_NAME, VALID_PATTERN, NAME, INPUT_FILE, \
     TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, CHAR_UPPERCASE, \
     CHAR_LOWERCASE, CHAR_NUMERIC,CHAR_LINES, PERSISTENCE_ID
-from .input import _check_input, _valid_string
+from .input import valid_string, check_input
 
 
 class Pattern:
@@ -19,12 +19,12 @@ class Pattern:
         # if given only a string use this as a name, it is the basis of a
         # completely new pattern
         if isinstance(input, str):
-            _valid_string(input,
-                          'pattern_name',
-                          CHAR_UPPERCASE
-                          + CHAR_LOWERCASE
-                          + CHAR_NUMERIC
-                          + CHAR_LINES)
+            valid_string(input,
+                         'pattern_name',
+                         CHAR_UPPERCASE
+                         + CHAR_LOWERCASE
+                         + CHAR_NUMERIC
+                         + CHAR_LINES)
             self.name = input
             self.input_file = None
             self.trigger_paths = []
@@ -140,9 +140,9 @@ class Pattern:
         output to output_dir/filename.hdf5
         """
 
-        _check_input(input_file, str, 'input_file')
-        _check_input(regex_path, str, 'regex_path')
-        _check_input(output_path, str, 'output_path', or_none=True)
+        check_input(input_file, str, 'input_file')
+        check_input(regex_path, str, 'regex_path')
+        check_input(output_path, str, 'output_path', or_none=True)
 
         if len(self.trigger_paths) == 0:
             self.input_file = input_file
@@ -183,11 +183,11 @@ class Pattern:
         When triggered by a file called 'filename.txt' this would copy the
         output to output_dir/filename.hdf5
         """
-        _check_input(input_file, str, 'input_file')
-        _check_input(path_list, list, 'path_list')
+        check_input(input_file, str, 'input_file')
+        check_input(path_list, list, 'path_list')
         for entry in path_list:
-            _check_input(entry, str, 'path_list entry')
-        _check_input(output_path, str, 'output_path', or_none=True)
+            check_input(entry, str, 'path_list entry')
+        check_input(output_path, str, 'output_path', or_none=True)
 
         if len(self.trigger_paths) == 0:
             if output_path:
@@ -220,8 +220,8 @@ class Pattern:
         When triggered by a file called 'filename.txt' this would copy the
         output to output_dir/filename.hdf5
         """
-        _check_input(output_name, str, 'output_name')
-        _check_input(output_location, str, 'output_location')
+        check_input(output_name, str, 'output_name')
+        check_input(output_location, str, 'output_location')
 
         if output_name not in self.outputs.keys():
             self.outputs[output_name] = output_location
@@ -244,7 +244,7 @@ class Pattern:
         When triggered by a file called 'filename.txt' this would copy the
         output to output_dir/filename.hdf5
         """
-        _check_input(output_location, str, 'output_location')
+        check_input(output_location, str, 'output_location')
         self.add_output(DEFAULT_JOB_NAME, output_location)
 
     def add_recipe(self, recipe):
@@ -252,7 +252,7 @@ class Pattern:
         Adds a recipe to the pattern. This is the code that runs as part of a
         workflow job, and is triggered by the patterns specified trigger.
         """
-        _check_input(recipe, str, 'recipe')
+        check_input(recipe, str, 'recipe')
         self.recipes.append(recipe)
 
     def add_variable(self, variable_name, variable_value):
@@ -263,12 +263,12 @@ class Pattern:
         Takes two arguments. 'variable_name' is the name of the variable and
         must be a string, 'variable_value' can be any valid python variable
         """
-        _valid_string(variable_name,
+        valid_string(variable_name,
                       'variable name',
-                      CHAR_UPPERCASE
-                      + CHAR_LOWERCASE
-                      + CHAR_NUMERIC
-                      + CHAR_LINES)
+                       CHAR_UPPERCASE
+                       + CHAR_LOWERCASE
+                       + CHAR_NUMERIC
+                       + CHAR_LINES)
         if variable_name not in self.variables.keys():
             self.variables[variable_name] = variable_value
         else:

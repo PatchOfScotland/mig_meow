@@ -1,11 +1,9 @@
 import re
-import os
 from PIL import Image
 
-from .input import _check_input, _valid_path
+from .input import check_input, valid_path
 from .constants import WORKFLOW_NODE, OUTPUT_MAGIC_CHAR, \
-    DEFAULT_WORKFLOW_FILENAME, WORKFLOW_IMAGE_EXTENSION, CHAR_UPPERCASE, \
-    CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES
+    DEFAULT_WORKFLOW_FILENAME, WORKFLOW_IMAGE_EXTENSION
 from .pattern import is_valid_pattern_object
 from .recipe import is_valid_recipe_dict
 from graphviz import Digraph
@@ -15,12 +13,12 @@ def build_workflow_object(patterns, recipes):
     # TODO update this description
     """
     Builds a workflow dict from a dict of provided patterns and recipes.
-    Workflow is a dictionary of different nodes each with a set of descendents.
-    Will return exceptions if patterns and recipes are not propperly formatted.
+    Workflow is a dictionary of different nodes each with a set of descendants.
+    Will return exceptions if patterns and recipes are not properly formatted.
 
     :param patterns:
     :param recipes
-    :return Ddict of nodes connecting patterns together into workflow.
+    :return dict of nodes connecting patterns together into workflow.
     """
 
     if not patterns:
@@ -32,7 +30,6 @@ def build_workflow_object(patterns, recipes):
         if not valid:
             raise Exception('Pattern %s was not valid. %s'
                             % (pattern, feedback))
-
 
     if not isinstance(recipes, dict):
         raise Exception('The provided recipes were not in a dict')
@@ -47,7 +44,7 @@ def build_workflow_object(patterns, recipes):
     # create all required nodes
     for pattern in patterns.values():
         workflow[pattern.name] = set()
-    # populate nodes with ancestors and descendents
+    # populate nodes with ancestors and descendants
     for pattern in patterns.values():
         input_regex_list = pattern.trigger_paths
         for other_pattern in patterns.values():
@@ -73,8 +70,8 @@ def create_workflow_dag(workflow, patterns, recipes, filename=None):
         blank_image.save(extended_filename, 'PNG')
 
     if filename:
-        _check_input(filename, str, 'filename')
-        _valid_path(filename, 'filename')
+        check_input(filename, str, 'filename')
+        valid_path(filename, 'filename')
     else:
         filename = DEFAULT_WORKFLOW_FILENAME
 
@@ -128,21 +125,16 @@ def is_valid_workflow(to_test):
     """Validates that a workflow object is correctly formatted"""
 
     if not to_test:
-        return (False, 'A workflow was not provided')
+        return False, 'A workflow was not provided'
 
     if not isinstance(to_test, dict):
-        return (False, 'The provided workflow was incorrectly formatted')
+        return False, 'The provided workflow was incorrectly formatted'
 
     for node in to_test.keys():
         for key, value in WORKFLOW_NODE.items():
             message = 'A workflow node %s was incorrectly formatted' % node
             if key not in node.keys():
-                return (False, message)
+                return False, message
             if not isinstance(node[key], type(value)):
-                return (False, message)
-    return (True, '')
-
-
-
-
-
+                return False, message
+    return True, ''

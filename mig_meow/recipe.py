@@ -1,6 +1,6 @@
 
 from .constants import VALID_RECIPE, OBJECT_TYPE, PERSISTENCE_ID, TRIGGERS, \
-    OWNER, NAME, RECIPE, VGRIDS, SOURCE
+    OWNER, NAME, RECIPE, VGRID, SOURCE
 
 
 def create_recipe_dict(notebook, name, source):
@@ -21,7 +21,7 @@ def create_recipe_dict(notebook, name, source):
         # OBJECT_TYPE: "",
         # PERSISTENCE_ID: "",
         # OWNER: "",
-        # VGRIDS: "",
+        # VGRID: "",
         # TRIGGERS: {},
         RECIPE: notebook
     }

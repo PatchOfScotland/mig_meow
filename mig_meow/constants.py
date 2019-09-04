@@ -17,6 +17,7 @@ VGRID_ERROR_TYPE = 'error_text'
 VGRID_TEXT_TYPE = 'text'
 VGRID_CREATE = 'create'
 VGRID_UPDATE = 'update'
+VGRID_DELETE = 'delete'
 
 PATTERNS_DIR = '.workflow_patterns_home'
 RECIPES_DIR = '.workflow_recipes_home'
@@ -35,8 +36,9 @@ OUTPUT = 'output'
 RECIPE = 'recipe'
 RECIPES = 'recipes'
 VARIABLES = 'variables'
-VGRIDS = 'vgrids'
+VGRID = 'vgrid'
 SOURCE = 'source'
+PATTERNS = 'patterns'
 
 INPUT_NAME = "input_name"
 INPUT_TRIGGER_FILE = "input_trigger_file"
@@ -79,7 +81,7 @@ VALID_PATTERN = {
     OUTPUT: dict,
     RECIPES: list,
     VARIABLES: dict,
-    VGRIDS: str
+    VGRID: str
 }
 
 VALID_RECIPE = {
@@ -90,7 +92,7 @@ VALID_RECIPE = {
     NAME: str,
     RECIPE: dict,
     SOURCE: str,
-    # VGRIDS: str
+    # VGRID: str
 }
 
 ANCESTORS = 'ancestors'

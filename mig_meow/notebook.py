@@ -1,11 +1,7 @@
 
 import os
-import json
 
-from .input import _check_input
-from .constants import PATTERNS_DIR, RECIPES_DIR, FILES_DIR, NAME
-from .pattern import Pattern
-from .recipe import is_valid_recipe_dict
+from .constants import FILES_DIR
 
 
 # TODO implement this in a more robust way

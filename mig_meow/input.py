@@ -4,7 +4,7 @@ import os
 from .constants import CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_UPPERCASE
 
 
-def _check_input(variable, expected_type, name, or_none=False):
+def check_input(variable, expected_type, name, or_none=False):
     """
     Checks if a given variable is of the expected type. May also be
     NoneType is or_none is True. Raises an exception if any issues are
@@ -35,7 +35,7 @@ def _check_input(variable, expected_type, name, or_none=False):
                             % (name, expected_type, type(variable)))
 
 
-def _valid_string(variable, name, valid_chars):
+def valid_string(variable, name, valid_chars):
     """
     Checks that all characters in a given string are present in a provided
     list of characters. Will raise an exception if unexpected character is
@@ -47,8 +47,8 @@ def _valid_string(variable, name, valid_chars):
     :param valid_chars: collection of valid characters. Must be a str.
     :return: returns nothing
     """
-    _check_input(variable, str, name)
-    _check_input(valid_chars, str, 'valid_chars')
+    check_input(variable, str, name)
+    check_input(valid_chars, str, 'valid_chars')
 
     # valid_chars = CHAR_NUMERIC + CHAR_UPPERCASE + CHAR_LOWERCASE + '-_'
 
@@ -59,7 +59,7 @@ def _valid_string(variable, name, valid_chars):
                             % (char, name, variable, valid_chars))
 
 
-def _valid_path(path, name, extensions=None):
+def valid_path(path, name, extensions=None):
     """
     Checks that a given string is a valid path Will raise an exception if it
     is not a valid path. Raises an exception if not a valid path.
@@ -71,8 +71,8 @@ def _valid_path(path, name, extensions=None):
     path. Defaults to None
     :return: returns nothing
     """
-    _check_input(path, str, name)
-    _check_input(extensions, list, 'extensions', or_none=True)
+    check_input(path, str, name)
+    check_input(extensions, list, 'extensions', or_none=True)
 
     valid_chars = CHAR_NUMERIC \
                   + CHAR_UPPERCASE \

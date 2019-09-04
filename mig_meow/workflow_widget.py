@@ -4,19 +4,18 @@ from bqplot.marks import Graph
 
 from IPython.display import display
 
-from .input import _check_input, _valid_path, _valid_string
+from .input import valid_path, valid_string
 from .constants import INPUT_NAME, INPUT_OUTPUT, INPUT_RECIPES, \
     INPUT_TRIGGER_PATH, INPUT_VARIABLES, INPUT_TRIGGER_FILE, \
     INPUT_TRIGGER_OUTPUT, INPUT_NOTEBOOK_OUTPUT, GREEN, RED, \
-    DEFAULT_WORKFLOW_FILENAME, WORKFLOW_IMAGE_EXTENSION, INPUT_SOURCE, \
-    NOTEBOOK_EXTENSIONS, NAME, DEFAULT_JOB_NAME, SOURCE, PATTERN_NAME, \
-    RECIPE_NAME, OBJECT_TYPE, VGRID_PATTERN_OBJECT_TYPE, \
-    VGRID_RECIPE_OBJECT_TYPE, VGRID_WORKFLOWS_OBJECT, INPUT_FILE, \
-    TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, PATTERN_LIST, RECIPE_LIST, \
-    CHAR_UPPERCASE, CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, \
+    INPUT_SOURCE, NOTEBOOK_EXTENSIONS, NAME, DEFAULT_JOB_NAME, \
+    SOURCE, PATTERN_NAME, RECIPE_NAME, OBJECT_TYPE, \
+    VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
+    VGRID_WORKFLOWS_OBJECT, INPUT_FILE, TRIGGER_PATHS, OUTPUT, RECIPES, \
+    VARIABLES, CHAR_UPPERCASE, CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, \
     VGRID_ERROR_TYPE, VGRID_TEXT_TYPE, PERSISTENCE_ID, VGRID_CREATE, \
-    VGRID_UPDATE
-from .mig import _vgrid_json_call
+    VGRID_UPDATE, PATTERNS, RECIPE, VGRID_DELETE
+from .mig import vgrid_json_call
 from .pattern import Pattern, is_valid_pattern_object
 from .recipe import is_valid_recipe_dict, create_recipe_dict
 from .workflows import build_workflow_object, pattern_has_recipes
@@ -27,12 +26,12 @@ def create_widget(patterns=None, recipes=None):
     """Displays a widget for workflow defitions. Can optionally take a
     predefined workflow as input"""
 
-    widget = WorkflowWidget(patterns=patterns,
-                            recipes=recipes)
+    widget = __WorkflowWidget(patterns=patterns,
+                              recipes=recipes)
     return widget.display_widget()
 
 
-class WorkflowWidget:
+class __WorkflowWidget:
     def __init__(self, patterns={}, recipes={}):
         # TODO update this description
 
@@ -60,7 +59,7 @@ class WorkflowWidget:
             self.workflow = {}
 
         self.visualisation_area = widgets.Output()
-        self.update_workflow_visualisation()
+        self.__update_workflow_visualisation()
         self.display_area = widgets.Output()
 
         self.new_pattern_button = widgets.Button(
@@ -70,7 +69,7 @@ class WorkflowWidget:
             button_style='',
             tooltip='Define a new pattern'
         )
-        self.new_pattern_button.on_click(self.on_new_pattern_clicked)
+        self.new_pattern_button.on_click(self.__on_new_pattern_clicked)
 
         self.edit_pattern_button = widgets.Button(
             value=False,
@@ -79,7 +78,7 @@ class WorkflowWidget:
             button_style='',
             tooltip='Edit an existing pattern'
         )
-        self.edit_pattern_button.on_click(self.on_edit_pattern_clicked)
+        self.edit_pattern_button.on_click(self.__on_edit_pattern_clicked)
 
         self.new_recipe_button = widgets.Button(
             value=False,
@@ -88,7 +87,7 @@ class WorkflowWidget:
             button_style='',
             tooltip='Import a new recipe'
         )
-        self.new_recipe_button.on_click(self.on_new_recipe_clicked)
+        self.new_recipe_button.on_click(self.__on_new_recipe_clicked)
 
         self.edit_recipe_button = widgets.Button(
             value=False,
@@ -97,7 +96,7 @@ class WorkflowWidget:
             button_style='',
             tooltip='Edit an existing recipe'
         )
-        self.edit_recipe_button.on_click(self.on_edit_recipe_clicked)
+        self.edit_recipe_button.on_click(self.__on_edit_recipe_clicked)
 
         self.import_from_vgrid_button = widgets.Button(
             value=False,
@@ -107,7 +106,7 @@ class WorkflowWidget:
             tooltip='Here is a tooltip for this button'
         )
         self.import_from_vgrid_button.on_click(
-            self.on_import_from_vgrid_clicked
+            self.__on_import_from_vgrid_clicked
         )
 
         self.export_to_vgrid_button = widgets.Button(
@@ -117,7 +116,7 @@ class WorkflowWidget:
             button_style='',
             tooltip='Here is a tooltip for this button'
         )
-        self.export_to_vgrid_button.on_click(self.on_export_to_vgrid_clicked)
+        self.export_to_vgrid_button.on_click(self.__on_export_to_vgrid_clicked)
 
         self.feedback = widgets.HTML()
 
@@ -126,11 +125,16 @@ class WorkflowWidget:
         self.current_form_rows = {}
         self.current_form_line_counts = {}
 
+        self.mig_imports = {
+            PATTERNS: [],
+            RECIPES: []
+        }
+
         self.displayed_form = None
         self.editing_area = None
         self.editing = None
 
-    def disable_top_buttons(self):
+    def __disable_top_buttons(self):
         # TODO update this description
 
         self.new_pattern_button.disabled = True
@@ -140,7 +144,7 @@ class WorkflowWidget:
         self.import_from_vgrid_button.disabled = True
         self.export_to_vgrid_button.disabled = True
 
-    def enable_top_buttons(self):
+    def __enable_top_buttons(self):
         # TODO update this description
 
         self.new_pattern_button.disabled = False
@@ -156,15 +160,15 @@ class WorkflowWidget:
         self.import_from_vgrid_button.disabled = False
         self.export_to_vgrid_button.disabled = False
 
-    def list_current_recipes(self):
+    def __list_current_recipes(self):
         # TODO update this description
 
         return self.recipes
 
-    def populate_new_pattern_form(self, population_function, done_function):
+    def __populate_new_pattern_form(self, population_function, done_function):
         # TODO update this description
 
-        self.current_form[INPUT_NAME] = self._create_form_single_input(
+        self.current_form[INPUT_NAME] = self.__create_form_single_input(
             "Name",
             "Pattern Name. This is used to identify the pattern and so "
             "should be a unique string."
@@ -174,7 +178,7 @@ class WorkflowWidget:
             "In this example this pattern is given the name 'pattern_1'.",
             INPUT_NAME
         )
-        self.current_form[INPUT_TRIGGER_PATH] = self._create_form_single_input(
+        self.current_form[INPUT_TRIGGER_PATH] = self.__create_form_single_input(
             "Trigger path",
             "Triggering path for file events which are used to schedule "
             "jobs. This is expressed as a regular expression against which "
@@ -192,7 +196,7 @@ class WorkflowWidget:
             "the 'test' vgrid, the structure should be 'test/dir'.",
             INPUT_TRIGGER_PATH
         )
-        self.current_form[INPUT_TRIGGER_FILE] = self._create_form_single_input(
+        self.current_form[INPUT_TRIGGER_FILE] = self.__create_form_single_input(
             "Trigger file",
             "This is the variable name used to identify the triggering file "
             "within the job processing."
@@ -204,7 +208,7 @@ class WorkflowWidget:
             "necessary by the job processing.",
             INPUT_TRIGGER_FILE
         )
-        self.current_form[INPUT_TRIGGER_OUTPUT] = self._create_form_single_input(
+        self.current_form[INPUT_TRIGGER_OUTPUT] = self.__create_form_single_input(
             "Trigger output",
             "Trigger output is an optional parameter used to define if the "
             "triggering file is returned. This is defined by the path for the "
@@ -220,7 +224,7 @@ class WorkflowWidget:
             INPUT_TRIGGER_OUTPUT,
             optional=True
         )
-        self.current_form[INPUT_NOTEBOOK_OUTPUT] = self._create_form_single_input(
+        self.current_form[INPUT_NOTEBOOK_OUTPUT] = self.__create_form_single_input(
             "Notebook output",
             "Notebook output is an optional parameter used to define if the "
             "notebook used for job processing is returned. This is defined as "
@@ -236,7 +240,7 @@ class WorkflowWidget:
             INPUT_NOTEBOOK_OUTPUT,
             optional=True
         )
-        self.current_form[INPUT_OUTPUT] = self._create_form_multi_input(
+        self.current_form[INPUT_OUTPUT] = self.__create_form_multi_input(
             "Output",
             "Output data to be saved after job completion. Anything not "
             "saved will be lost. Zero or more files can be copied and should "
@@ -259,11 +263,11 @@ class WorkflowWidget:
             "output will be called 'sample.ipynb'.",
             INPUT_OUTPUT,
             population_function,
-            self._refresh_new_form,
+            self.__refresh_new_form,
             done_function=done_function,
             optional=True
         )
-        self.current_form[INPUT_RECIPES] = self._create_form_multi_input(
+        self.current_form[INPUT_RECIPES] = self.__create_form_multi_input(
             "Recipe",
             "Recipe(s) to be used for job definition. These should be recipe "
             "names and may be recipes already defined in the system or "
@@ -277,12 +281,12 @@ class WorkflowWidget:
             "of any job processing.",
             INPUT_RECIPES,
             population_function,
-            self._refresh_new_form,
+            self.__refresh_new_form,
             done_function=done_function,
             extra_text="<br/>Current defined recipes are: ",
-            extra_func=self.list_current_recipes()
+            extra_func=self.__list_current_recipes()
         )
-        self.current_form[INPUT_VARIABLES] = self._create_form_multi_input(
+        self.current_form[INPUT_VARIABLES] = self.__create_form_multi_input(
             "Variable",
             "Variable(s) accessible to the job at runtime. These are passed "
             "to the job using papermill to run a parameterised notebook. Zero "
@@ -298,77 +302,84 @@ class WorkflowWidget:
             ,
             INPUT_VARIABLES,
             population_function,
-            self._refresh_new_form,
+            self.__refresh_new_form,
             done_function=done_function,
             optional=True
         )
 
-    def populate_editing_pattern_form(self, population_function, editing, display_dict):
+    def __populate_editing_pattern_form(
+            self, population_function, editing, display_dict):
         # TODO update this description
 
-        self.current_form[INPUT_TRIGGER_PATH] = self._create_form_single_input(
-            "Trigger path",
-            "Triggering path for file events which are used to schedule "
-            "jobs. This is expressed as a regular expression against which "
-            "file events are matched. It can be as broad or specific as "
-            "required. Any matches between file events and the path given "
-            "will cause a scheduled job. File paths are taken relative to the "
-            "vgrid home directory. "
-            "<br/>"
-            "Example: <b>dir/input_file_*\\.txt</b>"
-            "<br/>"
-            "In this example pattern jobs will trigger on an '.txt' files "
-            "whose file name starts with 'input_file_' and is located in "
-            "the 'dir' directory. The 'dir' directory in this case should be "
-            "located in he vgrid home directory. So if you are operating in "
-            "the 'test' vgrid, the structure should be 'test/dir'.",
-            INPUT_TRIGGER_PATH
+        self.current_form[INPUT_TRIGGER_PATH] = \
+            self.__create_form_single_input(
+                "Trigger path",
+                "Triggering path for file events which are used to schedule "
+                "jobs. This is expressed as a regular expression against "
+                "which file events are matched. It can be as broad or "
+                "specific as required. Any matches between file events and "
+                "the path given will cause a scheduled job. File paths are "
+                "taken relative to the vgrid home directory. "
+                "<br/>"
+                "Example: <b>dir/input_file_*\\.txt</b>"
+                "<br/>"
+                "In this example pattern jobs will trigger on an '.txt' files "
+                "whose file name starts with 'input_file_' and is located in "
+                "the 'dir' directory. The 'dir' directory in this case should "
+                "be located in he vgrid home directory. So if you are "
+                "operating in the 'test' vgrid, the structure should be "
+                "'test/dir'.",
+                INPUT_TRIGGER_PATH
         )
-        self.current_form[INPUT_TRIGGER_FILE] = self._create_form_single_input(
-            "Trigger file",
-            "This is the variable name used to identify the triggering file "
-            "within the job processing."
-            "<br/>"
-            "Example: <b>input_file</b>"
-            "<br/>"
-            "In this the triggering file will be copied into the job as "
-            "'input_file'. This can then be opened or manipulated as "
-            "necessary by the job processing.",
-            INPUT_TRIGGER_FILE
+        self.current_form[INPUT_TRIGGER_FILE] = \
+            self.__create_form_single_input(
+                "Trigger file",
+                "This is the variable name used to identify the triggering "
+                "file within the job processing."
+                "<br/>"
+                "Example: <b>input_file</b>"
+                "<br/>"
+                "In this the triggering file will be copied into the job as "
+                "'input_file'. This can then be opened or manipulated as "
+                "necessary by the job processing.",
+                INPUT_TRIGGER_FILE
         )
-        self.current_form[INPUT_TRIGGER_OUTPUT] = self._create_form_single_input(
-            "Trigger output",
-            "Trigger output is an optional parameter used to define if the "
-            "triggering file is returned. This is defined by the path for the "
-            "file to be copied to at job completion. If it is not provided "
-            "then any changes made to it are lost, but other output may still "
-            "be saved if defined in the output parameter."
-            "<br/>"
-            "Example: <b>dir/*_output.txt</b>"
-            "<br/>"
-            "In this example data file is saved within the 'dir' directory. "
-            "If the job was triggered on 'test.txt' then the output file "
-            "would be called 'test_output.txt",
-            INPUT_TRIGGER_OUTPUT,
-            optional=True
+        self.current_form[INPUT_TRIGGER_OUTPUT] = \
+            self.__create_form_single_input(
+                "Trigger output",
+                "Trigger output is an optional parameter used to define if "
+                "the triggering file is returned. This is defined by the path "
+                "for the file to be copied to at job completion. If it is not "
+                "provided then any changes made to it are lost, but other "
+                "output may still be saved if defined in the output parameter."
+                "<br/>"
+                "Example: <b>dir/*_output.txt</b>"
+                "<br/>"
+                "In this example data file is saved within the 'dir' "
+                "directory. If the job was triggered on 'test.txt' then the "
+                "output file would be called 'test_output.txt",
+                INPUT_TRIGGER_OUTPUT,
+                optional=True
         )
-        self.current_form[INPUT_NOTEBOOK_OUTPUT] = self._create_form_single_input(
-            "Notebook output",
-            "Notebook output is an optional parameter used to define if the "
-            "notebook used for job processing is returned. This is defined as "
-            "a path for the notebook to be copied to at job completion. If it "
-            "is not provided then the notebook is destroyed, but other output "
-            "may still be saved if defined in the output parameter."
-            "<br/>"
-            "Example: <b>dir/*_output.ipynb</b>"
-            "<br/>"
-            "In this example the job notebook is saved within the 'dir' "
-            "directory. If the job was triggered on 'test.txt' then the "
-            "output notebook would be called 'test_output.ipynb",
-            INPUT_NOTEBOOK_OUTPUT,
-            optional=True
+        self.current_form[INPUT_NOTEBOOK_OUTPUT] = \
+            self.__create_form_single_input(
+                "Notebook output",
+                "Notebook output is an optional parameter used to define if "
+                "the notebook used for job processing is returned. This is "
+                "defined as a path for the notebook to be copied to at job "
+                "completion. If it is not provided then the notebook is "
+                "destroyed, but other output may still be saved if defined "
+                "in the output parameter."
+                "<br/>"
+                "Example: <b>dir/*_output.ipynb</b>"
+                "<br/>"
+                "In this example the job notebook is saved within the 'dir' "
+                "directory. If the job was triggered on 'test.txt' then the "
+                "output notebook would be called 'test_output.ipynb",
+                INPUT_NOTEBOOK_OUTPUT,
+                optional=True
         )
-        self.current_form[INPUT_OUTPUT] = self._create_form_multi_input(
+        self.current_form[INPUT_OUTPUT] = self.__create_form_multi_input(
             "Output",
             "Output data to be saved after job completion. Anything not "
             "saved will be lost. Zero or more files can be copied and should "
@@ -391,14 +402,14 @@ class WorkflowWidget:
             "output will be called 'sample.ipynb'.",
             INPUT_OUTPUT,
             population_function,
-            self._refresh_edit_form,
+            self.__refresh_edit_form,
             editing=editing,
             display_dict=display_dict,
-            apply_function=self.on_apply_pattern_changes_clicked,
-            delete_function=self.on_delete_pattern_clicked,
+            apply_function=self.__on_apply_pattern_changes_clicked,
+            delete_function=self.__on_delete_pattern_clicked,
             optional=True
         )
-        self.current_form[INPUT_RECIPES] = self._create_form_multi_input(
+        self.current_form[INPUT_RECIPES] = self.__create_form_multi_input(
             "Recipe",
             "Recipe(s) to be used for job definition. These should be recipe "
             "names and may be recipes already defined in the system or "
@@ -412,15 +423,15 @@ class WorkflowWidget:
             "of any job processing.",
             INPUT_RECIPES,
             population_function,
-            self._refresh_edit_form,
+            self.__refresh_edit_form,
             editing=editing,
             display_dict=display_dict,
-            apply_function=self.on_apply_pattern_changes_clicked,
-            delete_function=self.on_delete_pattern_clicked,
+            apply_function=self.__on_apply_pattern_changes_clicked,
+            delete_function=self.__on_delete_pattern_clicked,
             extra_text="<br/>Current defined recipes are: ",
-            extra_func=self.list_current_recipes()
+            extra_func=self.__list_current_recipes()
         )
-        self.current_form[INPUT_VARIABLES] = self._create_form_multi_input(
+        self.current_form[INPUT_VARIABLES] = self.__create_form_multi_input(
             "Variable",
             "Variable(s) accessible to the job at runtime. These are passed "
             "to the job using papermill to run a parameterised notebook. Zero "
@@ -436,18 +447,18 @@ class WorkflowWidget:
             ,
             INPUT_VARIABLES,
             population_function,
-            self._refresh_edit_form,
+            self.__refresh_edit_form,
             editing=editing,
             display_dict=display_dict,
-            apply_function=self.on_apply_pattern_changes_clicked,
-            delete_function=self.on_delete_pattern_clicked,
+            apply_function=self.__on_apply_pattern_changes_clicked,
+            delete_function=self.__on_delete_pattern_clicked,
             optional=True
         )
 
-    def populate_new_recipe_form(self, population_function, done_function):
+    def __populate_new_recipe_form(self, population_function, done_function):
         # TODO update this description
 
-        self.current_form[INPUT_SOURCE] = self._create_form_single_input(
+        self.current_form[INPUT_SOURCE] = self.__create_form_single_input(
             "Source",
             "The Jupyter Notebook to be used as a source for the recipe. This "
             "should be expressed as a path to the notebook. Note that if a "
@@ -460,9 +471,9 @@ class WorkflowWidget:
             "directory is imported as a recipe. ",
             INPUT_SOURCE,
             extra_text="<br/>Current defined recipes are: ",
-            extra_func=self.list_current_recipes()
+            extra_func=self.__list_current_recipes()
         )
-        self.current_form[INPUT_NAME] = self._create_form_single_input(
+        self.current_form[INPUT_NAME] = self.__create_form_single_input(
             "Name",
             "Optional recipe name. This is used to identify the recipe and so "
             "must be unique. If not provided then the notebook filename is "
@@ -475,13 +486,14 @@ class WorkflowWidget:
             INPUT_NAME,
             optional=True,
             extra_text="<br/>Current defined recipes are: ",
-            extra_func=self.list_current_recipes()
+            extra_func=self.__list_current_recipes()
         )
 
-    def populate_editing_recipe_form(self, population_function, editing, display_dict):
+    def __populate_editing_recipe_form(
+            self, population_function, editing, display_dict):
         # TODO update this description
 
-        self.current_form[INPUT_NAME] = self._create_form_single_input(
+        self.current_form[INPUT_NAME] = self.__create_form_single_input(
             "Source",
             "The Jupyter Notebook to be used as a source for the recipe. "
             "This should be expressed as a path to the notebook. Note "
@@ -495,7 +507,7 @@ class WorkflowWidget:
             INPUT_SOURCE
         )
 
-    def process_pattern_values(self, values, ignore_conflicts=False):
+    def __process_pattern_values(self, values, ignore_conflicts=False):
         # TODO update this description
 
         try:
@@ -504,7 +516,7 @@ class WorkflowWidget:
                 if values[INPUT_NAME] in self.patterns:
                     msg = "Pattern name is not valid as another pattern is " \
                           "already registered with that name. "
-                    self.set_feedback(msg)
+                    self.__set_feedback(msg)
                     return
             file_name = values[INPUT_TRIGGER_FILE]
             trigger_path = values[INPUT_TRIGGER_PATH]
@@ -552,32 +564,32 @@ class WorkflowWidget:
                 msg = "pattern %s %s. " % (pattern.name, word)
                 if warnings:
                     msg += "\n%s" % warnings
-                self.set_feedback(msg)
-                self.update_workflow_visualisation()
-                self.close_form()
+                self.__set_feedback(msg)
+                self.__update_workflow_visualisation()
+                self.__close_form()
                 return True
             else:
                 msg = "pattern is not valid. "
                 if warnings:
                     msg += "\n%s" % warnings
-                self.set_feedback(msg)
+                self.__set_feedback(msg)
                 return False
         except Exception as e:
             msg = "Something went wrong with pattern generation. %s" % str(e)
-            self.set_feedback(msg)
+            self.__set_feedback(msg)
             return False
 
-    def process_recipe_values(self, values, ignore_conflicts=False):
+    def __process_recipe_values(self, values, ignore_conflicts=False):
         # TODO update this description
 
         try:
             source = values[INPUT_SOURCE]
             name = values[INPUT_NAME]
 
-            _valid_path(source,
-                        'Source',
-                        extensions=NOTEBOOK_EXTENSIONS
-                        )
+            valid_path(source,
+                       'Source',
+                       extensions=NOTEBOOK_EXTENSIONS
+            )
             if os.path.sep in source:
                 filename = \
                     source[source.index('/') + 1:source.index('.')]
@@ -586,23 +598,23 @@ class WorkflowWidget:
             if not name:
                 name = filename
             if not os.path.isfile(source):
-                self.set_feedback("Source %s was not found. " % source)
+                self.__set_feedback("Source %s was not found. " % source)
                 return
             if name:
-                _valid_string(name,
+                valid_string(name,
                               'Name',
-                              CHAR_UPPERCASE
-                              + CHAR_LOWERCASE
-                              + CHAR_NUMERIC
-                              + CHAR_LINES)
+                               CHAR_UPPERCASE
+                               + CHAR_LOWERCASE
+                               + CHAR_NUMERIC
+                               + CHAR_LINES)
                 if not ignore_conflicts:
                     if name in self.recipes:
                         msg = "recipe name is not valid as another recipe " \
                               "is already registered with that name. Please " \
                               "try again using a different name. "
-                        self.set_feedback(msg)
+                        self.__set_feedback(msg)
                         return
-            self.set_feedback("Everything seems in order. ")
+            self.__set_feedback("Everything seems in order. ")
 
             with open(source, "r") as read_file:
                 notebook = json.load(read_file)
@@ -612,45 +624,56 @@ class WorkflowWidget:
                 else:
                     word = 'created'
                 self.recipes[name] = recipe
-                self.set_feedback("Recipe %s %s. " % (name, word))
-            self.update_workflow_visualisation()
-            self.close_form()
+                self.__set_feedback("Recipe %s %s. " % (name, word))
+            self.__update_workflow_visualisation()
+            self.__close_form()
             return True
         except Exception as e:
-            self.set_feedback("Something went wrong with recipe generation. "
+            self.__set_feedback("Something went wrong with recipe generation. "
                               "%s " % str(e))
             return False
 
-    def on_new_pattern_clicked(self, button):
+    def __on_new_pattern_clicked(self, button):
         # TODO update this description
 
-        self.disable_top_buttons()
-        self.clear_current_form()
-        self._refresh_new_form(self.populate_new_pattern_form, self.process_pattern_values)
-        self.clear_feedback()
+        self.__disable_top_buttons()
+        self.__clear_current_form()
+        self.__refresh_new_form(
+            self.__populate_new_pattern_form, self.__process_pattern_values
+        )
+        self.__clear_feedback()
 
-    def on_edit_pattern_clicked(self, button):
+    def __on_edit_pattern_clicked(self, button):
         # TODO update this description
 
-        self.construct_new_edit_form()
+        self.__construct_new_edit_form()
 
-    def on_new_recipe_clicked(self, button):
+    def __on_new_recipe_clicked(self, button):
         # TODO update this description
 
-        self.disable_top_buttons()
-        self.clear_current_form()
-        self._refresh_new_form(self.populate_new_recipe_form, self.process_recipe_values)
-        self.clear_feedback()
+        self.__disable_top_buttons()
+        self.__clear_current_form()
+        self.__refresh_new_form(
+            self.__populate_new_recipe_form, self.__process_recipe_values
+        )
+        self.__clear_feedback()
 
-    def on_edit_recipe_clicked(self, button):
+    def __on_edit_recipe_clicked(self, button):
         # TODO update this description
 
-        self.disable_top_buttons()
-        self.clear_current_form()
-        self._refresh_edit_form(RECIPE_NAME, self.recipes, self.populate_editing_recipe_form, self.on_apply_recipe_changes_clicked, self.on_delete_recipe_clicked)
-        self.clear_feedback()
+        self.__disable_top_buttons()
+        self.__clear_current_form()
+        self.__refresh_edit_form(
+            RECIPE_NAME,
+            self.recipes,
+            self.__populate_editing_recipe_form,
+            self.__on_apply_recipe_changes_clicked,
+            self.__on_delete_recipe_clicked
+        )
+        self.__clear_feedback()
 
-    def _refresh_new_form(self, population_function, done_function, wait=False):
+    def __refresh_new_form(
+            self, population_function, done_function, wait=False):
         # TODO update this description
 
         if self.current_form:
@@ -702,12 +725,12 @@ class WorkflowWidget:
 
         def cancel_button_click(button):
             if isinstance(self.displayed_form, widgets.VBox):
-                self.close_form()
+                self.__close_form()
                 self.current_old_values = {}
                 for text_key in self.current_form_rows.keys():
                     self.current_old_values[text_key] = \
                         self.current_form_rows[text_key]
-                self.clear_feedback()
+                self.__clear_feedback()
 
         self.current_form["cancel_button"].on_click(cancel_button_click)
 
@@ -723,9 +746,9 @@ class WorkflowWidget:
         with self.display_area:
             form_id = display(self.displayed_form, display_id=True)
 
-    def _refresh_edit_form(self, editing, display_dict, population_function,
-                           apply_function, delete_function, wait=False,
-                           default=None):
+    def __refresh_edit_form(
+            self, editing, display_dict, population_function, apply_function,
+            delete_function, wait=False, default=None):
         # TODO update this description
 
         if self.current_form:
@@ -759,29 +782,42 @@ class WorkflowWidget:
                     pattern = to_edit
                     extra_outputs = []
                     for out in pattern.outputs.keys():
-                        if out != DEFAULT_JOB_NAME and out != pattern.input_file:
+                        if out != DEFAULT_JOB_NAME \
+                                and out != pattern.input_file:
                             extra_outputs.append(out)
                     if len(extra_outputs) > 1:
-                        self.current_form_line_counts[INPUT_OUTPUT] = len(extra_outputs) - 1
+                        self.current_form_line_counts[INPUT_OUTPUT] = \
+                            len(extra_outputs) - 1
                     else:
                         self.current_form_line_counts[INPUT_OUTPUT] = 0
 
                     if len(pattern.recipes) > 1:
-                        self.current_form_line_counts[INPUT_OUTPUT] = len(pattern.recipes) - 1
+                        self.current_form_line_counts[INPUT_OUTPUT] = \
+                            len(pattern.recipes) - 1
                     else:
                         self.current_form_line_counts[INPUT_OUTPUT] = 0
 
                     extra_variables = []
                     for variable in pattern.variables.keys():
-                        if variable != pattern.input_file and variable != DEFAULT_JOB_NAME:
+                        if variable != pattern.input_file and variable != \
+                                DEFAULT_JOB_NAME:
                             extra_variables.append(variable)
                     if len(extra_variables) > 1:
-                        self.current_form_line_counts[INPUT_VARIABLES] = len(extra_variables) - 1
+                        self.current_form_line_counts[INPUT_VARIABLES] = \
+                            len(extra_variables) - 1
                     else:
                         self.current_form_line_counts[INPUT_VARIABLES] = 0
 
                 if not default:
-                    self._refresh_edit_form(editing, display_dict, population_function, apply_function, delete_function, wait=False, default=to_edit)
+                    self.__refresh_edit_form(
+                        editing,
+                        display_dict,
+                        population_function,
+                        apply_function,
+                        delete_function,
+                        wait=False,
+                        default=to_edit
+                    )
 
         dropdown.observe(on_dropdown_select)
 
@@ -807,11 +843,18 @@ class WorkflowWidget:
                 default_name = default[NAME]
             if default_name in options:
                 dropdown.value = default_name
-                self._editor(population_function, editing, display_dict, apply_function, delete_function)
+                self.__editor(
+                    population_function,
+                    editing,
+                    display_dict,
+                    apply_function,
+                    delete_function
+                )
                 default = None
 
-    def _editor(self, population_function, editing, display_dict,
-                apply_function, delete_function):
+    def __editor(
+            self, population_function, editing, display_dict, apply_function,
+            delete_function):
         # TODO update this description
 
         if not self.editing_area:
@@ -846,7 +889,7 @@ class WorkflowWidget:
                 button_style='',
                 tooltip='TODO'
             )
-            cancel.on_click(self.on_cancel_clicked)
+            cancel.on_click(self.__on_cancel_clicked)
 
             button_items = [
                 apply,
@@ -866,17 +909,22 @@ class WorkflowWidget:
         if isinstance(self.editing[1], Pattern):
             pattern = self.editing[1]
 
-            self.current_form_rows[INPUT_TRIGGER_FILE].value = pattern.input_file
+            self.current_form_rows[INPUT_TRIGGER_FILE].value = \
+                pattern.input_file
 
             if pattern.trigger_paths:
-                # TODO note this deletes any extra paths as currently only one at a time. change this
-                self.current_form_rows[INPUT_TRIGGER_PATH].value = pattern.trigger_paths[0]
+                # TODO note this deletes any extra paths as currently only
+                #  one at a time. change this
+                self.current_form_rows[INPUT_TRIGGER_PATH].value = \
+                    pattern.trigger_paths[0]
 
             if pattern.input_file in pattern.outputs.keys():
-                self.current_form_rows[INPUT_TRIGGER_OUTPUT].value = pattern.outputs[pattern.input_file]
+                self.current_form_rows[INPUT_TRIGGER_OUTPUT].value = \
+                    pattern.outputs[pattern.input_file]
 
             if DEFAULT_JOB_NAME in pattern.outputs.keys():
-                self.current_form_rows[INPUT_NOTEBOOK_OUTPUT].value = pattern.outputs[DEFAULT_JOB_NAME]
+                self.current_form_rows[INPUT_NOTEBOOK_OUTPUT].value = \
+                    pattern.outputs[DEFAULT_JOB_NAME]
 
             extra_outputs = []
             for out in pattern.outputs.keys():
@@ -885,45 +933,51 @@ class WorkflowWidget:
             if extra_outputs:
                 for i in range(0, len(self.current_form_rows[INPUT_OUTPUT])):
                     if i < len(extra_outputs):
-                        self.current_form_rows[INPUT_OUTPUT][i].value = "%s=%s" % (extra_outputs[i], pattern.outputs[extra_outputs[i]])
+                        self.current_form_rows[INPUT_OUTPUT][i].value = \
+                            "%s=%s" % (extra_outputs[i],
+                                       pattern.outputs[extra_outputs[i]])
 
             for i in range(0, len(self.current_form_rows[INPUT_RECIPES])):
                 if i < len(pattern.recipes):
-                    self.current_form_rows[INPUT_RECIPES][i].value = "%s" % pattern.recipes[i]
+                    self.current_form_rows[INPUT_RECIPES][i].value = \
+                        "%s" % pattern.recipes[i]
 
             extra_variables = []
             for variable in pattern.variables.keys():
-                if variable != pattern.input_file and variable != DEFAULT_JOB_NAME:
+                if variable != pattern.input_file and variable != \
+                        DEFAULT_JOB_NAME:
                     extra_variables.append(variable)
             if extra_variables:
                 for i in range(0, len(self.current_form_rows[INPUT_VARIABLES])):
                     if i < len(extra_variables):
-                        self.current_form_rows[INPUT_VARIABLES][i].value = "%s=%s" % (extra_variables[i], pattern.variables[extra_variables[i]])
+                        self.current_form_rows[INPUT_VARIABLES][i].value = \
+                            "%s=%s" % (extra_variables[i],
+                                       pattern.variables[extra_variables[i]])
         else:
             recipe = self.editing[1]
             self.current_form_rows[INPUT_SOURCE].value = recipe[SOURCE]
 
-    def on_apply_recipe_changes_clicked(self, button):
+    def __on_apply_recipe_changes_clicked(self, button):
         # TODO update this description
 
         values = {
             INPUT_NAME: self.editing[1][NAME],
             INPUT_SOURCE: self.current_form[INPUT_SOURCE].value
         }
-        if self.process_recipe_values(values, ignore_conflicts=True):
-            self.done_editing()
+        if self.__process_recipe_values(values, ignore_conflicts=True):
+            self.__done_editing()
 
-    def on_delete_recipe_clicked(self, button):
+    def __on_delete_recipe_clicked(self, button):
         # TODO update this description
 
         to_delete = self.editing[1][NAME]
         if to_delete in self.recipes.keys():
             self.recipes.pop(to_delete)
-        self.set_feedback("Recipe %s deleted. " % to_delete)
-        self.update_workflow_visualisation()
-        self.done_editing()
+        self.__set_feedback("Recipe %s deleted. " % to_delete)
+        self.__update_workflow_visualisation()
+        self.__done_editing()
 
-    def on_apply_pattern_changes_clicked(self, button):
+    def __on_apply_pattern_changes_clicked(self, button):
         # TODO update this description
 
         values = {
@@ -938,34 +992,34 @@ class WorkflowWidget:
                 values[key] = values_list
             else:
                 values[key] = self.current_form_rows[key].value
-        if self.process_pattern_values(values, ignore_conflicts=True):
-            self.done_editing()
+        if self.__process_pattern_values(values, ignore_conflicts=True):
+            self.__done_editing()
 
-    def on_delete_pattern_clicked(self, button):
+    def __on_delete_pattern_clicked(self, button):
         # TODO update this description
 
         to_delete = self.editing[1].name
         if to_delete in self.patterns.keys():
             self.patterns.pop(to_delete)
-        self.set_feedback("Pattern %s deleted. " % to_delete)
-        self.update_workflow_visualisation()
-        self.done_editing()
+        self.__set_feedback("Pattern %s deleted. " % to_delete)
+        self.__update_workflow_visualisation()
+        self.__done_editing()
 
-    def on_cancel_clicked(self, button):
+    def __on_cancel_clicked(self, button):
         # TODO update this description
 
         if isinstance(self.displayed_form, widgets.VBox):
-            self.done_editing()
-            self.clear_feedback()
+            self.__done_editing()
+            self.__clear_feedback()
 
-    def done_editing(self):
+    def __done_editing(self):
         # TODO update this description
 
-        self.close_form()
+        self.__close_form()
         self.editing_area = None
         self.editing = None
 
-    def make_help_button(self, help_text, extra_text, extra_func):
+    def __make_help_button(self, help_text, extra_text, extra_func):
         # TODO update this description
 
         help_button = widgets.Button(
@@ -993,8 +1047,9 @@ class WorkflowWidget:
 
         return help_button, help_html
 
-    def _create_form_single_input(self, text, help_text, key, extra_text=None,
-                                  extra_func=None, optional=False):
+    def __create_form_single_input(
+            self, text, help_text, key, extra_text=None, extra_func=None,
+            optional=False):
         # TODO update this description
 
         msg = text
@@ -1012,9 +1067,9 @@ class WorkflowWidget:
         # self.current_form[key] = input
         self.current_form_rows[key] = input
 
-        help_button, help_text = self.make_help_button(help_text,
-                                                       extra_text=extra_text,
-                                                       extra_func=extra_func)
+        help_button, help_text = self.__make_help_button(help_text,
+                                                         extra_text=extra_text,
+                                                         extra_func=extra_func)
 
         top_row_items = [
             label,
@@ -1032,12 +1087,11 @@ class WorkflowWidget:
         input_widget = widgets.VBox(items)
         return input_widget
 
-    def _create_form_multi_input(self, text, help_text, key,
-                                 population_function, refresh_function,
-                                 done_function=None, display_dict=None,
-                                 editing=None, apply_function=None,
-                                 delete_function=None, extra_text=None,
-                                 extra_func=None, optional=False):
+    def __create_form_multi_input(
+            self, text, help_text, key, population_function, refresh_function,
+            done_function=None, display_dict=None, editing=None,
+            apply_function=None, delete_function=None, extra_text=None,
+            extra_func=None, optional=False):
         # TODO update this description
 
         msg = text
@@ -1048,9 +1102,9 @@ class WorkflowWidget:
         )
         input = widgets.Text()
 
-        help_button, help_text = self.make_help_button(help_text,
-                                                       extra_text=extra_text,
-                                                       extra_func=extra_func)
+        help_button, help_text = self.__make_help_button(help_text,
+                                                         extra_text=extra_text,
+                                                         extra_func=extra_func)
 
         input_old_values = []
         if key in self.current_old_values:
@@ -1074,12 +1128,12 @@ class WorkflowWidget:
                 self.current_form_line_counts[key] += 1
             else:
                 self.current_form_line_counts[key] = 1
-            if refresh_function == self._refresh_new_form:
-                self._refresh_new_form(population_function,
+            if refresh_function == self.__refresh_new_form:
+                self.__refresh_new_form(population_function,
                                        done_function,
                                        wait=True)
-            elif refresh_function == self._refresh_edit_form:
-                self._refresh_edit_form(editing,
+            elif refresh_function == self.__refresh_edit_form:
+                self.__refresh_edit_form(editing,
                                         display_dict,
                                         population_function,
                                         apply_function,
@@ -1101,12 +1155,12 @@ class WorkflowWidget:
             if key in self.current_form_line_counts.keys():
                 if self.current_form_line_counts[key] > 0:
                     self.current_form_line_counts[key] -= 1
-            if refresh_function == self._refresh_new_form:
-                self._refresh_new_form(population_function,
+            if refresh_function == self.__refresh_new_form:
+                self.__refresh_new_form(population_function,
                                        done_function,
                                        wait=True)
-            elif refresh_function == self._refresh_edit_form:
-                self._refresh_edit_form(editing,
+            elif refresh_function == self.__refresh_edit_form:
+                self.__refresh_edit_form(editing,
                                         display_dict,
                                         population_function,
                                         apply_function,
@@ -1170,17 +1224,24 @@ class WorkflowWidget:
 
         return form_row
 
-    def on_import_from_vgrid_clicked(self, button):
+    def __on_import_from_vgrid_clicked(self, button):
         # TODO update this description
+        self.__set_feedback("Importing workflow from Vgrid. This may take a "
+                            "few seconds.")
 
         try:
-            vgrid, _, response, _ = _vgrid_json_call('read',
-                                                     'any',
-                                                     print_feedback=False)
+            vgrid, _, response, _ = vgrid_json_call('read',
+                                                    'any',
+                                                    print_feedback=False)
         except LookupError as error:
-            self.set_feedback(error)
+            self.__set_feedback(error)
+            self.__enable_top_buttons()
             return
-        self.clear_feedback()
+        except Exception as err:
+            self.__set_feedback(str(err))
+            self.__enable_top_buttons()
+            return
+        self.__clear_feedback()
         response_patterns = {}
         response_recipes = {}
         if VGRID_WORKFLOWS_OBJECT in response:
@@ -1190,52 +1251,88 @@ class WorkflowWidget:
                 elif response_object[OBJECT_TYPE] == VGRID_RECIPE_OBJECT_TYPE:
                     response_recipes[response_object[NAME]] = response_object
 
-            self.add_to_feedback("Imported %s pattern(s) from Vgrid %s: %s "
-                                 % (len(response_patterns), vgrid,
-                                    list(response_patterns.keys())))
-            self.add_to_feedback("Imported %s recipe(s) from Vgrid %s: %s "
-                                 % (len(response_recipes), vgrid,
-                                    list(response_recipes.keys())))
+            self.__add_to_feedback("Found %s pattern(s) from Vgrid %s: %s "
+                                   % (len(response_patterns), vgrid,
+                                      list(response_patterns.keys())))
+            self.__add_to_feedback("Found %s recipe(s) from Vgrid %s: %s "
+                                   % (len(response_recipes), vgrid,
+                                      list(response_recipes.keys())))
 
-            # TODO make accounting for persistnce ids and such to keep
-            #  track of patterns. Names will do for now
-            for key, pattern in response_patterns.items():
-                if key in self.patterns:
-                    old_pattern = self.patterns[key]
-                    old_pattern.name = old_pattern.name + "_backup"
-                    self.patterns[old_pattern.name] = old_pattern
-                    self.add_to_feedback("%s is already present in the local "
-                                         "patterns, and is being imported. "
-                                         "Local pattern has been renamed to "
-                                         "%s" % (key, old_pattern.name))
-                self.patterns[key] = Pattern(pattern)
-            for key, recipe in response_recipes.items():
-                if key in self.recipes:
-                    old_recipe = self.recipes[key]
-                    old_recipe[NAME] = old_recipe[NAME] + "_backup"
-                    self.recipes[old_recipe[NAME]] = old_recipe
-                    self.add_to_feedback("%s is already present in the local "
-                                         "recipes, and is being imported. "
-                                         "Local recipe has been renamed to "
-                                         "%s" % (key, old_recipe[NAME]))
-                self.recipes[key] = recipe
-            self.update_workflow_visualisation()
-            self.enable_top_buttons()
+            self.__add_to_feedback("Import these patterns and recipes into "
+                                   "local memory? This will overwrite any "
+                                   "patterns or recipes currently in memory "
+                                   "that share the same name. ")
+
+            self.__create_confirmation_buttons(
+                self.__import_workflow,
+                {
+                    PATTERNS: response_patterns,
+                    RECIPES: response_recipes
+                },
+                "Confirm Import",
+                "Cancel Import",
+                "Import canceled. No local data has been changed. "
+            )
+
         elif response[OBJECT_TYPE] == VGRID_ERROR_TYPE:
-            self.set_feedback(response[VGRID_TEXT_TYPE])
+            self.__set_feedback(response[VGRID_TEXT_TYPE])
         else:
             print('Got an unexpected response')
             print("Unexpected response: {}".format(response))
+        self.__enable_top_buttons()
 
-    def on_export_to_vgrid_clicked(self, button):
+    def __import_workflow(self, **kwargs):
+        response_patterns = kwargs.get(PATTERNS, None)
+        response_recipes = kwargs.get(RECIPES, None)
+
+        self.mig_imports = {
+            PATTERNS: [],
+            RECIPES: []
+        }
+        overwritten_patterns = []
+        overwritten_recipes = []
+        for key, pattern in response_patterns.items():
+            if key in self.patterns:
+                overwritten_patterns.append(key)
+            self.patterns[key] = Pattern(pattern)
+            try:
+                self.mig_imports[PATTERNS].append(
+                    self.patterns[key].persistence_id)
+            except AttributeError:
+                pass
+        for key, recipe in response_recipes.items():
+            if key in self.recipes:
+                overwritten_recipes.append(key)
+            self.recipes[key] = recipe
+            try:
+                self.mig_imports[RECIPES].append(
+                    self.recipes[key].persistence_id)
+            except AttributeError:
+                pass
+
+        msg = "Imported %s patterns and %s recipes. " \
+              % (len(response_patterns), len(response_recipes))
+        if overwritten_patterns:
+            msg += "<br/>Overwritten patterns: %s " % overwritten_patterns
+        if overwritten_recipes:
+            msg += "<br/>Overwritten recipes: %s " % overwritten_recipes
+        self.__set_feedback(msg)
+        self.__update_workflow_visualisation()
+        self.__close_form()
+
+    def __count_calls(self, calls, operation, type):
+        count = \
+            [i[2][NAME] for i in calls if i[0] == operation and i[1] == type]
+        return count
+
+    def __on_export_to_vgrid_clicked(self, button):
         # TODO update this description
 
-        self.disable_top_buttons()
-        self.clear_feedback()
-        if not self.patterns and not self.recipes:
-            self.set_feedback("Nothing to export to Vgrid")
-            return
+        self.__disable_top_buttons()
+        self.__clear_feedback()
 
+        calls = []
+        pattern_ids = []
         for _, pattern in self.patterns.items():
             attributes = {
                 NAME: pattern.name,
@@ -1246,7 +1343,9 @@ class WorkflowWidget:
                 VARIABLES: pattern.variables
             }
             try:
-                attributes[PERSISTENCE_ID] = pattern.persistence_id
+                if pattern.persistence_id:
+                    attributes[PERSISTENCE_ID] = pattern.persistence_id
+                    pattern_ids.append(pattern.persistence_id)
             except AttributeError:
                 pass
             try:
@@ -1254,71 +1353,214 @@ class WorkflowWidget:
                     operation = VGRID_UPDATE
                 else:
                     operation = VGRID_CREATE
-                vgrid, _, response, _ \
-                    = _vgrid_json_call(operation,
-                                       VGRID_PATTERN_OBJECT_TYPE,
-                                       attributes=attributes,
-                                       print_feedback=False)
-                if 'text' in response:
-                    feedback = response['text'].replace('\n', '<br/>')
-                    self.add_to_feedback(feedback)
-                if 'error_text' in response:
-                    feedback = response['error_text'].replace('\n', '<br/>')
-                    self.add_to_feedback(feedback)
-
+                calls.append(
+                    (
+                        operation,
+                        VGRID_PATTERN_OBJECT_TYPE,
+                        attributes,
+                        False,
+                        pattern
+                    )
+                )
             except LookupError as error:
-                self.set_feedback(error)
+                self.__set_feedback(error)
                 return
+
+        recipe_ids = []
         for _, recipe in self.recipes.items():
             try:
-                if PERSISTENCE_ID in recipe:
+                attributes = {
+                    NAME: recipe[NAME],
+                    RECIPE: recipe[RECIPE],
+                    SOURCE: recipe[SOURCE]
+                }
+                try:
+                    if recipe[PERSISTENCE_ID]:
+                        attributes[PERSISTENCE_ID] = recipe[PERSISTENCE_ID]
+                except KeyError:
+                    pass
+                if PERSISTENCE_ID in attributes:
                     operation = VGRID_UPDATE
+                    recipe_ids.append(recipe[PERSISTENCE_ID])
                 else:
                     operation = VGRID_CREATE
-                vgrid, _, response, _ \
-                    = _vgrid_json_call(operation,
-                                       VGRID_RECIPE_OBJECT_TYPE,
-                                       attributes=recipe,
-                                       print_feedback=False)
-                if 'text' in response:
-                    feedback = response['text'].replace('\n', '<br/>')
-                    self.add_to_feedback(feedback)
-                if 'error_text' in response:
-                    feedback = response['error_text'].replace('\n', '<br/>')
-                    self.add_to_feedback(feedback)
+                calls.append(
+                    (
+                        operation,
+                        VGRID_PATTERN_OBJECT_TYPE,
+                        attributes,
+                        False,
+                        recipe
+                    )
+                )
             except LookupError as error:
-                self.set_feedback(error)
+                self.__set_feedback(error)
                 return
 
-        self.enable_top_buttons()
+        operation = VGRID_DELETE
+        for id in self.mig_imports[PATTERNS]:
+            if id not in pattern_ids:
+                attributes = {
+                    PERSISTENCE_ID: id
+                }
+                calls.append(
+                    (
+                        operation,
+                        VGRID_PATTERN_OBJECT_TYPE,
+                        attributes,
+                        False
+                    )
+                )
+        for id in self.mig_imports[RECIPES]:
+            if id not in recipe_ids:
+                attributes = {
+                    PERSISTENCE_ID: id
+                }
+                calls.append(
+                    (
+                        operation,
+                        VGRID_PATTERN_OBJECT_TYPE,
+                        attributes,
+                        False
+                    )
+                )
+        self.__enable_top_buttons()
 
-    def add_to_feedback(self, to_add):
+        if not calls:
+            self.__set_feedback("Nothing to export to Vgrid")
+            self.__enable_top_buttons()
+            return
+
+        operation_combinations = [
+            (VGRID_CREATE, VGRID_PATTERN_OBJECT_TYPE),
+            (VGRID_UPDATE, VGRID_PATTERN_OBJECT_TYPE),
+            (VGRID_DELETE, VGRID_PATTERN_OBJECT_TYPE),
+            (VGRID_CREATE, VGRID_RECIPE_OBJECT_TYPE),
+            (VGRID_UPDATE, VGRID_RECIPE_OBJECT_TYPE),
+            (VGRID_DELETE, VGRID_RECIPE_OBJECT_TYPE),
+        ]
+
+        for operation in operation_combinations:
+            relevant_calls = \
+                self.__count_calls(calls, operation[0], operation[1])
+
+            if relevant_calls:
+                self.__add_to_feedback("Will %s %s %s: %s. "
+                                       % (operation[0], len(relevant_calls),
+                                          operation[1], relevant_calls))
+
+        self.__create_confirmation_buttons(
+            self.__export_workflow,
+            {
+                'calls': calls
+            },
+            "Confirm Export",
+            "Cancel Export",
+            "Export canceled. No VGrid data has been changed. "
+        )
+
+    def __export_workflow(self, **kwargs):
+        self.__clear_feedback()
+        calls = kwargs.get('calls', None)
+        for call in calls:
+            try:
+                operation = call[0]
+                object_type = call[1]
+                vgrid, _, response, _ = vgrid_json_call(
+                    operation, object_type, attributes=call[2],
+                    print_feedback=call[3]
+                )
+                if 'text' in response and len(call) == 5:
+                    if operation == VGRID_CREATE:
+                        persistence_id = response['text']
+                        if object_type == VGRID_PATTERN_OBJECT_TYPE:
+                            pattern = call[4]
+                            pattern.persistence_id = persistence_id
+                            self.__add_to_feedback("Created pattern %s" %
+                                                   pattern.name)
+                        elif object_type == VGRID_RECIPE_OBJECT_TYPE:
+                            recipe = call[4]
+                            recipe[PERSISTENCE_ID] = persistence_id
+                            self.__add_to_feedback("Created recipe %s" %
+                                                   recipe[NAME])
+
+                    else:
+                        feedback = response['text'].replace('\n', '<br/>')
+                        self.__add_to_feedback(feedback)
+                if 'error_text' in response:
+                    feedback = response['error_text'].replace('\n', '<br/>')
+                    self.__add_to_feedback(feedback)
+
+            except Exception as err:
+                self.__set_feedback(err)
+        self.__close_form()
+
+    def __create_confirmation_buttons(
+            self, confirmation_function, confirmation_args, confirm_text,
+            cancel_text, cancel_feedback):
+        confirm_button = widgets.Button(
+            value=False,
+            description=confirm_text,
+            disabled=False,
+            button_style='',
+            tooltip='Here is a tooltip for this button'
+        )
+
+        def confirm_button_click(button):
+            confirmation_function(**confirmation_args)
+
+        confirm_button.on_click(confirm_button_click)
+
+        cancel_button = widgets.Button(
+            value=False,
+            description=cancel_text,
+            disabled=False,
+            button_style='',
+            tooltip='Here is a tooltip for this button'
+        )
+
+        def cancel_button_click(button):
+            self.__set_feedback(cancel_feedback)
+            self.__close_form()
+
+        cancel_button.on_click(cancel_button_click)
+
+        buttons_list = [
+            confirm_button,
+            cancel_button
+        ]
+
+        confirmation_buttons = widgets.HBox(buttons_list)
+
+        with self.display_area:
+            display(confirmation_buttons, display_id=True)
+
+    def __add_to_feedback(self, to_add):
         # TODO update this description
 
         if self.feedback.value:
             self.feedback.value += "<br/>"
         self.feedback.value += to_add
 
-    def set_feedback(self, to_set):
+    def __set_feedback(self, to_set):
         # TODO update this description
 
         self.feedback.value = to_set
 
-    def clear_feedback(self):
+    def __clear_feedback(self):
         # TODO update this description
 
         self.feedback.value = ""
 
-    def close_form(self):
+    def __close_form(self):
         # TODO update this description
 
-        # self.displayed_form.close()
         self.displayed_form = None
         self.display_area.clear_output()
-        self.enable_top_buttons()
-        self.clear_current_form()
+        self.__enable_top_buttons()
+        self.__clear_current_form()
 
-    def clear_current_form(self):
+    def __clear_current_form(self):
         # TODO update this description
 
         self.current_form = {}
@@ -1326,7 +1568,7 @@ class WorkflowWidget:
         self.current_form_rows = {}
         self.current_form_line_counts = {}
 
-    def update_workflow_visualisation(self):
+    def __update_workflow_visualisation(self):
         # TODO update this description
 
         try:
@@ -1336,7 +1578,7 @@ class WorkflowWidget:
             )
         except:
             self.workflow = {}
-        visualisation = self.get_workflow_visualisation(
+        visualisation = self.__get_workflow_visualisation(
             self.patterns,
             self.recipes,
             self.workflow
@@ -1346,7 +1588,7 @@ class WorkflowWidget:
         with self.visualisation_area:
             display(visualisation)
 
-    def _set_node_date(self, pattern):
+    def __set_node_dict(self, pattern):
         # TODO update this description
 
         node_dict = {
@@ -1362,7 +1604,7 @@ class WorkflowWidget:
         }
         return node_dict
 
-    def _get_index(self, pattern, nodes):
+    def __get_index(self, pattern, nodes):
         # TODO update this description
 
         for index in range(0, len(nodes)):
@@ -1370,22 +1612,29 @@ class WorkflowWidget:
                 return index
         return -1
 
-    def visualisation_element_click(self, graph, element):
+    def __visualisation_element_click(self, graph, element):
         # TODO update this description
 
         # pattern = self.patterns[element['data']['label']]
         # self.construct_new_edit_form(default=pattern)
         pass
 
-    def construct_new_edit_form(self, default=None):
+    def __construct_new_edit_form(self, default=None):
         # TODO update this description
 
-        self.disable_top_buttons()
-        self.clear_current_form()
-        self._refresh_edit_form(PATTERN_NAME, self.patterns, self.populate_editing_pattern_form, self.on_apply_pattern_changes_clicked, self.on_delete_pattern_clicked, default=default)
-        self.clear_feedback()
+        self.__disable_top_buttons()
+        self.__clear_current_form()
+        self.__refresh_edit_form(
+            PATTERN_NAME,
+            self.patterns,
+            self.__populate_editing_pattern_form,
+            self.__on_apply_pattern_changes_clicked,
+            self.__on_delete_pattern_clicked,
+            default=default
+        )
+        self.__clear_feedback()
 
-    def get_workflow_visualisation(self, patterns, recipes, workflow):
+    def __get_workflow_visualisation(self, patterns, recipes, workflow):
         # TODO update this description
 
         fig_layout = widgets.Layout(width='900px', height='500px')
@@ -1393,19 +1642,20 @@ class WorkflowWidget:
         pattern_display = []
 
         for pattern in workflow.keys():
-            pattern_display.append(self._set_node_date(patterns[pattern]))
+            pattern_display.append(self.__set_node_dict(patterns[pattern]))
 
         link_display = []
         colour_display = [RED] * len(pattern_display)
 
         for pattern, descendants in workflow.items():
-            pattern_index = self._get_index(pattern, pattern_display)
+            pattern_index = self.__get_index(pattern, pattern_display)
             if pattern_has_recipes(patterns[pattern], recipes):
                 colour_display[pattern_index] = GREEN
             else:
                 colour_display[pattern_index] = RED
             for descendant in descendants:
-                descendant_index = self._get_index(descendant, pattern_display)
+                descendant_index = \
+                    self.__get_index(descendant, pattern_display)
 
                 link_display.append({
                     'source': pattern_index,
@@ -1430,7 +1680,7 @@ class WorkflowWidget:
             # formats=['', '', '']
         )
         graph.tooltip = tooltip
-        graph.on_element_click(self.visualisation_element_click)
+        graph.on_element_click(self.__visualisation_element_click)
 
         return Figure(marks=[graph], layout=fig_layout)
 
@@ -1468,5 +1718,5 @@ class WorkflowWidget:
                 feedback_row
             ]
         )
-        self.enable_top_buttons()
+        self.__enable_top_buttons()
         return widget
