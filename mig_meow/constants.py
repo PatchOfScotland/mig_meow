@@ -45,6 +45,9 @@ VGRID = 'vgrid'
 SOURCE = 'source'
 PATTERNS = 'patterns'
 
+ACTION_TYPE = 'action_type'
+TRIGGER_ACTION = 'manual_trigger'
+
 INPUT_NAME = "input_name"
 INPUT_TRIGGER_FILE = "input_trigger_file"
 INPUT_TRIGGER_PATH = "input_trigger_path"

@@ -1,10 +1,13 @@
 from setuptools import setup
 
+from .mig_meow.info import name as module_name
+from .mig_meow.info import version as module_version
+
 with open('README.md', 'r') as readme:
     long_description = readme.read()
 
-setup(name='mig_meow',
-      version='0.1.7',
+setup(name=module_name,
+      version=module_version,
       author='David Marchant',
       author_email='d.marchant@ed-alumni.net',
       description='MiG based manager for event oriented workflows',

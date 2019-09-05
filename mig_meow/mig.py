@@ -1,10 +1,58 @@
 import requests
 import json
 from .constants import VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
-    NAME, INPUT_FILE, TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES
+    NAME, INPUT_FILE, TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, ACTION_TYPE, \
+    TRIGGER_ACTION, VGRID_CREATE, OBJECT_TYPE, PERSISTENCE_ID
 from .notebook import get_containing_vgrid
 from .pattern import Pattern
 from .recipe import is_valid_recipe_dict
+
+
+def trigger_pattern(pattern, print=True):
+    if not isinstance(pattern, Pattern):
+        raise TypeError("The provided object '%s' is a %s, not a Pattern "
+                        "as expected" % (pattern, type(pattern)))
+    # TODO include some check on if this has been modified at all since last
+    #  import
+
+    try:
+        persistence_id = pattern.persistence_id
+    except AttributeError:
+        raise Exception("The provided pattern has not been registered with "
+                        "the VGrid already, so cannot be manually triggered. ")
+
+    attributes = {
+        OBJECT_TYPE: VGRID_PATTERN_OBJECT_TYPE,
+        PERSISTENCE_ID: persistence_id
+    }
+    return vgrid_json_call(VGRID_CREATE,
+                           TRIGGER_ACTION,
+                           attributes=attributes,
+                           print_feedback=print)
+
+
+def trigger_recipe(recipe, print=True):
+    if not isinstance(recipe, dict):
+        raise TypeError("The provided object '%s' is a %s, not a dict "
+                        "as expected" % (recipe, type(recipe)))
+
+    # TODO include some check on if this has been modified at all since last
+    #  import
+
+    try:
+        persistence_id = recipe[PERSISTENCE_ID]
+    except KeyError:
+        raise Exception("The provided recipe has not been registered with "
+                        "the VGrid already, so cannot be manually triggered. ")
+
+    attributes = {
+        OBJECT_TYPE: VGRID_RECIPE_OBJECT_TYPE,
+        PERSISTENCE_ID: persistence_id
+    }
+    return vgrid_json_call(VGRID_CREATE,
+                           TRIGGER_ACTION,
+                           attributes=attributes,
+                           print_feedback=print)
 
 
 def export_pattern_to_vgrid(pattern, print=True):
@@ -33,7 +81,7 @@ def export_pattern_to_vgrid(pattern, print=True):
         RECIPES: pattern.recipes,
         VARIABLES: pattern.variables
     }
-    return vgrid_json_call('create',
+    return vgrid_json_call(VGRID_CREATE,
                            VGRID_PATTERN_OBJECT_TYPE,
                            attributes=attributes,
                            print_feedback=print)
@@ -57,7 +105,7 @@ def export_recipe_to_vgrid(recipe, print=True):
         raise Exception('The provided recipe is not valid. '
                         '%s' % msg)
 
-    return vgrid_json_call('create',
+    return vgrid_json_call(VGRID_CREATE,
                            VGRID_RECIPE_OBJECT_TYPE,
                            attributes=recipe,
                            print_feedback=print)

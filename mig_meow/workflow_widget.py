@@ -1275,10 +1275,11 @@ class __WorkflowWidget:
                                        % (len(response_recipes), vgrid,
                                           list(response_recipes.keys())))
 
-                self.__add_to_feedback("Import these patterns and recipes into "
-                                       "local memory? This will overwrite any "
-                                       "patterns or recipes currently in memory "
-                                       "that share the same name. ")
+                self.__add_to_feedback("Import these patterns and recipes "
+                                       "into local memory? This will "
+                                       "overwrite any patterns or recipes "
+                                       "currently in memory that share the "
+                                       "same name. ")
 
                 self.__create_confirmation_buttons(
                     self.__import_workflow,
@@ -1324,8 +1325,8 @@ class __WorkflowWidget:
             self.recipes[key] = recipe
             try:
                 self.mig_imports[RECIPES].append(
-                    (self.recipes[key].persistence_id,
-                     self.recipes[key].name)
+                    (self.recipes[key][PERSISTENCE_ID],
+                     self.recipes[key][NAME])
                 )
             except AttributeError:
                 pass
