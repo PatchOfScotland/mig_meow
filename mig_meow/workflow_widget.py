@@ -14,27 +14,31 @@ from .constants import INPUT_NAME, INPUT_OUTPUT, INPUT_RECIPES, \
     VGRID_WORKFLOWS_OBJECT, INPUT_FILE, TRIGGER_PATHS, OUTPUT, RECIPES, \
     VARIABLES, CHAR_UPPERCASE, CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, \
     VGRID_ERROR_TYPE, VGRID_TEXT_TYPE, PERSISTENCE_ID, VGRID_CREATE, \
-    VGRID_UPDATE, PATTERNS, RECIPE, VGRID_DELETE
+    VGRID_UPDATE, PATTERNS, RECIPE, VGRID_DELETE, WIDGET_MODES, VGRID_MODE
 from .mig import vgrid_json_call
 from .pattern import Pattern, is_valid_pattern_object
 from .recipe import is_valid_recipe_dict, create_recipe_dict
 from .workflows import build_workflow_object, pattern_has_recipes
 
 
-def create_widget(patterns=None, recipes=None):
+def create_widget(patterns=None, recipes=None, mode=VGRID_MODE):
     # TODO update this
     """Displays a widget for workflow defitions. Can optionally take a
     predefined workflow as input"""
 
     widget = __WorkflowWidget(patterns=patterns,
-                              recipes=recipes)
+                              recipes=recipes,
+                              mode=mode)
     return widget.display_widget()
 
 
 class __WorkflowWidget:
-    def __init__(self, patterns={}, recipes={}):
+    def __init__(self, patterns={}, recipes={}, mode=VGRID_MODE):
         # TODO update this description
 
+        if mode not in WIDGET_MODES:
+            raise Exception('Invalide mode requested. Valid modes are: %s'
+                            % WIDGET_MODES)
         if not isinstance(patterns, dict):
             raise Exception('The provided patterns were not in a dict')
         for pattern in patterns.values():
@@ -65,7 +69,7 @@ class __WorkflowWidget:
         self.new_pattern_button = widgets.Button(
             value=False,
             description="New Pattern",
-            disabled=False,
+            disabled=True,
             button_style='',
             tooltip='Define a new pattern'
         )
@@ -74,7 +78,7 @@ class __WorkflowWidget:
         self.edit_pattern_button = widgets.Button(
             value=False,
             description="Edit Pattern",
-            disabled=False,
+            disabled=True,
             button_style='',
             tooltip='Edit an existing pattern'
         )
@@ -83,7 +87,7 @@ class __WorkflowWidget:
         self.new_recipe_button = widgets.Button(
             value=False,
             description="Add Recipe",
-            disabled=False,
+            disabled=True,
             button_style='',
             tooltip='Import a new recipe'
         )
@@ -92,7 +96,7 @@ class __WorkflowWidget:
         self.edit_recipe_button = widgets.Button(
             value=False,
             description="Edit Recipe",
-            disabled=False,
+            disabled=True,
             button_style='',
             tooltip='Edit an existing recipe'
         )
@@ -133,6 +137,10 @@ class __WorkflowWidget:
         self.displayed_form = None
         self.editing_area = None
         self.editing = None
+
+        if mode == VGRID_MODE:
+            self.__import_from_vgrid(confirm=False)
+        self.__enable_top_buttons()
 
     def __disable_top_buttons(self):
         # TODO update this description
@@ -1226,6 +1234,10 @@ class __WorkflowWidget:
 
     def __on_import_from_vgrid_clicked(self, button):
         # TODO update this description
+
+        self.__import_from_vgrid()
+
+    def __import_from_vgrid(self, confirm=True):
         self.__set_feedback("Importing workflow from Vgrid. This may take a "
                             "few seconds.")
 
@@ -1251,28 +1263,32 @@ class __WorkflowWidget:
                 elif response_object[OBJECT_TYPE] == VGRID_RECIPE_OBJECT_TYPE:
                     response_recipes[response_object[NAME]] = response_object
 
-            self.__add_to_feedback("Found %s pattern(s) from Vgrid %s: %s "
-                                   % (len(response_patterns), vgrid,
-                                      list(response_patterns.keys())))
-            self.__add_to_feedback("Found %s recipe(s) from Vgrid %s: %s "
-                                   % (len(response_recipes), vgrid,
-                                      list(response_recipes.keys())))
+            args = {
+                PATTERNS: response_patterns,
+                RECIPES: response_recipes
+            }
+            if confirm:
+                self.__add_to_feedback("Found %s pattern(s) from Vgrid %s: %s "
+                                       % (len(response_patterns), vgrid,
+                                          list(response_patterns.keys())))
+                self.__add_to_feedback("Found %s recipe(s) from Vgrid %s: %s "
+                                       % (len(response_recipes), vgrid,
+                                          list(response_recipes.keys())))
 
-            self.__add_to_feedback("Import these patterns and recipes into "
-                                   "local memory? This will overwrite any "
-                                   "patterns or recipes currently in memory "
-                                   "that share the same name. ")
+                self.__add_to_feedback("Import these patterns and recipes into "
+                                       "local memory? This will overwrite any "
+                                       "patterns or recipes currently in memory "
+                                       "that share the same name. ")
 
-            self.__create_confirmation_buttons(
-                self.__import_workflow,
-                {
-                    PATTERNS: response_patterns,
-                    RECIPES: response_recipes
-                },
-                "Confirm Import",
-                "Cancel Import",
-                "Import canceled. No local data has been changed. "
-            )
+                self.__create_confirmation_buttons(
+                    self.__import_workflow,
+                    args,
+                    "Confirm Import",
+                    "Cancel Import",
+                    "Import canceled. No local data has been changed. "
+                )
+            else:
+                self.__import_workflow(**args)
 
         elif response[OBJECT_TYPE] == VGRID_ERROR_TYPE:
             self.__set_feedback(response[VGRID_TEXT_TYPE])
@@ -1297,7 +1313,9 @@ class __WorkflowWidget:
             self.patterns[key] = Pattern(pattern)
             try:
                 self.mig_imports[PATTERNS].append(
-                    self.patterns[key].persistence_id)
+                    (self.patterns[key].persistence_id,
+                     self.patterns[key].name)
+                )
             except AttributeError:
                 pass
         for key, recipe in response_recipes.items():
@@ -1306,7 +1324,9 @@ class __WorkflowWidget:
             self.recipes[key] = recipe
             try:
                 self.mig_imports[RECIPES].append(
-                    self.recipes[key].persistence_id)
+                    (self.recipes[key].persistence_id,
+                     self.recipes[key].name)
+                )
             except AttributeError:
                 pass
 
@@ -1321,8 +1341,8 @@ class __WorkflowWidget:
         self.__close_form()
 
     def __count_calls(self, calls, operation, type):
-        count = \
-            [i[2][NAME] for i in calls if i[0] == operation and i[1] == type]
+        count = [i[2][NAME] for i in calls
+                 if i[0] == operation and i[1] == type]
         return count
 
     def __on_export_to_vgrid_clicked(self, button):
@@ -1387,7 +1407,7 @@ class __WorkflowWidget:
                 calls.append(
                     (
                         operation,
-                        VGRID_PATTERN_OBJECT_TYPE,
+                        VGRID_RECIPE_OBJECT_TYPE,
                         attributes,
                         False,
                         recipe
@@ -1398,10 +1418,11 @@ class __WorkflowWidget:
                 return
 
         operation = VGRID_DELETE
-        for id in self.mig_imports[PATTERNS]:
+        for id, name in self.mig_imports[PATTERNS]:
             if id not in pattern_ids:
                 attributes = {
-                    PERSISTENCE_ID: id
+                    PERSISTENCE_ID: id,
+                    NAME: name
                 }
                 calls.append(
                     (
@@ -1411,15 +1432,16 @@ class __WorkflowWidget:
                         False
                     )
                 )
-        for id in self.mig_imports[RECIPES]:
+        for id, name in self.mig_imports[RECIPES]:
             if id not in recipe_ids:
                 attributes = {
-                    PERSISTENCE_ID: id
+                    PERSISTENCE_ID: id,
+                    NAME: name
                 }
                 calls.append(
                     (
                         operation,
-                        VGRID_PATTERN_OBJECT_TYPE,
+                        VGRID_RECIPE_OBJECT_TYPE,
                         attributes,
                         False
                     )
@@ -1433,10 +1455,10 @@ class __WorkflowWidget:
 
         operation_combinations = [
             (VGRID_CREATE, VGRID_PATTERN_OBJECT_TYPE),
-            (VGRID_UPDATE, VGRID_PATTERN_OBJECT_TYPE),
-            (VGRID_DELETE, VGRID_PATTERN_OBJECT_TYPE),
             (VGRID_CREATE, VGRID_RECIPE_OBJECT_TYPE),
+            (VGRID_UPDATE, VGRID_PATTERN_OBJECT_TYPE),
             (VGRID_UPDATE, VGRID_RECIPE_OBJECT_TYPE),
+            (VGRID_DELETE, VGRID_PATTERN_OBJECT_TYPE),
             (VGRID_DELETE, VGRID_RECIPE_OBJECT_TYPE),
         ]
 
@@ -1448,6 +1470,9 @@ class __WorkflowWidget:
                 self.__add_to_feedback("Will %s %s %s: %s. "
                                        % (operation[0], len(relevant_calls),
                                           operation[1], relevant_calls))
+
+        # Strip names from delete calls. They were only included for feedback
+        # purposes and may complicate mig operations
 
         self.__create_confirmation_buttons(
             self.__export_workflow,
