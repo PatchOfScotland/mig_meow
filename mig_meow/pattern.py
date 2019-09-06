@@ -62,6 +62,37 @@ class Pattern:
                     self.variables)
         return string
 
+    def __eq__(self, other):
+        if not isinstance(other, Pattern):
+            return False
+        if self.name != other.name:
+            return False
+        if self.input_file != other.input_file:
+            return False
+        if self.trigger_paths != other.trigger_paths:
+            return False
+        if self.outputs != other.outputs:
+            return False
+        if self.recipes != other.recipes:
+            return False
+        if self.variables != other.variables:
+            return False
+        count = 0
+        try:
+            count += 1
+        except AttributeError:
+            pass
+        try:
+            count += 1
+        except AttributeError:
+            pass
+        if count == 1:
+            return False
+        if count == 2:
+            if self.persistence_id != other.persistence_id:
+                return False
+        return True
+
     def _image_str(self):
         string = 'Name: %s\n' \
                  'Input(s): %s\n' \

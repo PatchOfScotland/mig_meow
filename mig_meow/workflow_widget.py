@@ -1,6 +1,7 @@
 
 from bqplot import *
 from bqplot.marks import Graph
+from copy import deepcopy
 
 from IPython.display import display
 
@@ -130,8 +131,8 @@ class __WorkflowWidget:
         self.current_form_line_counts = {}
 
         self.mig_imports = {
-            PATTERNS: [],
-            RECIPES: []
+            PATTERNS: {},
+            RECIPES: {}
         }
 
         self.displayed_form = None
@@ -566,6 +567,12 @@ class __WorkflowWidget:
             if valid:
                 if pattern.name in self.patterns:
                     word = 'updated'
+                    try:
+                        pattern.persistence_id = \
+                            self.patterns[pattern.name].persistence_id
+                    except AttributeError:
+                        pass
+
                 else:
                     word = 'created'
                 self.patterns[pattern.name] = pattern
@@ -610,11 +617,11 @@ class __WorkflowWidget:
                 return
             if name:
                 valid_string(name,
-                              'Name',
-                               CHAR_UPPERCASE
-                               + CHAR_LOWERCASE
-                               + CHAR_NUMERIC
-                               + CHAR_LINES)
+                             'Name',
+                             CHAR_UPPERCASE
+                             + CHAR_LOWERCASE
+                             + CHAR_NUMERIC
+                             + CHAR_LINES)
                 if not ignore_conflicts:
                     if name in self.recipes:
                         msg = "recipe name is not valid as another recipe " \
@@ -629,6 +636,11 @@ class __WorkflowWidget:
                 recipe = create_recipe_dict(notebook, name, source)
                 if name in self.recipes:
                     word = 'updated'
+                    try:
+                        recipe[PERSISTENCE_ID] = \
+                            self.recipes[name][PERSISTENCE_ID]
+                    except KeyError:
+                        pass
                 else:
                     word = 'created'
                 self.recipes[name] = recipe
@@ -644,7 +656,6 @@ class __WorkflowWidget:
     def __on_new_pattern_clicked(self, button):
         # TODO update this description
 
-        self.__disable_top_buttons()
         self.__clear_current_form()
         self.__refresh_new_form(
             self.__populate_new_pattern_form, self.__process_pattern_values
@@ -659,7 +670,6 @@ class __WorkflowWidget:
     def __on_new_recipe_clicked(self, button):
         # TODO update this description
 
-        self.__disable_top_buttons()
         self.__clear_current_form()
         self.__refresh_new_form(
             self.__populate_new_recipe_form, self.__process_recipe_values
@@ -669,7 +679,6 @@ class __WorkflowWidget:
     def __on_edit_recipe_clicked(self, button):
         # TODO update this description
 
-        self.__disable_top_buttons()
         self.__clear_current_form()
         self.__refresh_edit_form(
             RECIPE_NAME,
@@ -1235,6 +1244,8 @@ class __WorkflowWidget:
     def __on_import_from_vgrid_clicked(self, button):
         # TODO update this description
 
+        self.__close_form()
+        self.__clear_feedback()
         self.__import_from_vgrid()
 
     def __import_from_vgrid(self, confirm=True):
@@ -1303,20 +1314,19 @@ class __WorkflowWidget:
         response_recipes = kwargs.get(RECIPES, None)
 
         self.mig_imports = {
-            PATTERNS: [],
-            RECIPES: []
+            PATTERNS: {},
+            RECIPES: {}
         }
         overwritten_patterns = []
         overwritten_recipes = []
         for key, pattern in response_patterns.items():
             if key in self.patterns:
                 overwritten_patterns.append(key)
-            self.patterns[key] = Pattern(pattern)
+            new_pattern = Pattern(pattern)
+            self.patterns[key] = new_pattern
             try:
-                self.mig_imports[PATTERNS].append(
-                    (self.patterns[key].persistence_id,
-                     self.patterns[key].name)
-                )
+                self.mig_imports[PATTERNS][new_pattern.persistence_id] = \
+                    deepcopy(new_pattern)
             except AttributeError:
                 pass
         for key, recipe in response_recipes.items():
@@ -1324,10 +1334,8 @@ class __WorkflowWidget:
                 overwritten_recipes.append(key)
             self.recipes[key] = recipe
             try:
-                self.mig_imports[RECIPES].append(
-                    (self.recipes[key][PERSISTENCE_ID],
-                     self.recipes[key][NAME])
-                )
+                self.mig_imports[RECIPES][recipe[PERSISTENCE_ID]] = \
+                    deepcopy(recipe)
             except AttributeError:
                 pass
 
@@ -1349,7 +1357,7 @@ class __WorkflowWidget:
     def __on_export_to_vgrid_clicked(self, button):
         # TODO update this description
 
-        self.__disable_top_buttons()
+        self.__close_form()
         self.__clear_feedback()
 
         calls = []
@@ -1370,19 +1378,24 @@ class __WorkflowWidget:
             except AttributeError:
                 pass
             try:
+                operation = None
                 if PERSISTENCE_ID in attributes:
-                    operation = VGRID_UPDATE
+                    if self.patterns[pattern.name] != \
+                            self.mig_imports[PATTERNS][pattern.persistence_id]:
+                        operation = VGRID_UPDATE
+
                 else:
                     operation = VGRID_CREATE
-                calls.append(
-                    (
-                        operation,
-                        VGRID_PATTERN_OBJECT_TYPE,
-                        attributes,
-                        False,
-                        pattern
+                if operation:
+                    calls.append(
+                        (
+                            operation,
+                            VGRID_PATTERN_OBJECT_TYPE,
+                            attributes,
+                            False,
+                            pattern
+                        )
                     )
-                )
             except LookupError as error:
                 self.__set_feedback(error)
                 return
@@ -1398,28 +1411,32 @@ class __WorkflowWidget:
                 try:
                     if recipe[PERSISTENCE_ID]:
                         attributes[PERSISTENCE_ID] = recipe[PERSISTENCE_ID]
+                        recipe_ids.append(recipe[PERSISTENCE_ID])
                 except KeyError:
                     pass
+                operation = None
                 if PERSISTENCE_ID in attributes:
-                    operation = VGRID_UPDATE
-                    recipe_ids.append(recipe[PERSISTENCE_ID])
+                    if self.recipes[recipe[NAME]] != \
+                            self.mig_imports[RECIPES][recipe[PERSISTENCE_ID]]:
+                        operation = VGRID_UPDATE
                 else:
                     operation = VGRID_CREATE
-                calls.append(
-                    (
-                        operation,
-                        VGRID_RECIPE_OBJECT_TYPE,
-                        attributes,
-                        False,
-                        recipe
+                if operation:
+                    calls.append(
+                        (
+                            operation,
+                            VGRID_RECIPE_OBJECT_TYPE,
+                            attributes,
+                            False,
+                            recipe
+                        )
                     )
-                )
             except LookupError as error:
                 self.__set_feedback(error)
                 return
 
         operation = VGRID_DELETE
-        for id, name in self.mig_imports[PATTERNS]:
+        for id, name in self.mig_imports[PATTERNS].items():
             if id not in pattern_ids:
                 attributes = {
                     PERSISTENCE_ID: id,
@@ -1433,7 +1450,7 @@ class __WorkflowWidget:
                         False
                     )
                 )
-        for id, name in self.mig_imports[RECIPES]:
+        for id, name in self.mig_imports[RECIPES].items():
             if id not in recipe_ids:
                 attributes = {
                     PERSISTENCE_ID: id,
@@ -1450,7 +1467,9 @@ class __WorkflowWidget:
         self.__enable_top_buttons()
 
         if not calls:
-            self.__set_feedback("Nothing to export to Vgrid")
+            self.__set_feedback("No patterns or recipes have been created, "
+                                "updated or deleted so there is nothing to "
+                                "export to the Vgrid")
             self.__enable_top_buttons()
             return
 
@@ -1648,7 +1667,6 @@ class __WorkflowWidget:
     def __construct_new_edit_form(self, default=None):
         # TODO update this description
 
-        self.__disable_top_buttons()
         self.__clear_current_form()
         self.__refresh_edit_form(
             PATTERN_NAME,
