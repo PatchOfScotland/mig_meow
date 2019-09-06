@@ -23,7 +23,7 @@ from .workflows import build_workflow_object, pattern_has_recipes
 
 def create_widget(patterns=None, recipes=None, mode=VGRID_MODE):
     # TODO update this
-    """Displays a widget for workflow defitions. Can optionally take a
+    """Displays a widget for workflow definitions. Can optionally take a
     predefined workflow as input"""
 
     widget = __WorkflowWidget(patterns=patterns,

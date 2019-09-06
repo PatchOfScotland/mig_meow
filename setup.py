@@ -18,7 +18,8 @@ setup(name=module_name,
       install_requires=[
             'pillow',
             'graphviz',
-            'bqplot'
+            'bqplot',
+            'IPython'
       ],
       classifiers=[
             'Programming Language :: Python :: 3',
