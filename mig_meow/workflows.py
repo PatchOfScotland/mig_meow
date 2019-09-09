@@ -49,13 +49,13 @@ def build_workflow_object(patterns, recipes):
         input_regex_list = pattern.trigger_paths
         for other_pattern in patterns.values():
             other_output_dict = other_pattern.outputs
-            for input in input_regex_list:
+            for input_regex in input_regex_list:
                 for key, value in other_output_dict.items():
-                    if re.match(input, value):
+                    if re.match(input_regex, value):
                         workflow[other_pattern.name].add(pattern.name)
                     if OUTPUT_MAGIC_CHAR in value:
                         value = value.replace(OUTPUT_MAGIC_CHAR, '.*')
-                        if re.match(value, input):
+                        if re.match(value, input_regex):
                             workflow[other_pattern.name].add(pattern.name)
 
     return workflow
@@ -78,13 +78,17 @@ def create_workflow_dag(workflow, patterns, recipes, filename=None):
     dot = Digraph(comment='Workflow', format='png')
     colours = ['green', 'red']
 
-    for pattern, descendents in workflow.items():
+    for pattern, descendants in workflow.items():
         if pattern_has_recipes(patterns[pattern], recipes):
-            dot.node(pattern, patterns[pattern]._image_str(), color=colours[0])
+            dot.node(
+                pattern, patterns[pattern].display_str(), color=colours[0]
+            )
         else:
-            dot.node(pattern, patterns[pattern]._image_str(), color=colours[1])
-        for descendent in descendents:
-            dot.edge(pattern, descendent)
+            dot.node(
+                pattern, patterns[pattern].display_str(), color=colours[1]
+            )
+        for descendant in descendants:
+            dot.edge(pattern, descendant)
 
     dot.render(filename)
 

@@ -74,11 +74,8 @@ def valid_path(path, name, extensions=None):
     check_input(path, str, name)
     check_input(extensions, list, 'extensions', or_none=True)
 
-    valid_chars = CHAR_NUMERIC \
-                  + CHAR_UPPERCASE \
-                  + CHAR_LOWERCASE \
-                  + '-_.' \
-                  + os.path.sep
+    valid_chars = \
+        CHAR_NUMERIC + CHAR_UPPERCASE + CHAR_LOWERCASE + '-_.' + os.path.sep
 
     if path.count('.') > 1:
         raise Exception("Too many '.' characters in %s path. "

@@ -1,12 +1,13 @@
 
 from .constants import DEFAULT_JOB_NAME, VALID_PATTERN, NAME, INPUT_FILE, \
     TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, CHAR_UPPERCASE, \
-    CHAR_LOWERCASE, CHAR_NUMERIC,CHAR_LINES, PERSISTENCE_ID
+    CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, PERSISTENCE_ID
 from .input import valid_string, check_input
 
 
+
 class Pattern:
-    def __init__(self, input):
+    def __init__(self, parameters):
         """Constructor for new pattern object. Used within MEOW as a more
         user friendly and controllable way of creating and manipulating
         patterns, as opposed to a raw dict
@@ -18,14 +19,14 @@ class Pattern:
         users."""
         # if given only a string use this as a name, it is the basis of a
         # completely new pattern
-        if isinstance(input, str):
-            valid_string(input,
+        if isinstance(parameters, str):
+            valid_string(parameters,
                          'pattern_name',
                          CHAR_UPPERCASE
                          + CHAR_LOWERCASE
                          + CHAR_NUMERIC
                          + CHAR_LINES)
-            self.name = input
+            self.name = parameters
             self.input_file = None
             self.trigger_paths = []
             self.outputs = {}
@@ -33,16 +34,16 @@ class Pattern:
             self.variables = {}
             return
         # if given dict we are importing from a stored pattern object
-        if isinstance(input, dict):
-            valid, _ = is_valid_pattern_dict(input)
-            if PERSISTENCE_ID in input:
-                self.persistence_id = input[PERSISTENCE_ID]
-            self.name = input[NAME]
-            self.input_file = input[INPUT_FILE]
-            self.trigger_paths = input[TRIGGER_PATHS]
-            self.outputs = input[OUTPUT]
-            self.recipes = input[RECIPES]
-            self.variables = input[VARIABLES]
+        if isinstance(parameters, dict):
+            valid, _ = is_valid_pattern_dict(parameters)
+            if PERSISTENCE_ID in parameters:
+                self.persistence_id = parameters[PERSISTENCE_ID]
+            self.name = parameters[NAME]
+            self.input_file = parameters[INPUT_FILE]
+            self.trigger_paths = parameters[TRIGGER_PATHS]
+            self.outputs = parameters[OUTPUT]
+            self.recipes = parameters[RECIPES]
+            self.variables = parameters[VARIABLES]
             return
         raise Exception('Pattern requires either a str input as a name for a '
                         'new pattern, or a dict defining a complete pattern')
@@ -93,7 +94,7 @@ class Pattern:
                 return False
         return True
 
-    def _image_str(self):
+    def display_str(self):
         string = 'Name: %s\n' \
                  'Input(s): %s\n' \
                  'Trigger(s): %s\n' \
@@ -115,7 +116,7 @@ class Pattern:
         so that multiple problems may easily be identified at once"""
         warning = ''
         if self.name is None:
-            return (False, "A pattern name must be defined. ")
+            return False, "A pattern name must be defined. "
         if self.input_file is None:
             return (False, "An input file must be defined. This is the file "
                            "that is used to trigger any processing and can be "
@@ -131,8 +132,8 @@ class Pattern:
                        'data will be copied back into the vgrid. ANY OUTPUT ' \
                        'WILL BE LOST. '
         if len(self.recipes) == 0:
-            return (False, "No recipes have been defined. ")
-        return (True, warning)
+            return False, "No recipes have been defined. "
+        return True, warning
 
     def add_single_input(self, input_file, regex_path, output_path=None):
         """
@@ -189,8 +190,8 @@ class Pattern:
     def add_gathering_input(self, input_file, path_list, output_path=None):
         """
         Defines a gathering input for a pattern. That is, a collection of
-        paths that when each individiual path is either created or modified,
-        a buffer file containing all the specificed paths is updated. Once all
+        paths that when each individual path is either created or modified,
+        a buffer file containing all the specified paths is updated. Once all
         files are present in the buffer then the recipe is triggered by it
         according to the single input trigger, with the buffer as the trigger.
 
@@ -295,11 +296,11 @@ class Pattern:
         must be a string, 'variable_value' can be any valid python variable
         """
         valid_string(variable_name,
-                      'variable name',
-                       CHAR_UPPERCASE
-                       + CHAR_LOWERCASE
-                       + CHAR_NUMERIC
-                       + CHAR_LINES)
+                     'variable name',
+                     CHAR_UPPERCASE
+                     + CHAR_LOWERCASE
+                     + CHAR_NUMERIC
+                     + CHAR_LINES)
         if variable_name not in self.variables.keys():
             self.variables[variable_name] = variable_value
         else:
@@ -316,12 +317,12 @@ def is_valid_pattern_object(to_test):
     """
 
     if not to_test:
-        return (False, 'A workflow pattern was not provided')
+        return False, 'A workflow pattern was not provided'
 
     if not isinstance(to_test, Pattern):
-        return (False, 'The workflow pattern was incorrectly formatted')
+        return False, 'The workflow pattern was incorrectly formatted'
 
-    return (True, '')
+    return True, ''
 
 
 def is_valid_pattern_dict(to_test):
@@ -334,18 +335,18 @@ def is_valid_pattern_dict(to_test):
     """
 
     if not to_test:
-        return (False, 'A workflow pattern was not provided')
+        return False, 'A workflow pattern was not provided'
 
     if not isinstance(to_test, dict):
-        return (False, 'The workflow pattern was incorrectly formatted')
+        return False, 'The workflow pattern was incorrectly formatted'
 
     message = 'The workflow pattern had an incorrect structure'
     for key, value in to_test.items():
         if key not in VALID_PATTERN:
             message += ' Is missing key %s' % key
-            return (False, message)
+            return False, message
         if not isinstance(value, VALID_PATTERN[key]):
             message += ' %s is expected to have type %s but actually has %s' \
                        % (value, VALID_PATTERN[key], type(value))
-            return (False, message)
-    return (True, '')
+            return False, message
+    return True, ''

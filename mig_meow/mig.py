@@ -1,14 +1,22 @@
 import requests
 import json
+import os
+
 from .constants import VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
-    NAME, INPUT_FILE, TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, ACTION_TYPE, \
+    NAME, INPUT_FILE, TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, \
     TRIGGER_ACTION, VGRID_CREATE, OBJECT_TYPE, PERSISTENCE_ID
 from .notebook import get_containing_vgrid
 from .pattern import Pattern
 from .recipe import is_valid_recipe_dict
 
 
-def trigger_pattern(pattern, print=True):
+def trigger(triggerable, print_feedback=True):
+    if isinstance(triggerable, Pattern):
+        return trigger_pattern(triggerable, print_feedback=print_feedback)
+    return trigger_recipe(triggerable, print_feedback=print_feedback)
+
+
+def trigger_pattern(pattern, print_feedback=True):
     if not isinstance(pattern, Pattern):
         raise TypeError("The provided object '%s' is a %s, not a Pattern "
                         "as expected" % (pattern, type(pattern)))
@@ -27,11 +35,11 @@ def trigger_pattern(pattern, print=True):
     }
     return vgrid_json_call(VGRID_CREATE,
                            TRIGGER_ACTION,
-                           attributes=attributes,
-                           print_feedback=print)
+                           attributes,
+                           print_feedback=print_feedback)
 
 
-def trigger_recipe(recipe, print=True):
+def trigger_recipe(recipe, print_feedback=True):
     if not isinstance(recipe, dict):
         raise TypeError("The provided object '%s' is a %s, not a dict "
                         "as expected" % (recipe, type(recipe)))
@@ -51,17 +59,18 @@ def trigger_recipe(recipe, print=True):
     }
     return vgrid_json_call(VGRID_CREATE,
                            TRIGGER_ACTION,
-                           attributes=attributes,
-                           print_feedback=print)
+                           attributes,
+                           print_feedback=print_feedback)
 
 
-def export_pattern_to_vgrid(pattern, print=True):
+def export_pattern_to_vgrid(pattern, print_feedback=True):
     """
     Exports a given pattern to a MiG based Vgrid. Raises an exception if
     the pattern object does not pass an integrity check before export.
 
     :param pattern: Pattern object to export. Must a Pattern
-    :param print: (optional) In the event of feedback sets if it is printed
+    :param print_feedback: (optional) In the event of feedback sets if it is
+    printed
     to console or not. Default value is True.
     :return: returns output from _vgrid_json_call function
     """
@@ -83,17 +92,18 @@ def export_pattern_to_vgrid(pattern, print=True):
     }
     return vgrid_json_call(VGRID_CREATE,
                            VGRID_PATTERN_OBJECT_TYPE,
-                           attributes=attributes,
-                           print_feedback=print)
+                           attributes,
+                           print_feedback=print_feedback)
 
 
-def export_recipe_to_vgrid(recipe, print=True):
+def export_recipe_to_vgrid(recipe, print_feedback=True):
     """
     Exports a given recipe to a MiG based Vgrid. Raises an exception if
     the recipe object does not a valid recipe.
 
     :param recipe: Recipe object to export. Must a dict
-    :param print: (optional) In the event of feedback sets if it is printed
+    :param print_feedback: (optional) In the event of feedback sets if it is
+    printed
     to console or not. Default value is True.
     :return: returns output from _vgrid_json_call function
     """
@@ -107,11 +117,11 @@ def export_recipe_to_vgrid(recipe, print=True):
 
     return vgrid_json_call(VGRID_CREATE,
                            VGRID_RECIPE_OBJECT_TYPE,
-                           attributes=recipe,
-                           print_feedback=print)
+                           recipe,
+                           print_feedback=print_feedback)
 
 
-def vgrid_json_call(operation, workflow_type, attributes={},
+def vgrid_json_call(operation, workflow_type, attributes,
                     print_feedback=True):
     """
     Sends a message to a MiG based VGrid using the JSON format.
@@ -122,8 +132,7 @@ def vgrid_json_call(operation, workflow_type, attributes={},
     # TODO check these
     :param workflow_type: type of object being sent or requested. Must be
     'workflows'
-    :param attributes: (optional) attributes of object being passed. Must be
-    a dict. Default is {}
+    :param attributes: attributes of object being passed. Must be a dict.
     :param print_feedback: (optional) If feedback is generated, print it to
     command line. Default value is True.
     :return: returns 4 part tuple. First value is vgrid communicated with.
@@ -133,9 +142,28 @@ def vgrid_json_call(operation, workflow_type, attributes={},
 
     # TODO introduce more type checks
 
-    # TODO, change these to avoid hard coding
-    url = 'https://sid.migrid.test/cgi-sid/workflowjsoninterface.py?output_format=json'
-    session_id = '20fa14e5b13486b81592d1ed950dfcf4e8a581f3d8d0db25b60e850cfd9a1371'
+    url = \
+        'https://sid.migrid.test/cgi-sid/workflowjsoninterface.py?output_for' \
+        'mat=json'
+    session_id = \
+        "20fa14e5b13486b81592d1ed950dfcf4e8a581f3d8d0db25b60e850cfd9a1371"
+    # TODO use this during deployment
+    # try:
+    #     url = os.environ['URL']
+    # except KeyError:
+    #     raise EnvironmentError('Migrid URL was not specified in the local '
+    #                            'environment. This should be created '
+    #                            'automatically as part of the Notebook '
+    #                            'creation if the Notebook was created on '
+    #                            'IDMC. ')
+    # try:
+    #     session_id = os.environ['SESSION_ID']
+    # except KeyError:
+    #     raise EnvironmentError('Migrid SESSION_ID was not specified in '
+    #                            'the local environment. This should be '
+    #                            'created automatically as part of the '
+    #                            'Notebook creation if the Notebook was '
+    #                            'created on IDMC. ')
 
     try:
         vgrid = get_containing_vgrid()

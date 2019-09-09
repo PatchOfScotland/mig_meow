@@ -34,12 +34,18 @@ def create_widget(patterns=None, recipes=None, mode=VGRID_MODE):
 
 
 class __WorkflowWidget:
-    def __init__(self, patterns={}, recipes={}, mode=VGRID_MODE):
+    def __init__(self, patterns=None, recipes=None, mode=VGRID_MODE):
         # TODO update this description
+
+        if patterns is None:
+            patterns = {}
+        if recipes is None:
+            recipes = {}
 
         if mode not in WIDGET_MODES:
             raise Exception('Invalide mode requested. Valid modes are: %s'
                             % WIDGET_MODES)
+
         if not isinstance(patterns, dict):
             raise Exception('The provided patterns were not in a dict')
         for pattern in patterns.values():
@@ -886,7 +892,8 @@ class __WorkflowWidget:
                 description="Apply Changes",
                 disabled=False,
                 button_style='',
-                tooltip='TODO'
+                tooltip='Save changes to the local copy of the selected '
+                        'object. '
             )
             apply.on_click(apply_function)
 
@@ -895,7 +902,8 @@ class __WorkflowWidget:
                 description="Delete",
                 disabled=False,
                 button_style='',
-                tooltip='TODO'
+                tooltip='Delete the local copy of the currently selected '
+                        'object. '
             )
             delete.on_click(delete_function)
 
@@ -904,7 +912,7 @@ class __WorkflowWidget:
                 description="Cancel",
                 disabled=False,
                 button_style='',
-                tooltip='TODO'
+                tooltip='Undo editing, no changes will be saved. '
             )
             cancel.on_click(self.__on_cancel_clicked)
 
@@ -1039,16 +1047,20 @@ class __WorkflowWidget:
     def __make_help_button(self, help_text, extra_text, extra_func):
         # TODO update this description
 
+        default_description = 'Display help'
+        default_tooltip_text = 'Displays additional help text. '
+
         help_button = widgets.Button(
             value=False,
-            description="Toggle help",
+            description=default_description,
             disabled=False,
             button_style='',
-            tooltip='Here is a tooltip for this button'
+            tooltip=default_tooltip_text
         )
         help_html = widgets.HTML(
             value=""
         )
+
         def help_button_click(button):
             if help_html.value is "":
                 message = help_text
@@ -1057,8 +1069,12 @@ class __WorkflowWidget:
                 if extra_func:
                     message += extra_func
                 help_html.value = message
+                help_button.description = 'Hide help'
+                help_button.tooltip = 'Hides the related help text. '
             else:
                 help_html.value = ""
+                help_button.description = default_description
+                help_button.tooltip = default_tooltip_text
 
         help_button.on_click(help_button_click)
 
@@ -1137,7 +1153,8 @@ class __WorkflowWidget:
             description="Add %s" % text.lower(),
             disabled=False,
             button_style='',
-            tooltip='Here is a tooltip for this button'
+            tooltip='Creates a new input row to add an additional %s. '
+                    % text.lower()
         )
 
         def add_button_click(button):
@@ -1165,7 +1182,8 @@ class __WorkflowWidget:
             description="Remove %s" % text.lower(),
             disabled=False,
             button_style='',
-            tooltip='Here is a tooltip for this button'
+            tooltip='Removes the last input box for a %s. Note that if a '
+                    'value is in this box it will be lost. ' % text.lower()
         )
 
         def remove_button_click(button):
@@ -1255,6 +1273,7 @@ class __WorkflowWidget:
         try:
             vgrid, _, response, _ = vgrid_json_call('read',
                                                     'any',
+                                                    {},
                                                     print_feedback=False)
         except LookupError as error:
             self.__set_feedback(error)
@@ -1512,8 +1531,7 @@ class __WorkflowWidget:
                 operation = call[0]
                 object_type = call[1]
                 vgrid, _, response, _ = vgrid_json_call(
-                    operation, object_type, attributes=call[2],
-                    print_feedback=call[3]
+                    operation, object_type, call[2], print_feedback=call[3]
                 )
                 if 'text' in response and len(call) == 5:
                     if operation == VGRID_CREATE:

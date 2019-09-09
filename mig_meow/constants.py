@@ -104,10 +104,10 @@ VALID_RECIPE = {
 }
 
 ANCESTORS = 'ancestors'
-DESCENDENTS = 'descendents'
+DESCENDANTS = 'descendants'
 
 WORKFLOW_NODE = {
-    DESCENDENTS: []
+    DESCENDANTS: []
 }
 
 CHAR_LOWERCASE = 'abcdefghijklmnopqrstuvwxyz'
@@ -130,4 +130,3 @@ COLOURS = [
     GREEN,
     RED
 ]
-

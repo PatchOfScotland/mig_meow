@@ -1,10 +1,10 @@
 from setuptools import setup
 
-from .mig_meow.info import name as module_name
-from .mig_meow.info import version as module_version
-
 with open('README.md', 'r') as readme:
     long_description = readme.read()
+
+module_name = 'mig_meow'
+module_version = '0.1.8'
 
 setup(name=module_name,
       version=module_version,
@@ -19,7 +19,8 @@ setup(name=module_name,
             'pillow',
             'graphviz',
             'bqplot',
-            'IPython'
+            'IPython',
+            'requests'
       ],
       classifiers=[
             'Programming Language :: Python :: 3',
