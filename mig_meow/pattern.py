@@ -34,7 +34,7 @@ class Pattern:
             return
         # if given dict we are importing from a stored pattern object
         if isinstance(parameters, dict):
-            valid, _ = is_valid_pattern_dict(parameters)
+            is_valid_pattern_dict(parameters)
             if PERSISTENCE_ID in parameters:
                 self.persistence_id = parameters[PERSISTENCE_ID]
             self.name = parameters[NAME]

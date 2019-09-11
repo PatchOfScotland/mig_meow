@@ -1,6 +1,10 @@
 
-from .constants import VALID_RECIPE, OBJECT_TYPE, PERSISTENCE_ID, TRIGGERS, \
-    OWNER, NAME, RECIPE, VGRID, SOURCE
+
+import nbformat
+
+from .input import valid_string, valid_path
+from .constants import VALID_RECIPE, NAME, RECIPE, SOURCE, CHAR_UPPERCASE, \
+    CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES
 
 
 def create_recipe_dict(notebook, name, source):
@@ -13,7 +17,15 @@ def create_recipe_dict(notebook, name, source):
     :return: recipe dict
     """
 
-    # TODO input checking
+    valid_string(name,
+                 'recipe name',
+                 CHAR_UPPERCASE
+                 + CHAR_LOWERCASE
+                 + CHAR_NUMERIC
+                 + CHAR_LINES)
+    valid_path(source,
+               'recipe source')
+    nbformat.validate(notebook)
 
     recipe = {
         NAME: name,
