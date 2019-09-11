@@ -1455,11 +1455,11 @@ class __WorkflowWidget:
                 return
 
         operation = VGRID_DELETE
-        for id, name in self.mig_imports[PATTERNS].items():
+        for id, pattern in self.mig_imports[PATTERNS].items():
             if id not in pattern_ids:
                 attributes = {
                     PERSISTENCE_ID: id,
-                    NAME: name
+                    NAME: pattern.name
                 }
                 calls.append(
                     (
@@ -1469,11 +1469,11 @@ class __WorkflowWidget:
                         False
                     )
                 )
-        for id, name in self.mig_imports[RECIPES].items():
+        for id, recipe in self.mig_imports[RECIPES].items():
             if id not in recipe_ids:
                 attributes = {
                     PERSISTENCE_ID: id,
-                    NAME: name
+                    NAME: recipe[NAME]
                 }
                 calls.append(
                     (
@@ -1539,11 +1539,14 @@ class __WorkflowWidget:
                         if object_type == VGRID_PATTERN_OBJECT_TYPE:
                             pattern = call[4]
                             pattern.persistence_id = persistence_id
+                            self.mig_imports[PATTERNS][persistence_id] = \
+                                pattern
                             self.__add_to_feedback("Created pattern %s" %
                                                    pattern.name)
                         elif object_type == VGRID_RECIPE_OBJECT_TYPE:
                             recipe = call[4]
                             recipe[PERSISTENCE_ID] = persistence_id
+                            self.mig_imports[RECIPES][persistence_id] = recipe
                             self.__add_to_feedback("Created recipe %s" %
                                                    recipe[NAME])
 

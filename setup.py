@@ -4,7 +4,7 @@ with open('README.md', 'r') as readme:
     long_description = readme.read()
 
 module_name = 'mig_meow'
-module_version = '0.1.8'
+module_version = '0.1.9'
 
 setup(name=module_name,
       version=module_version,
