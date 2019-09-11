@@ -1553,6 +1553,19 @@ class __WorkflowWidget:
                     else:
                         feedback = response['text'].replace('\n', '<br/>')
                         self.__add_to_feedback(feedback)
+                    if operation == VGRID_UPDATE:
+                        if object_type == VGRID_PATTERN_OBJECT_TYPE:
+                            pattern = call[4]
+                            self.mig_imports[PATTERNS][
+                                pattern.persistence_id] = pattern
+                            self.__add_to_feedback("Updated pattern %s" %
+                                                   pattern.name)
+                        elif object_type == VGRID_RECIPE_OBJECT_TYPE:
+                            recipe = call[4]
+                            self.mig_imports[RECIPES][
+                                recipe[PERSISTENCE_ID]] = recipe
+                            self.__add_to_feedback("Updated recipe %s" %
+                                                   recipe[NAME])
                 if 'error_text' in response:
                     feedback = response['error_text'].replace('\n', '<br/>')
                     self.__add_to_feedback(feedback)
