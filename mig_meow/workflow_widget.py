@@ -15,26 +15,16 @@ from .constants import INPUT_NAME, INPUT_OUTPUT, INPUT_RECIPES, \
     VGRID_WORKFLOWS_OBJECT, INPUT_FILE, TRIGGER_PATHS, OUTPUT, RECIPES, \
     VARIABLES, CHAR_UPPERCASE, CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, \
     VGRID_ERROR_TYPE, VGRID_TEXT_TYPE, PERSISTENCE_ID, VGRID_CREATE, \
-    VGRID_UPDATE, PATTERNS, RECIPE, VGRID_DELETE, WIDGET_MODES, VGRID_MODE
+    VGRID_UPDATE, PATTERNS, RECIPE, VGRID_DELETE, WIDGET_MODES, VGRID_MODE, \
+    VGRID
 from .mig import vgrid_json_call
 from .pattern import Pattern, is_valid_pattern_object
 from .recipe import is_valid_recipe_dict, create_recipe_dict
 from .workflows import build_workflow_object, pattern_has_recipes
 
 
-def create_widget(patterns=None, recipes=None, mode=VGRID_MODE):
-    # TODO update this
-    """Displays a widget for workflow definitions. Can optionally take a
-    predefined workflow as input"""
-
-    widget = __WorkflowWidget(patterns=patterns,
-                              recipes=recipes,
-                              mode=mode)
-    return widget.display_widget()
-
-
-class __WorkflowWidget:
-    def __init__(self, patterns=None, recipes=None, mode=VGRID_MODE):
+class WorkflowWidget:
+    def __init__(self, patterns=None, recipes=None, mode=VGRID_MODE, **kwargs):
         # TODO update this description
 
         if patterns is None:
@@ -45,6 +35,11 @@ class __WorkflowWidget:
         if mode not in WIDGET_MODES:
             raise Exception('Invalide mode requested. Valid modes are: %s'
                             % WIDGET_MODES)
+        if mode == VGRID_MODE:
+            self.vgrid = kwargs.get(VGRID, None)
+            if not self.vgrid:
+                raise AttributeError('%s has been selected but %s parameter '
+                                     'has not been provided' % (mode, VGRID))
 
         if not isinstance(patterns, dict):
             raise Exception('The provided patterns were not in a dict')
@@ -1164,16 +1159,16 @@ class __WorkflowWidget:
                 self.current_form_line_counts[key] = 1
             if refresh_function == self.__refresh_new_form:
                 self.__refresh_new_form(population_function,
-                                       done_function,
-                                       wait=True)
+                                        done_function,
+                                        wait=True)
             elif refresh_function == self.__refresh_edit_form:
                 self.__refresh_edit_form(editing,
-                                        display_dict,
-                                        population_function,
-                                        apply_function,
-                                        delete_function,
-                                        wait=True,
-                                        default=self.editing[1])
+                                         display_dict,
+                                         population_function,
+                                         apply_function,
+                                         delete_function,
+                                         wait=True,
+                                         default=self.editing[1])
 
         add_button.on_click(add_button_click)
 
@@ -1192,16 +1187,16 @@ class __WorkflowWidget:
                     self.current_form_line_counts[key] -= 1
             if refresh_function == self.__refresh_new_form:
                 self.__refresh_new_form(population_function,
-                                       done_function,
-                                       wait=True)
+                                        done_function,
+                                        wait=True)
             elif refresh_function == self.__refresh_edit_form:
                 self.__refresh_edit_form(editing,
-                                        display_dict,
-                                        population_function,
-                                        apply_function,
-                                        delete_function,
-                                        wait=True,
-                                        default=self.editing[1])
+                                         display_dict,
+                                         population_function,
+                                         apply_function,
+                                         delete_function,
+                                         wait=True,
+                                         default=self.editing[1])
 
         if key in self.current_form_line_counts.keys():
             if self.current_form_line_counts[key] == 0:
@@ -1271,10 +1266,13 @@ class __WorkflowWidget:
                             "few seconds.")
 
         try:
-            vgrid, _, response, _ = vgrid_json_call('read',
-                                                    'any',
-                                                    {},
-                                                    print_feedback=False)
+            vgrid, _, response, _ = vgrid_json_call(
+                self.vgrid,
+                'read',
+                'any',
+                {},
+                print_feedback=False
+            )
         except LookupError as error:
             self.__set_feedback(error)
             self.__enable_top_buttons()
@@ -1531,7 +1529,11 @@ class __WorkflowWidget:
                 operation = call[0]
                 object_type = call[1]
                 vgrid, _, response, _ = vgrid_json_call(
-                    operation, object_type, call[2], print_feedback=call[3]
+                    self.vgrid,
+                    operation,
+                    object_type,
+                    call[2],
+                    print_feedback=call[3]
                 )
                 if 'text' in response and len(call) == 5:
                     if operation == VGRID_CREATE:

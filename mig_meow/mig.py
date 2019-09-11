@@ -5,7 +5,7 @@ import os
 from .constants import VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
     NAME, INPUT_FILE, TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, \
     TRIGGER_ACTION, VGRID_CREATE, OBJECT_TYPE, PERSISTENCE_ID
-from .notebook import get_containing_vgrid
+# from .notebook import get_containing_vgrid
 from .pattern import Pattern
 from .recipe import is_valid_recipe_dict
 
@@ -16,7 +16,7 @@ def trigger(triggerable, print_feedback=True):
     return trigger_recipe(triggerable, print_feedback=print_feedback)
 
 
-def trigger_pattern(pattern, print_feedback=True):
+def trigger_pattern(vgrid, pattern, print_feedback=True):
     if not isinstance(pattern, Pattern):
         raise TypeError("The provided object '%s' is a %s, not a Pattern "
                         "as expected" % (pattern, type(pattern)))
@@ -33,13 +33,14 @@ def trigger_pattern(pattern, print_feedback=True):
         OBJECT_TYPE: VGRID_PATTERN_OBJECT_TYPE,
         PERSISTENCE_ID: persistence_id
     }
-    return vgrid_json_call(VGRID_CREATE,
+    return vgrid_json_call(vgrid,
+                           VGRID_CREATE,
                            TRIGGER_ACTION,
                            attributes,
                            print_feedback=print_feedback)
 
 
-def trigger_recipe(recipe, print_feedback=True):
+def trigger_recipe(vgrid, recipe, print_feedback=True):
     if not isinstance(recipe, dict):
         raise TypeError("The provided object '%s' is a %s, not a dict "
                         "as expected" % (recipe, type(recipe)))
@@ -57,13 +58,14 @@ def trigger_recipe(recipe, print_feedback=True):
         OBJECT_TYPE: VGRID_RECIPE_OBJECT_TYPE,
         PERSISTENCE_ID: persistence_id
     }
-    return vgrid_json_call(VGRID_CREATE,
+    return vgrid_json_call(vgrid,
+                           VGRID_CREATE,
                            TRIGGER_ACTION,
                            attributes,
                            print_feedback=print_feedback)
 
 
-def export_pattern_to_vgrid(pattern, print_feedback=True):
+def export_pattern_to_vgrid(vgrid, pattern, print_feedback=True):
     """
     Exports a given pattern to a MiG based Vgrid. Raises an exception if
     the pattern object does not pass an integrity check before export.
@@ -90,13 +92,14 @@ def export_pattern_to_vgrid(pattern, print_feedback=True):
         RECIPES: pattern.recipes,
         VARIABLES: pattern.variables
     }
-    return vgrid_json_call(VGRID_CREATE,
+    return vgrid_json_call(vgrid,
+                           VGRID_CREATE,
                            VGRID_PATTERN_OBJECT_TYPE,
                            attributes,
                            print_feedback=print_feedback)
 
 
-def export_recipe_to_vgrid(recipe, print_feedback=True):
+def export_recipe_to_vgrid(vgrid, recipe, print_feedback=True):
     """
     Exports a given recipe to a MiG based Vgrid. Raises an exception if
     the recipe object does not a valid recipe.
@@ -115,13 +118,14 @@ def export_recipe_to_vgrid(recipe, print_feedback=True):
         raise Exception('The provided recipe is not valid. '
                         '%s' % msg)
 
-    return vgrid_json_call(VGRID_CREATE,
+    return vgrid_json_call(vgrid,
+                           VGRID_CREATE,
                            VGRID_RECIPE_OBJECT_TYPE,
                            recipe,
                            print_feedback=print_feedback)
 
 
-def vgrid_json_call(operation, workflow_type, attributes,
+def vgrid_json_call(vgrid, operation, workflow_type, attributes,
                     print_feedback=True):
     """
     Sends a message to a MiG based VGrid using the JSON format.
@@ -164,14 +168,6 @@ def vgrid_json_call(operation, workflow_type, attributes,
     #                            'created automatically as part of the '
     #                            'Notebook creation if the Notebook was '
     #                            'created on IDMC. ')
-
-    try:
-        vgrid = get_containing_vgrid()
-    except LookupError as exception:
-        if print_feedback:
-            print(exception)
-        raise LookupError("Cannot identify Vgrid to import from. "
-                          "%s" % exception)
 
     # Here the attributes are used as search parameters
     attributes['vgrid'] = vgrid

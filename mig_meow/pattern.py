@@ -5,7 +5,6 @@ from .constants import DEFAULT_JOB_NAME, VALID_PATTERN, NAME, INPUT_FILE, \
 from .input import valid_string, check_input
 
 
-
 class Pattern:
     def __init__(self, parameters):
         """Constructor for new pattern object. Used within MEOW as a more
