@@ -3,7 +3,8 @@ from PIL import Image
 
 from .input import check_input, valid_path
 from .constants import WORKFLOW_NODE, OUTPUT_MAGIC_CHAR, \
-    DEFAULT_WORKFLOW_FILENAME, WORKFLOW_IMAGE_EXTENSION
+    DEFAULT_WORKFLOW_FILENAME, WORKFLOW_IMAGE_EXTENSION, DESCENDANTS, \
+    WORKFLOW_INPUTS, WORKFLOW_OUTPUTS, ANCESTORS
 from .pattern import is_valid_pattern_object
 from .recipe import is_valid_recipe_dict
 from graphviz import Digraph
@@ -21,8 +22,6 @@ def build_workflow_object(patterns, recipes):
     :return dict of nodes connecting patterns together into workflow.
     """
 
-    if not patterns:
-        raise Exception('A pattern dict was not provided')
     if not isinstance(patterns, dict):
         raise Exception('The provided patterns were not in a dict')
     for pattern in patterns.values():
@@ -35,6 +34,9 @@ def build_workflow_object(patterns, recipes):
         raise Exception('The provided recipes were not in a dict')
     else:
         for recipe in recipes.values():
+            # TODO remove this placeholder
+            recipe['mount_user_dir'] = True
+
             valid, feedback = is_valid_recipe_dict(recipe)
             if not valid:
                 raise Exception('Recipe %s was not valid. %s'
@@ -43,7 +45,21 @@ def build_workflow_object(patterns, recipes):
     workflow = {}
     # create all required nodes
     for pattern in patterns.values():
-        workflow[pattern.name] = set()
+        inputs_set = set()
+        outputs_set = set()
+        for path in pattern.trigger_paths:
+            inputs_set.add(path)
+        for _, path in pattern.inputs.items():
+            inputs_set.add(path)
+        for _, path in pattern.outputs.items():
+            outputs_set.add(path)
+        workflow[pattern.name] = {
+            DESCENDANTS: set(),
+            ANCESTORS: set(),
+            WORKFLOW_INPUTS: inputs_set,
+            WORKFLOW_OUTPUTS: outputs_set
+        }
+
     # populate nodes with ancestors and descendants
     for pattern in patterns.values():
         input_regex_list = pattern.trigger_paths
@@ -52,13 +68,73 @@ def build_workflow_object(patterns, recipes):
             for input_regex in input_regex_list:
                 for key, value in other_output_dict.items():
                     if re.match(input_regex, value):
-                        workflow[other_pattern.name].add(pattern.name)
+                        workflow[other_pattern.name][DESCENDANTS].add(pattern.name)
+                        workflow[pattern.name][ANCESTORS].add(other_pattern.name)
+                        if value in workflow[other_pattern.name][WORKFLOW_OUTPUTS]:
+                            workflow[other_pattern.name][WORKFLOW_OUTPUTS].remove(value)
+                        if input_regex in workflow[pattern.name][WORKFLOW_INPUTS]:
+                            workflow[pattern.name][WORKFLOW_INPUTS].remove(input_regex)
                     if OUTPUT_MAGIC_CHAR in value:
-                        value = value.replace(OUTPUT_MAGIC_CHAR, '.*')
-                        if re.match(value, input_regex):
-                            workflow[other_pattern.name].add(pattern.name)
-
+                        magic_value = value.replace(OUTPUT_MAGIC_CHAR, '.*')
+                        if re.match(magic_value, input_regex):
+                            workflow[other_pattern.name][DESCENDANTS].add(pattern.name)
+                            workflow[pattern.name][ANCESTORS].add(other_pattern.name)
+                            if value in workflow[other_pattern.name][WORKFLOW_OUTPUTS]:
+                                workflow[other_pattern.name][WORKFLOW_OUTPUTS].remove(value)
+                            if input_regex in workflow[pattern.name][WORKFLOW_INPUTS]:
+                                workflow[pattern.name][WORKFLOW_INPUTS].remove(input_regex)
     return workflow
+
+
+def get_linear_workflow(workflow, patterns, recipes):
+    workflow_tops = get_workflow_tops(workflow, patterns)
+
+    linear_workflow = []
+
+    msg = ""
+    if not workflow_tops:
+        msg = "No linear workflow first steps. "
+    if len(workflow_tops) > 1:
+        msg = "%d linear workflows first steps identified. "\
+              % len(workflow_tops)
+    if msg:
+        return (False, msg)
+    linear_workflow.append(patterns[workflow_tops[0]])
+
+    flag = True
+    while flag:
+        descendants = workflow[linear_workflow[-1].name][DESCENDANTS]
+        if len(descendants) > 1:
+            return (False, "Workflow branches. Currently only linear "
+                           "workflows are supported. ")
+        if not descendants:
+            flag = False
+        else:
+            descendant = min(descendants)
+            if descendant in linear_workflow:
+                return (False, "Workflow path is cyclical. ")
+            linear_workflow.append(patterns[descendant])
+
+    for pattern in linear_workflow:
+        if not pattern_has_recipes(pattern, recipes):
+            return (False, "Pattern %s lacks one of more of its required "
+                           "recipes %s " % (pattern.name, pattern.recipes))
+    if not workflow:
+        return (False, "No workflow identified. ")
+    return (True, linear_workflow)
+
+
+def get_workflow_tops(workflow, patterns):
+    # TODO validation
+
+    workflow_tops = []
+
+    for name, workflow_pattern in workflow.items():
+        if len(workflow_pattern[WORKFLOW_INPUTS]) == (
+                len(patterns[name].trigger_paths) + len(patterns[name].inputs)
+        ):
+            workflow_tops.append(name)
+    return workflow_tops
 
 
 def create_workflow_dag(workflow, patterns, recipes, filename=None):

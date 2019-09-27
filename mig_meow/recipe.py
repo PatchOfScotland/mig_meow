@@ -2,18 +2,20 @@
 
 import nbformat
 
-from .input import valid_string, valid_path
+from .input import valid_string, valid_path, check_input
 from .constants import VALID_RECIPE, NAME, RECIPE, SOURCE, CHAR_UPPERCASE, \
-    CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES
+    CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, MOUNT_USER_DIR
 
 
-def create_recipe_dict(notebook, name, source):
+def create_recipe_dict(notebook, name, source, mount_user_dir):
     """
     Creates a recipe dictionary from the given parameters.
 
     :param notebook: Recipe code. Must be complete notebook.
     :param name: Name of recipe, Must be str
     :param source: Name of source notebook. Must be str
+    :param mount_user_dir: Boolean of if recipe requires user directory to be
+    mounted to job execution environment
     :return: recipe dict
     """
 
@@ -26,16 +28,13 @@ def create_recipe_dict(notebook, name, source):
     valid_path(source,
                'recipe source')
     nbformat.validate(notebook)
+    check_input(mount_user_dir, bool, 'mount user directory', or_none=True)
 
     recipe = {
         NAME: name,
         SOURCE: source,
-        # OBJECT_TYPE: "",
-        # PERSISTENCE_ID: "",
-        # OWNER: "",
-        # VGRID: "",
-        # TRIGGERS: {},
-        RECIPE: notebook
+        RECIPE: notebook,
+        MOUNT_USER_DIR: mount_user_dir
     }
     return recipe
 

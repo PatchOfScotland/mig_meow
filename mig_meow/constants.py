@@ -18,9 +18,15 @@ RECIPE_LIST = 'recipe_list'
 VGRID_WORKFLOWS_OBJECT = 'workflows'
 VGRID_PATTERN_OBJECT_TYPE = 'workflowpattern'
 VGRID_RECIPE_OBJECT_TYPE = 'workflowrecipe'
+VGRID_QUEUE_OBJECT_TYPE = 'queue'
+VGRID_JOB_OBJECT_TYPE = 'job'
+
+MRSL_VGRID = 'VGRID'
+
 VGRID_ERROR_TYPE = 'error_text'
 VGRID_TEXT_TYPE = 'text'
 VGRID_CREATE = 'create'
+VGRID_READ = 'read'
 VGRID_UPDATE = 'update'
 VGRID_DELETE = 'delete'
 
@@ -38,15 +44,18 @@ NAME = 'name'
 INPUT_FILE = 'input_file'
 TRIGGER_PATHS = 'trigger_paths'
 OUTPUT = 'output'
+INPUT = 'input'
 RECIPE = 'recipe'
 RECIPES = 'recipes'
 VARIABLES = 'variables'
 VGRID = 'vgrid'
 SOURCE = 'source'
+MOUNT_USER_DIR = 'mount_user_dir'
 PATTERNS = 'patterns'
 
-ACTION_TYPE = 'action_type'
 TRIGGER_ACTION = 'manual_trigger'
+CANCEL_JOB = 'cancel_job'
+RESUBMIT_JOB = 'resubmit_job'
 
 INPUT_NAME = "input_name"
 INPUT_TRIGGER_FILE = "input_trigger_file"
@@ -63,15 +72,18 @@ ALL_PATTERN_INPUTS = [
     INPUT_TRIGGER_PATH,
     INPUT_TRIGGER_OUTPUT,
     INPUT_NOTEBOOK_OUTPUT,
-    # INPUT_INPUT,
+    INPUT_INPUT,
     INPUT_OUTPUT,
     INPUT_RECIPES,
     INPUT_VARIABLES
 ]
+
 INPUT_SOURCE = "input_source"
+INPUT_MOUNT_USER_DIR = "input_mount_user_dir"
 ALL_RECIPE_INPUTS = [
     INPUT_SOURCE,
-    INPUT_NAME
+    INPUT_NAME,
+    INPUT_MOUNT_USER_DIR
 ]
 
 OUTPUT_MAGIC_CHAR = '*'
@@ -86,6 +98,7 @@ VALID_PATTERN = {
     NAME: str,
     INPUT_FILE: str,
     TRIGGER_PATHS: list,
+    INPUT: dict,
     OUTPUT: dict,
     RECIPES: list,
     VARIABLES: dict,
@@ -93,18 +106,16 @@ VALID_PATTERN = {
 }
 
 VALID_RECIPE = {
-    # OBJECT_TYPE: str,
-    # PERSISTENCE_ID: str,
-    # TRIGGERS: dict,
-    # OWNER: str,
     NAME: str,
     RECIPE: dict,
     SOURCE: str,
-    # VGRID: str
+    MOUNT_USER_DIR: bool
 }
 
 ANCESTORS = 'ancestors'
 DESCENDANTS = 'descendants'
+WORKFLOW_INPUTS = 'workflow inputs'
+WORKFLOW_OUTPUTS = 'workflow outputs'
 
 WORKFLOW_NODE = {
     DESCENDANTS: []
@@ -125,8 +136,10 @@ NOTEBOOK_EXTENSIONS = [
 
 GREEN = 'green'
 RED = 'red'
+WHITE = 'white'
 
 COLOURS = [
     GREEN,
-    RED
+    RED,
+    WHITE
 ]
