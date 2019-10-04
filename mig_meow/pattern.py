@@ -58,7 +58,7 @@ class Pattern:
                  'Input(s): %s, ' \
                  'Trigger(s): %s, ' \
                  'Output(s): %s, ' \
-                 'Input(s): %s, ' \
+                 'Static Input(s): %s, ' \
                  'Recipe(s): %s, ' \
                  'Variable(s): %s' \
                  % (self.name,
@@ -89,10 +89,12 @@ class Pattern:
             return False
         count = 0
         try:
+            self.persistence_id
             count += 1
         except AttributeError:
             pass
         try:
+            other.persistence_id
             count += 1
         except AttributeError:
             pass
@@ -144,6 +146,23 @@ class Pattern:
                        'WILL BE LOST. '
         if len(self.recipes) == 0:
             return False, "No recipes have been defined. "
+        if self.trigger_file not in self.variables.keys():
+            return (False, "Trigger file has been defined but is not "
+                           "accessible as a variable within the job. If you "
+                           "manually set the trigger file you should also "
+                           "add it to the variables dict")
+        for output in self.outputs.keys():
+            if output not in  self.variables.keys():
+                return (False, "Output %s has been defined but is not "
+                               "accessible as a variable within the job. If "
+                               "you manually set the trigger file you should "
+                               "also add it to the variables dict" % output)
+        for input in self.inputs.keys():
+            if input not in  self.variables.keys():
+                return (False, "Input %s has been defined but is not "
+                               "accessible as a variable within the job. If "
+                               "you manually set the trigger file you should "
+                               "also add it to the variables dict" % input)
         return True, warning
 
     def add_single_input(self, input_file, regex_path, output_path=None):
@@ -281,7 +300,8 @@ class Pattern:
         check_input(input_name, str, 'input_name')
         check_input(input_location, str, 'input_location')
 
-        if input_name not in self.inputs.keys():
+        if input_name not in self.inputs.keys() \
+                and input_name != self.trigger_file:
             self.inputs[input_name] = input_location
             self.add_variable(input_name, input_name)
         else:

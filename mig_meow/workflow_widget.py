@@ -72,7 +72,9 @@ class WorkflowWidget:
 
         self.visualisation_area = widgets.Output()
         self.__update_workflow_visualisation()
-        self.display_area = widgets.Output()
+        self.display_area = widgets.Output(
+            layout=widgets.Layout(width='100%')
+        )
 
         self.new_pattern_button = widgets.Button(
             value=False,
@@ -190,7 +192,7 @@ class WorkflowWidget:
     def __list_current_recipes(self):
         # TODO update this description
 
-        return self.recipes
+        return list(self.recipes.keys())
 
     def __populate_new_pattern_form(self, population_function, done_function):
         # TODO update this description
@@ -743,7 +745,8 @@ class WorkflowWidget:
 
         self.__clear_current_form()
         self.__refresh_new_form(
-            self.__populate_new_pattern_form, self.__process_pattern_values
+            self.__populate_new_pattern_form,
+            self.__process_pattern_values
         )
         self.__clear_feedback()
 
@@ -843,7 +846,10 @@ class WorkflowWidget:
         bottom_row = widgets.HBox(bottom_row_items)
         items.append(bottom_row)
 
-        self.displayed_form = widgets.VBox(items)
+        self.displayed_form = widgets.VBox(
+            items,
+            layout=widgets.Layout(width='100%')
+        )
 
         with self.display_area:
             form_id = display(self.displayed_form, display_id=True)
@@ -1129,15 +1135,16 @@ class WorkflowWidget:
     def __make_help_button(self, help_text, extra_text, extra_func):
         # TODO update this description
 
-        default_description = 'Display help'
         default_tooltip_text = 'Displays additional help text. '
 
         help_button = widgets.Button(
             value=False,
-            description=default_description,
+            description='',
             disabled=False,
             button_style='',
-            tooltip=default_tooltip_text
+            tooltip=default_tooltip_text,
+            icon='question',
+            layout=widgets.Layout(width='5%', min_width='4ex')
         )
         help_html = widgets.HTML(
             value=""
@@ -1149,13 +1156,11 @@ class WorkflowWidget:
                 if extra_text:
                     message += extra_text
                 if extra_func:
-                    message += extra_func
+                    message += str(extra_func)
                 help_html.value = message
-                help_button.description = 'Hide help'
                 help_button.tooltip = 'Hides the related help text. '
             else:
                 help_html.value = ""
-                help_button.description = default_description
                 help_button.tooltip = default_tooltip_text
 
         help_button.on_click(help_button_click)
@@ -1171,10 +1176,13 @@ class WorkflowWidget:
         if optional:
             msg += " (optional)"
         label = widgets.Label(
-            value="%s: " % msg
+            value="%s: " % msg,
+            layout=widgets.Layout(width='20%', min_width='10ex')
         )
 
-        input = widgets.Text()
+        input = widgets.Text(
+            layout=widgets.Layout(width='70%')
+        )
         if key in self.current_old_values:
             input.value = self.current_old_values[key].value
             self.current_old_values.pop(key, None)
@@ -1199,7 +1207,9 @@ class WorkflowWidget:
             help_text
         ]
 
-        input_widget = widgets.VBox(items)
+        input_widget = widgets.VBox(
+            items,
+            layout=widgets.Layout(width='100%'))
         return input_widget
 
     def __create_form_multi_input(
@@ -1210,12 +1220,15 @@ class WorkflowWidget:
         # TODO update this description
 
         msg = text
-        if optional:
-            msg += " (optional)"
         label = widgets.Label(
-            value="%s(s): " % msg
+            value="%s(s): " % msg,
+            layout=widgets.Layout(width='20%', min_width='10ex')
         )
-        input = widgets.Text()
+        if optional:
+            label.value += " (optional)"
+        input = widgets.Text(
+            layout=widgets.Layout(width='59%')
+        )
 
         help_button, help_text = self.__make_help_button(help_text,
                                                          extra_text=extra_text,
@@ -1232,11 +1245,12 @@ class WorkflowWidget:
 
         add_button = widgets.Button(
             value=False,
-            description="Add %s" % text.lower(),
+            description='',
             disabled=False,
             button_style='',
-            tooltip='Creates a new input row to add an additional %s. '
-                    % text.lower()
+            tooltip="Add %s" % text.lower(),
+            icon='plus',
+            layout=widgets.Layout(width='5%', min_width='5ex')
         )
 
         def add_button_click(button):
@@ -1261,11 +1275,13 @@ class WorkflowWidget:
 
         remove_button = widgets.Button(
             value=False,
-            description="Remove %s" % text.lower(),
+            description='',
             disabled=False,
             button_style='',
-            tooltip='Removes the last input box for a %s. Note that if a '
-                    'value is in this box it will be lost. ' % text.lower()
+            tooltip='Removes the last %s. Note that if a '
+                    'value is in this box it will be lost. ' % text.lower(),
+            icon='minus',
+            layout=widgets.Layout(width='5%', min_width='5ex')
         )
 
         def remove_button_click(button):
@@ -1296,6 +1312,8 @@ class WorkflowWidget:
         top_row_items = [
             label,
             input,
+            add_button,
+            remove_button,
             help_button
         ]
         top_row = widgets.HBox(top_row_items)
@@ -1305,11 +1323,20 @@ class WorkflowWidget:
         if key in self.current_form_line_counts.keys():
             extra_rows_count = self.current_form_line_counts[key]
             for x in range(0, extra_rows_count):
-                extra_input = widgets.Text()
+                blank_label = widgets.Label(
+                    value="",
+                    layout=widgets.Layout(width='20%', min_width='10ex')
+                )
+                extra_input = widgets.Text(
+                    layout=widgets.Layout(
+                        width='75%'
+                    )
+                )
                 if input_old_values:
                     extra_input.value = input_old_values[0].value
                     del input_old_values[0]
                 extra_row_items = [
+                    blank_label,
                     extra_input
                 ]
                 extra_row = widgets.HBox(extra_row_items)
@@ -1323,21 +1350,17 @@ class WorkflowWidget:
         if key in self.current_old_values:
             self.current_old_values.pop(key, None)
 
-        bottom_row_items = [
-            add_button,
-            remove_button
-        ]
-        bottom_row = widgets.HBox(bottom_row_items)
-
         form_items = [
             top_row,
         ]
         for row in extra_rows:
             form_items.append(row)
-        form_items.append(bottom_row)
         form_items.append(help_text)
 
-        form_row = widgets.VBox(form_items)
+        form_row = widgets.VBox(
+            form_items,
+            layout=widgets.Layout(width='100%')
+        )
 
         return form_row
 
@@ -1350,7 +1373,8 @@ class WorkflowWidget:
         input = widgets.Checkbox(
             value=False,
             description='',
-            disabled=False
+            disabled=False,
+            layout=widgets.Layout(width='76%')
         )
         if key in self.current_old_values:
             input.value = self.current_old_values[key].value
@@ -1881,8 +1905,9 @@ class WorkflowWidget:
         with open(cwl_file_path, 'w') as output_file:
             output_file.writelines(data)
 
-        self.__set_feedback("Export performed successfully. Can be called "
-                            "with:")
+        self.__set_feedback("Export performed successfully. Files are present "
+                            "in directory '%s' and can be called with:"
+                            % cwl_dir)
         self.__add_to_feedback("toil-cwl-runner %s %s" %
                                (cwl_filename, yaml_filename))
 
