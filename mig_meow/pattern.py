@@ -1,7 +1,8 @@
 
 from .constants import DEFAULT_JOB_NAME, VALID_PATTERN, NAME, INPUT_FILE, \
     TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, CHAR_UPPERCASE, \
-    CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, PERSISTENCE_ID, INPUT
+    CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, PERSISTENCE_ID, \
+    TRIGGER_OUTPUT, NOTEBOOK_OUTPUT
 from .input import valid_string, check_input
 
 
@@ -29,7 +30,6 @@ class Pattern:
             self.trigger_file = None
             self.trigger_paths = []
             self.recipes = []
-            self.inputs = {}
             self.outputs = {}
             self.variables = {}
             return
@@ -43,11 +43,6 @@ class Pattern:
             self.trigger_paths = parameters[TRIGGER_PATHS]
             self.recipes = parameters[RECIPES]
             self.outputs = parameters[OUTPUT]
-            # TODO remove this
-            try:
-                self.inputs = parameters[INPUT]
-            except KeyError:
-                self.inputs = {}
             self.variables = parameters[VARIABLES]
             return
         raise Exception('Pattern requires either a str input as a name for a '
@@ -58,14 +53,12 @@ class Pattern:
                  'Input(s): %s, ' \
                  'Trigger(s): %s, ' \
                  'Output(s): %s, ' \
-                 'Static Input(s): %s, ' \
                  'Recipe(s): %s, ' \
                  'Variable(s): %s' \
                  % (self.name,
                     self.trigger_file,
                     self.trigger_paths,
                     self.outputs,
-                    self.inputs,
                     self.recipes,
                     self.variables)
         return string
@@ -80,8 +73,6 @@ class Pattern:
         if self.trigger_paths != other.trigger_paths:
             return False
         if self.outputs != other.outputs:
-            return False
-        if self.inputs != other.inputs:
             return False
         if self.recipes != other.recipes:
             return False
@@ -109,13 +100,11 @@ class Pattern:
         string = 'Name: %s\n' \
                  'Input(s): %s\n' \
                  'Trigger(s): %s\n' \
-                 'Input(s): %s\n' \
                  'Output(s): %s\n' \
                  'Recipe(s): %s' \
                  % (self.name,
                     self.trigger_file,
                     self.trigger_paths,
-                    self.inputs,
                     self.outputs,
                     self.recipes)
         return string
@@ -157,12 +146,6 @@ class Pattern:
                                "accessible as a variable within the job. If "
                                "you manually set the trigger file you should "
                                "also add it to the variables dict" % output)
-        for input in self.inputs.keys():
-            if input not in  self.variables.keys():
-                return (False, "Input %s has been defined but is not "
-                               "accessible as a variable within the job. If "
-                               "you manually set the trigger file you should "
-                               "also add it to the variables dict" % input)
         return True, warning
 
     def add_single_input(self, input_file, regex_path, output_path=None):
@@ -292,22 +275,6 @@ class Pattern:
             raise Exception('Could not create output %s as already defined'
                             % output_name)
 
-    def add_static_input(self, input_name, input_location):
-        # TODO
-        """
-
-        """
-        check_input(input_name, str, 'input_name')
-        check_input(input_location, str, 'input_location')
-
-        if input_name not in self.inputs.keys() \
-                and input_name != self.trigger_file:
-            self.inputs[input_name] = input_location
-            self.add_variable(input_name, input_name)
-        else:
-            raise Exception('Could not create input %s as already defined'
-                            % input_name)
-
     def return_notebook(self, output_location):
         """
         Adds the notebook used to run the job as output. 'output_location' is
@@ -358,6 +325,34 @@ class Pattern:
                 raise Exception('Could not create variable %s as a variable '
                                 'with this name is already defined. '
                                 % variable_name)
+
+    def to_display_dict(self):
+        # TODO description
+        dict = {
+            NAME: self.name,
+            INPUT_FILE: self.trigger_file,
+            TRIGGER_PATHS: self.trigger_paths,
+            RECIPES: self.recipes,
+            OUTPUT: {},
+            VARIABLES: {},
+            TRIGGER_OUTPUT: '',
+            NOTEBOOK_OUTPUT: ''
+        }
+
+        for key, value in self.variables.items():
+            if key not in self.outputs \
+                    and key != self.trigger_file:
+                dict[VARIABLES][key] = value
+
+        for key, value in self.outputs.items():
+            if key != self.trigger_file and key != DEFAULT_JOB_NAME:
+                dict[OUTPUT][key] = value
+
+        if self.trigger_file in self.outputs:
+            dict[TRIGGER_OUTPUT] = self.outputs[self.trigger_file]
+        if DEFAULT_JOB_NAME in self.outputs:
+            dict[NOTEBOOK_OUTPUT] = self.outputs[DEFAULT_JOB_NAME]
+        return dict
 
 
 def is_valid_pattern_object(to_test):

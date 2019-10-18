@@ -45,44 +45,51 @@ def build_workflow_object(patterns, recipes):
     workflow = {}
     # create all required nodes
     for pattern in patterns.values():
-        inputs_set = set()
-        outputs_set = set()
-        for path in pattern.trigger_paths:
-            inputs_set.add(path)
-        for _, path in pattern.inputs.items():
-            inputs_set.add(path)
-        for _, path in pattern.outputs.items():
-            outputs_set.add(path)
+        input_paths = {}
+        output_paths = {}
+        input_paths[pattern.trigger_file] = pattern.trigger_paths
+        for file, path in pattern.outputs.items():
+            output_paths[file] = path
         workflow[pattern.name] = {
-            DESCENDANTS: set(),
-            ANCESTORS: set(),
-            WORKFLOW_INPUTS: inputs_set,
-            WORKFLOW_OUTPUTS: outputs_set
+            DESCENDANTS: {},
+            ANCESTORS: {},
+            WORKFLOW_INPUTS: input_paths,
+            WORKFLOW_OUTPUTS: output_paths
         }
 
     # populate nodes with ancestors and descendants
     for pattern in patterns.values():
         input_regex_list = pattern.trigger_paths
-        for other_pattern in patterns.values():
-            other_output_dict = other_pattern.outputs
+        for other in patterns.values():
+            other_output_dict = other.outputs
             for input_regex in input_regex_list:
                 for key, value in other_output_dict.items():
+                    match_dict = {
+                        'output_pattern': other.name,
+                        'output_file': key,
+                    }
                     if re.match(input_regex, value):
-                        workflow[other_pattern.name][DESCENDANTS].add(pattern.name)
-                        workflow[pattern.name][ANCESTORS].add(other_pattern.name)
-                        if value in workflow[other_pattern.name][WORKFLOW_OUTPUTS]:
-                            workflow[other_pattern.name][WORKFLOW_OUTPUTS].remove(value)
-                        if input_regex in workflow[pattern.name][WORKFLOW_INPUTS]:
-                            workflow[pattern.name][WORKFLOW_INPUTS].remove(input_regex)
+                        workflow[other.name][DESCENDANTS][pattern.name] = \
+                            match_dict
+                        workflow[pattern.name][ANCESTORS][other.name] = \
+                            match_dict
+                        if pattern.trigger_file in \
+                                workflow[pattern.name][WORKFLOW_INPUTS]:
+                            workflow[pattern.name][WORKFLOW_INPUTS].pop(
+                                pattern.trigger_file
+                            )
                     if OUTPUT_MAGIC_CHAR in value:
                         magic_value = value.replace(OUTPUT_MAGIC_CHAR, '.*')
                         if re.match(magic_value, input_regex):
-                            workflow[other_pattern.name][DESCENDANTS].add(pattern.name)
-                            workflow[pattern.name][ANCESTORS].add(other_pattern.name)
-                            if value in workflow[other_pattern.name][WORKFLOW_OUTPUTS]:
-                                workflow[other_pattern.name][WORKFLOW_OUTPUTS].remove(value)
-                            if input_regex in workflow[pattern.name][WORKFLOW_INPUTS]:
-                                workflow[pattern.name][WORKFLOW_INPUTS].remove(input_regex)
+                            workflow[other.name][DESCENDANTS][pattern.name] = \
+                                match_dict
+                            workflow[pattern.name][ANCESTORS][other.name] = \
+                                match_dict
+                            if pattern.trigger_file in \
+                                    workflow[pattern.name][WORKFLOW_INPUTS]:
+                                workflow[pattern.name][WORKFLOW_INPUTS].pop(
+                                    pattern.trigger_file
+                                )
     return workflow
 
 

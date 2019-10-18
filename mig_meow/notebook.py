@@ -1,21 +1,15 @@
 
-from .constants import VGRID_MODE
+from .constants import MEOW_MODE
 from .workflow_widget import WorkflowWidget
 from .monitor_widget import MonitorWidget
 
 
-def create_workflow_widget(
-        patterns=None, recipes=None, mode=VGRID_MODE, **kwargs):
+def create_workflow_widget(**kwargs):
     # TODO update this
     """Displays a widget for workflow definitions. Can optionally take a
     predefined workflow as input"""
 
-    widget = WorkflowWidget(
-        patterns=patterns,
-        recipes=recipes,
-        mode=mode,
-        **kwargs
-    )
+    widget = WorkflowWidget(**kwargs)
 
     return widget.display_widget()
 

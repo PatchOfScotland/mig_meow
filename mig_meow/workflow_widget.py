@@ -1,4 +1,5 @@
 
+import ast
 import yaml
 import fileinput
 
@@ -10,205 +11,151 @@ from shutil import copyfile
 from IPython.display import display
 
 from .input import valid_path, valid_string
-from .constants import INPUT_NAME, INPUT_OUTPUT, INPUT_RECIPES, \
-    INPUT_TRIGGER_PATH, INPUT_VARIABLES, INPUT_TRIGGER_FILE, \
-    INPUT_TRIGGER_OUTPUT, INPUT_NOTEBOOK_OUTPUT, GREEN, RED, \
-    INPUT_SOURCE, NOTEBOOK_EXTENSIONS, NAME, DEFAULT_JOB_NAME, \
+from .constants import GREEN, RED, \
+    NOTEBOOK_EXTENSIONS, NAME, DEFAULT_JOB_NAME, \
     SOURCE, PATTERN_NAME, RECIPE_NAME, OBJECT_TYPE, \
     VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
     VGRID_WORKFLOWS_OBJECT, INPUT_FILE, TRIGGER_PATHS, OUTPUT, RECIPES, \
     VARIABLES, CHAR_UPPERCASE, CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, \
     VGRID_ERROR_TYPE, VGRID_TEXT_TYPE, PERSISTENCE_ID, VGRID_CREATE, \
-    VGRID_UPDATE, PATTERNS, RECIPE, VGRID_DELETE, WIDGET_MODES, VGRID_MODE, \
-    VGRID, INPUT_MOUNT_USER_DIR, MOUNT_USER_DIR, VGRID_READ, DESCENDANTS, \
-    INPUT_INPUT, WORKFLOW_INPUTS, WORKFLOW_OUTPUTS, WHITE, ANCESTORS
+    VGRID_UPDATE, PATTERNS, RECIPE, VGRID_DELETE, WIDGET_MODES, MEOW_MODE, \
+    VGRID, MOUNT_USER_DIR, VGRID_READ, DESCENDANTS, BLUE, \
+    WORKFLOW_INPUTS, WORKFLOW_OUTPUTS, WHITE, ANCESTORS, CWL_MODE, \
+    TRIGGER_OUTPUT, NOTEBOOK_OUTPUT, TRIGGER_PATHS, CWL_INPUTS, \
+    CWL_NAME, CWL_OUTPUTS, CWL_BASE_COMMAND, CWL_ARGUMENTS, CWL_REQUIREMENTS, \
+    CWL_STDOUT, CWL_HINTS, CWL_STEPS, CWL_INPUT_TYPE, CWL_INPUT_BINDING, \
+    CWL_INPUT_POSITION, CWL_INPUT_PREFIX, CWL_OUTPUT_TYPE, CWL_OUTPUT_BINDING,\
+    CWL_OUTPUT_SOURCE, CWL_OUTPUT_GLOB, CWL_YAML_CLASS, CWL_YAML_PATH, \
+    CWL_WORKFLOW_RUN, CWL_WORKFLOW_IN, CWL_WORKFLOW_OUT, CWL_VARIABLES, \
+    PLACEHOLDER, WORKFLOW_NAME, STEP_NAME, VARIABLES_NAME, WORKFLOWS, STEPS, \
+    SETTINGS, YAML_EXTENSIONS, CWL_EXTENSIONS, CWL_CLASS, CWL_CLASS_WORKFLOW, \
+    CWL_CLASS_COMMAND_LINE_TOOL
+from .cwl import make_step_dict, make_workflow_dict, get_linked_workflow, \
+    make_settings_dict, check_workflow_is_valid
 from .mig import vgrid_workflow_json_call
 from .pattern import Pattern, is_valid_pattern_object
 from .recipe import is_valid_recipe_dict, create_recipe_dict
-from .workflows import build_workflow_object, pattern_has_recipes, \
+from .meow import build_workflow_object, pattern_has_recipes, \
     get_workflow_tops, get_linear_workflow
 
+MEOW_NEW_PATTERN_BUTTON = 'meow_new_pattern_button'
+MEOW_EDIT_PATTERN_BUTTON = 'meow_edit_pattern_button'
+MEOW_NEW_RECIPE_BUTTON = 'meow_new_recipe_button'
+MEOW_EDIT_RECIPE_BUTTON = 'meow_edit_recipe_button'
+MEOW_IMPORT_CWL_BUTTON = 'meow_import_cwl_button'
+MEOW_IMPORT_VGRID_BUTTON = 'meow_import_vgrid_button'
+MEOW_EXPORT_VGRID_BUTTON = 'meow_export_vgrid_button'
 
-class WorkflowWidget:
-    def __init__(self, patterns=None, recipes=None, mode=VGRID_MODE, **kwargs):
-        # TODO update this description
+CWL_NEW_WORKFLOW_BUTTON = 'cwl_new_workflow_button'
+CWL_EDIT_WORKFLOW_BUTTON = 'cwl_edit_workflow_button'
+CWL_NEW_STEP_BUTTON = 'cwl_new_step_button'
+CWL_EDIT_STEP_BUTTON = 'cwl_edit_step_button'
+CWL_NEW_VARIABLES_BUTTON = 'cwl_new_variables_button'
+CWL_EDIT_VARIABLES_BUTTON = 'cwl_edit_variables_button'
+CWL_IMPORT_MEOW_BUTTON = 'cwl_import_meow_button'
+CWL_IMPORT_DIR_BUTTON = 'cwl_import_dir_button'
+CWL_EXPORT_DIR_BUTTON = 'cwl_export_dir_button'
 
-        if patterns is None:
-            patterns = {}
-        if recipes is None:
-            recipes = {}
+MODE = 'mode'
+SUPPORTED_ARGS = {
+    MODE: str,
+    PATTERNS: dict,
+    RECIPES: dict,
+    VGRID: str
+}
 
-        if mode not in WIDGET_MODES:
-            raise Exception('Invalide mode requested. Valid modes are: %s'
-                            % WIDGET_MODES)
-        if mode == VGRID_MODE:
-            self.vgrid = kwargs.get(VGRID, None)
-            if not self.vgrid:
-                raise AttributeError('%s has been selected but %s parameter '
-                                     'has not been provided' % (mode, VGRID))
+DEFAULT_WORKFLOW_TITLE = 'exported_workflow'
+WORKFLOW_TITLE_ARG = "export_name"
+DEFAULT_CWL_IMPORT_EXPORT_DIR = 'cwl_directory'
+CWL_IMPORT_EXPORT_DIR_ARG = 'cwl_dir'
 
-        if not isinstance(patterns, dict):
-            raise Exception('The provided patterns were not in a dict')
-        for pattern in patterns.values():
-            valid, feedback = is_valid_pattern_object(pattern)
-            if not valid:
-                raise Exception('Pattern %s was not valid. %s'
-                                % (pattern, feedback))
-        self.patterns = patterns
+FORM_RECIPE_SOURCE = 'Source'
+FORM_RECIPE_NAME = 'Name'
 
-        if not isinstance(recipes, dict):
-            raise Exception('The provided recipes were not in a dict')
-        for recipe in recipes.values():
-            valid, feedback = is_valid_recipe_dict(recipe)
-            if not valid:
-                raise Exception('Recipe %s was not valid. %s'
-                                % (recipe, feedback))
-        self.recipes = recipes
+FORM_PATTERN_NAME = 'Name'
+FORM_PATTERN_TRIGGER_PATH = 'Trigger path'
+FORM_PATTERN_RECIPES = 'Recipes'
+FORM_PATTERN_TRIGGER_FILE = 'Input file'
+FORM_PATTERN_TRIGGER_OUTPUT = 'Trigger output'
+FORM_PATTERN_NOTEBOOK_OUTPUT = 'Notebook output'
+FORM_PATTERN_OUTPUT = 'Output'
+FORM_PATTERN_VARIABLES = 'Variables'
 
-        if patterns and recipes:
-            self.workflow = build_workflow_object(patterns, recipes)
-        else:
-            self.workflow = {}
+NAME_KEY = 'Name'
+VALUE_KEY = 'Value'
 
-        self.visualisation_area = widgets.Output()
-        self.__update_workflow_visualisation()
-        self.display_area = widgets.Output(
-            layout=widgets.Layout(width='100%')
-        )
+INPUT_KEY = 'key'
+INPUT_NAME = 'name'
+INPUT_TYPE = 'type'
+INPUT_HELP = 'help'
+INPUT_OPTIONAL = 'optional'
 
-        self.new_pattern_button = widgets.Button(
-            value=False,
-            description="New Pattern",
-            disabled=True,
-            button_style='',
-            tooltip='Define a new pattern'
-        )
-        self.new_pattern_button.on_click(self.__on_new_pattern_clicked)
+FORM_SINGLE_INPUT = 'single'
+FORM_MULTI_INPUT = 'multi'
+FORM_DICT_INPUT = 'dict'
+FORM_SELECTOR_INPUT = 'selector'
 
-        self.edit_pattern_button = widgets.Button(
-            value=False,
-            description="Edit Pattern",
-            disabled=True,
-            button_style='',
-            tooltip='Edit an existing pattern'
-        )
-        self.edit_pattern_button.on_click(self.__on_edit_pattern_clicked)
+FORM_BUTTONS_KEY = 'buttons'
+FORM_SELECTOR_KEY = 'selector'
 
-        self.new_recipe_button = widgets.Button(
-            value=False,
-            description="Add Recipe",
-            disabled=True,
-            button_style='',
-            tooltip='Import a new recipe'
-        )
-        self.new_recipe_button.on_click(self.__on_new_recipe_clicked)
+BUTTON_ON_CLICK = 'on_click'
+BUTTON_DESC = 'description'
+BUTTON_TOOLTIP = 'tooltip'
 
-        self.edit_recipe_button = widgets.Button(
-            value=False,
-            description="Edit Recipe",
-            disabled=True,
-            button_style='',
-            tooltip='Edit an existing recipe'
-        )
-        self.edit_recipe_button.on_click(self.__on_edit_recipe_clicked)
+RECIPE_FORM_INPUTS = {
+    FORM_RECIPE_SOURCE: {
+        INPUT_KEY: SOURCE,
+        INPUT_TYPE: FORM_SINGLE_INPUT,
+        INPUT_NAME: FORM_RECIPE_SOURCE,
+        INPUT_HELP:
+            "The Jupyter Notebook to be used as a source for the recipe. This "
+            "should be expressed as a path to the notebook. Note that if a "
+            "name is not provided below then the notebook filename will be "
+            "used as the recipe name"
+            "<br/>"
+            "Example: <b>dir/notebook_1.ipynb</b>"
+            "<br/>"
+            "In this example this notebook 'notebook_1' in the 'dir' ."
+            "directory is imported as a recipe. ",
+        INPUT_OPTIONAL: False
+    },
+    FORM_RECIPE_NAME: {
+        INPUT_KEY: NAME,
+        INPUT_TYPE: FORM_SINGLE_INPUT,
+        INPUT_NAME: FORM_RECIPE_NAME,
+        INPUT_HELP:
+            "Optional recipe name. This is used to identify the recipe and so "
+            "must be unique. If not provided then the notebook filename is "
+            "taken as the name. "
+            "<br/>"
+            "Example: <b>recipe_1</b>"
+            "<br/>"
+            "In this example this recipe is given the name 'recipe_1', "
+            "regardless of the name of the source notebook.",
+        INPUT_OPTIONAL: True
+    }
+}
 
-        self.import_from_vgrid_button = widgets.Button(
-            value=False,
-            description="Read VGrid",
-            disabled=True,
-            button_style='',
-            tooltip='Here is a tooltip for this button'
-        )
-        self.import_from_vgrid_button.on_click(
-            self.__on_import_from_vgrid_clicked
-        )
-
-        self.export_to_vgrid_button = widgets.Button(
-            value=False,
-            description="Export to Vgrid",
-            disabled=True,
-            button_style='',
-            tooltip='Here is a tooltip for this button'
-        )
-        self.export_to_vgrid_button.on_click(self.__on_export_to_vgrid_clicked)
-
-        self.export_to_cwl_button = widgets.Button(
-            value=False,
-            description="Export as CWL",
-            disabled=True,
-            button_style='',
-            tooltip='Here is a tooltip for this button'
-        )
-        self.export_to_cwl_button.on_click(self.__on_export_to_cwl_clicked)
-
-        self.feedback = widgets.HTML()
-
-        self.current_form = {}
-        self.current_old_values = {}
-        self.current_form_rows = {}
-        self.current_form_line_counts = {}
-
-        self.mig_imports = {
-            PATTERNS: {},
-            RECIPES: {}
-        }
-
-        self.displayed_form = None
-        self.editing_area = None
-        self.editing = None
-
-        if mode == VGRID_MODE:
-            self.__import_from_vgrid(confirm=False)
-        self.__enable_top_buttons()
-
-    def __disable_top_buttons(self):
-        # TODO update this description
-
-        self.new_pattern_button.disabled = True
-        self.edit_pattern_button.disabled = True
-        self.new_recipe_button.disabled = True
-        self.edit_recipe_button.disabled = True
-        self.import_from_vgrid_button.disabled = True
-        self.export_to_vgrid_button.disabled = True
-        self.export_to_cwl_button.disabled = True
-
-    def __enable_top_buttons(self):
-        # TODO update this description
-
-        self.new_pattern_button.disabled = False
-        if self.patterns:
-            self.edit_pattern_button.disabled = False
-        else:
-            self.edit_pattern_button.disabled = True
-        self.new_recipe_button.disabled = False
-        if self.recipes:
-            self.edit_recipe_button.disabled = False
-        else:
-            self.edit_recipe_button.disabled = True
-        self.import_from_vgrid_button.disabled = False
-        self.export_to_vgrid_button.disabled = False
-        self.export_to_cwl_button.disabled = False
-
-    def __list_current_recipes(self):
-        # TODO update this description
-
-        return list(self.recipes.keys())
-
-    def __populate_new_pattern_form(self, population_function, done_function):
-        # TODO update this description
-
-        self.current_form[INPUT_NAME] = self.__create_form_single_input(
-            "Name",
-            "Pattern Name. This is used to identify the pattern and so "
+PATTERN_FORM_INPUTS = {
+    FORM_PATTERN_NAME: {
+        INPUT_KEY: NAME,
+        INPUT_TYPE: FORM_SINGLE_INPUT,
+        INPUT_NAME: FORM_PATTERN_NAME,
+        INPUT_HELP:
+            "%s Name. This is used to identify the %s and so "
             "should be a unique string."
             "<br/>"
             "Example: <b>pattern_1</b>"
             "<br/>"
-            "In this example this pattern is given the name 'pattern_1'.",
-            INPUT_NAME
-        )
-        self.current_form[INPUT_TRIGGER_PATH] = self.__create_form_single_input(
-            "Trigger path",
+            "In this example this %s is given the name 'pattern_1'."
+            % (PATTERN_NAME, PATTERN_NAME, PATTERN_NAME),
+        INPUT_OPTIONAL: False
+    },
+    FORM_PATTERN_TRIGGER_PATH: {
+        INPUT_KEY: TRIGGER_PATHS,
+        INPUT_TYPE: FORM_MULTI_INPUT,
+        INPUT_NAME: FORM_PATTERN_TRIGGER_PATH,
+        INPUT_HELP:
             "Triggering path for file events which are used to schedule "
             "jobs. This is expressed as a regular expression against which "
             "file events are matched. It can be as broad or specific as "
@@ -218,15 +165,19 @@ class WorkflowWidget:
             "<br/>"
             "Example: <b>dir/input_file_.*\\.txt</b>"
             "<br/>"
-            "In this example pattern jobs will trigger on an '.txt' files "
+            "In this example %s jobs will trigger on an '.txt' files "
             "whose file name starts with 'input_file_' and is located in "
             "the 'dir' directory. The 'dir' directory in this case should be "
             "located in he vgrid home directory. So if you are operating in "
-            "the 'test' vgrid, the structure should be 'test/dir'.",
-            INPUT_TRIGGER_PATH
-        )
-        self.current_form[INPUT_RECIPES] = self.__create_form_multi_input(
-            "Recipe",
+            "the 'test' vgrid, the structure should be 'test/dir'."
+            % PATTERN_NAME,
+        INPUT_OPTIONAL: False
+    },
+    FORM_PATTERN_RECIPES: {
+        INPUT_KEY: RECIPES,
+        INPUT_TYPE: FORM_MULTI_INPUT,
+        INPUT_NAME: FORM_PATTERN_RECIPES,
+        INPUT_HELP:
             "Recipe(s) to be used for job definition. These should be recipe "
             "names and may be recipes already defined in the system or "
             "additional ones yet to be added. Each recipe should be defined "
@@ -237,15 +188,13 @@ class WorkflowWidget:
             "<br/>"
             "In this example, the recipe 'recipe_1' is used as the definition "
             "of any job processing.",
-            INPUT_RECIPES,
-            population_function,
-            self.__refresh_new_form,
-            done_function=done_function,
-            extra_text="<br/>Current defined recipes are: ",
-            extra_func=self.__list_current_recipes()
-        )
-        self.current_form[INPUT_TRIGGER_FILE] = self.__create_form_single_input(
-            "Trigger file",
+        INPUT_OPTIONAL: False
+    },
+    FORM_PATTERN_TRIGGER_FILE: {
+        INPUT_KEY: INPUT_FILE,
+        INPUT_TYPE: FORM_SINGLE_INPUT,
+        INPUT_NAME: FORM_PATTERN_TRIGGER_FILE,
+        INPUT_HELP:
             "This is the variable name used to identify the triggering file "
             "within the job processing."
             "<br/>"
@@ -254,10 +203,13 @@ class WorkflowWidget:
             "In this the triggering file will be copied into the job as "
             "'input_file'. This can then be opened or manipulated as "
             "necessary by the job processing.",
-            INPUT_TRIGGER_FILE
-        )
-        self.current_form[INPUT_TRIGGER_OUTPUT] = self.__create_form_single_input(
-            "Trigger output",
+        INPUT_OPTIONAL: False
+    },
+    FORM_PATTERN_TRIGGER_OUTPUT: {
+        INPUT_KEY: TRIGGER_OUTPUT,
+        INPUT_TYPE: FORM_SINGLE_INPUT,
+        INPUT_NAME: FORM_PATTERN_TRIGGER_OUTPUT,
+        INPUT_HELP:
             "Trigger output is an optional parameter used to define if the "
             "triggering file is returned. This is defined by the path for the "
             "file to be copied to at job completion. If it is not provided "
@@ -269,11 +221,13 @@ class WorkflowWidget:
             "In this example data file is saved within the 'dir' directory. "
             "If the job was triggered on 'test.txt' then the output file "
             "would be called 'test_output.txt",
-            INPUT_TRIGGER_OUTPUT,
-            optional=True
-        )
-        self.current_form[INPUT_NOTEBOOK_OUTPUT] = self.__create_form_single_input(
-            "Notebook output",
+        INPUT_OPTIONAL: True
+    },
+    FORM_PATTERN_NOTEBOOK_OUTPUT: {
+        INPUT_KEY: NOTEBOOK_OUTPUT,
+        INPUT_TYPE: FORM_SINGLE_INPUT,
+        INPUT_NAME: FORM_PATTERN_NOTEBOOK_OUTPUT,
+        INPUT_HELP:
             "Notebook output is an optional parameter used to define if the "
             "notebook used for job processing is returned. This is defined as "
             "a path for the notebook to be copied to at job completion. If it "
@@ -285,854 +239,1298 @@ class WorkflowWidget:
             "In this example the job notebook is saved within the 'dir' "
             "directory. If the job was triggered on 'test.txt' then the "
             "output notebook would be called 'test_output.ipynb",
-            INPUT_NOTEBOOK_OUTPUT,
-            optional=True
-        )
-        self.current_form[INPUT_INPUT] = self.__create_form_multi_input(
-            "Additional Input",
-            "Additional input data required for job processing. This input "
-            "is taken as a static path and events matching this path do not "
-            "trigger new jobs. Zero or more files can be copied and should "
-            "be expressed in two parts as a variable declaration. The "
-            "variable name is the name of the input file within the job, "
-            "whilst the value is the file location from which it shall be "
-            "copied. In the input string a '*' character can be used to "
-            "dynamically create file names, with the * being replaced at "
-            "runtime by the triggering files filename. Each input should be "
-            "defined in its own text box, and the 'Add' button "
-            "can be used to create additional text boxes as needed."
-            "<br/>"
-            "Example: <b>static_input = dir/some_input.txt</b>"
-            "<br/>"
-            "In this example, the file 'some_input.txt' is copied to the job "
-            "and renamed to 'static_input'. ",
-            INPUT_INPUT,
-            population_function,
-            self.__refresh_new_form,
-            done_function=done_function,
-            optional=True
-        )
-        self.current_form[INPUT_OUTPUT] = self.__create_form_multi_input(
-            "Output",
-            "Output data to be saved after job completion. Anything not "
-            "saved will be lost. Zero or more files can be copied and should "
-            "be expressed in two parts as a variable declaration. The "
-            "variable name is the name of the output file within the job, "
-            "whilst the value is the file location to which it shall be "
-            "copied. In the output string a '*' character can be used to "
-            "dynamically create file names, with the * being replaced at "
-            "runtime by the triggering files filename. Each output should be "
-            "defined in its own text box, and the 'Add output file' button "
-            "can be used to create additional text boxes as needed."
-            "<br/>"
-            "Example: <b>job_output = dir/some_output/*.ipynb</b>"
-            "<br/>"
-            "In this example, the file 'job_output' is created by the job and "
-            "copied to the 'some_output' directory in 'dir'. If 'some_output' "
-            "does not already exist it is created. The file will be named "
-            "according to the triggering file, and given the '.ipynb' file "
-            "extension. If the triggering file was 'sample.txt' then the "
-            "output will be called 'sample.ipynb'.",
-            INPUT_OUTPUT,
-            population_function,
-            self.__refresh_new_form,
-            done_function=done_function,
-            optional=True
-        )
-        self.current_form[INPUT_VARIABLES] = self.__create_form_multi_input(
-            "Variable",
-            "Variable(s) accessible to the job at runtime. These are passed "
-            "to the job using papermill to run a parameterised notebook. Zero "
-            "or more variables can be defined and should be declared as "
-            "variable definitions. The variable name will be used as the "
-            "variable name within the job notebook, and the vraiable value "
-            "will be its value. Any Python data structure can be defined as "
-            "long as it can be declared in a single line."
-            "<br/>"
-            "Example: <b>list_a=[1,2,3]</b>"
-            "<br/>"
-            "In this example a list of numbers is created and named 'list_a'."
-            ,
-            INPUT_VARIABLES,
-            population_function,
-            self.__refresh_new_form,
-            done_function=done_function,
-            optional=True
-        )
+        INPUT_OPTIONAL: True
+    },
+    FORM_PATTERN_OUTPUT: {
+        INPUT_KEY: OUTPUT,
+        INPUT_TYPE: FORM_DICT_INPUT,
+        INPUT_NAME: FORM_PATTERN_OUTPUT,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: True
+    },
+    FORM_PATTERN_VARIABLES: {
+        INPUT_KEY: VARIABLES,
+        INPUT_TYPE: FORM_DICT_INPUT,
+        INPUT_NAME: FORM_PATTERN_VARIABLES,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: True
+    },
+}
 
-    def __populate_editing_pattern_form(
-            self, population_function, editing, display_dict):
-        # TODO update this description
+FORM_WORKFLOW_NAME = 'Name'
+FORM_WORKFLOW_INPUTS = "Input(s)"
+FORM_WORKFLOW_OUTPUTS = "Output(s)"
+FORM_WORKFLOW_STEPS = 'Step(s)'
+FORM_WORKFLOW_REQUIREMENTS = 'Requirement(s)'
 
-        self.current_form[INPUT_TRIGGER_PATH] = \
-            self.__create_form_single_input(
-                "Trigger path",
-                "Triggering path for file events which are used to schedule "
-                "jobs. This is expressed as a regular expression against "
-                "which file events are matched. It can be as broad or "
-                "specific as required. Any matches between file events and "
-                "the path given will cause a scheduled job. File paths are "
-                "taken relative to the vgrid home directory. "
-                "<br/>"
-                "Example: <b>dir/input_file_.*\\.txt</b>"
-                "<br/>"
-                "In this example pattern jobs will trigger on an '.txt' files "
-                "whose file name starts with 'input_file_' and is located in "
-                "the 'dir' directory. The 'dir' directory in this case should "
-                "be located in he vgrid home directory. So if you are "
-                "operating in the 'test' vgrid, the structure should be "
-                "'test/dir'.",
-                INPUT_TRIGGER_PATH
-        )
-        self.current_form[INPUT_RECIPES] = self.__create_form_multi_input(
-            "Recipe",
-            "Recipe(s) to be used for job definition. These should be recipe "
-            "names and may be recipes already defined in the system or "
-            "additional ones yet to be added. Each recipe should be defined "
-            "in its own text box, and the 'Add recipe' button can be used to "
-            "create additional text boxes as needed."
-            "<br/>"
-            "Example: <b>recipe_1</b>"
-            "<br/>"
-            "In this example, the recipe 'recipe_1' is used as the definition "
-            "of any job processing.",
-            INPUT_RECIPES,
-            population_function,
-            self.__refresh_edit_form,
-            editing=editing,
-            display_dict=display_dict,
-            apply_function=self.__on_apply_pattern_changes_clicked,
-            delete_function=self.__on_delete_pattern_clicked,
-            extra_text="<br/>Current defined recipes are: ",
-            extra_func=self.__list_current_recipes()
-        )
-        self.current_form[INPUT_TRIGGER_FILE] = \
-            self.__create_form_single_input(
-                "Trigger file",
-                "This is the variable name used to identify the triggering "
-                "file within the job processing."
-                "<br/>"
-                "Example: <b>input_file</b>"
-                "<br/>"
-                "In this the triggering file will be copied into the job as "
-                "'input_file'. This can then be opened or manipulated as "
-                "necessary by the job processing.",
-                INPUT_TRIGGER_FILE
-        )
-        self.current_form[INPUT_TRIGGER_OUTPUT] = \
-            self.__create_form_single_input(
-                "Trigger output",
-                "Trigger output is an optional parameter used to define if "
-                "the triggering file is returned. This is defined by the path "
-                "for the file to be copied to at job completion. If it is not "
-                "provided then any changes made to it are lost, but other "
-                "output may still be saved if defined in the output parameter."
-                "<br/>"
-                "Example: <b>dir/*_output.txt</b>"
-                "<br/>"
-                "In this example data file is saved within the 'dir' "
-                "directory. If the job was triggered on 'test.txt' then the "
-                "output file would be called 'test_output.txt",
-                INPUT_TRIGGER_OUTPUT,
-                optional=True
-        )
-        self.current_form[INPUT_NOTEBOOK_OUTPUT] = \
-            self.__create_form_single_input(
-                "Notebook output",
-                "Notebook output is an optional parameter used to define if "
-                "the notebook used for job processing is returned. This is "
-                "defined as a path for the notebook to be copied to at job "
-                "completion. If it is not provided then the notebook is "
-                "destroyed, but other output may still be saved if defined "
-                "in the output parameter."
-                "<br/>"
-                "Example: <b>dir/*_output.ipynb</b>"
-                "<br/>"
-                "In this example the job notebook is saved within the 'dir' "
-                "directory. If the job was triggered on 'test.txt' then the "
-                "output notebook would be called 'test_output.ipynb",
-                INPUT_NOTEBOOK_OUTPUT,
-                optional=True
-        )
-        self.current_form[INPUT_OUTPUT] = self.__create_form_multi_input(
-            "Additional Input",
-            "Additional input data required for job processing. This input "
-            "is taken as a static path and events matching this path do not "
-            "trigger new jobs. Zero or more files can be copied and should "
-            "be expressed in two parts as a variable declaration. The "
-            "variable name is the name of the input file within the job, "
-            "whilst the value is the file location from which it shall be "
-            "copied. In the input string a '*' character can be used to "
-            "dynamically create file names, with the * being replaced at "
-            "runtime by the triggering files filename. Each input should be "
-            "defined in its own text box, and the 'Add' button "
-            "can be used to create additional text boxes as needed."
-            "<br/>"
-            "Example: <b>static_input = dir/some_input.txt</b>"
-            "<br/>"
-            "In this example, the file 'some_input.txt' is copied to the job "
-            "and renamed to 'static_input'. ",
-            INPUT_INPUT,
-            population_function,
-            self.__refresh_edit_form,
-            editing=editing,
-            display_dict=display_dict,
-            apply_function=self.__on_apply_pattern_changes_clicked,
-            delete_function=self.__on_delete_pattern_clicked,
-            optional=True
-        )
-        self.current_form[INPUT_OUTPUT] = self.__create_form_multi_input(
-            "Output",
-            "Output data to be saved after job completion. Anything not "
-            "saved will be lost. Zero or more files can be copied and should "
-            "be expressed in two parts as a variable declaration. The "
-            "variable name is the name of the output file within the job, "
-            "whilst the value is the file location to which it shall be "
-            "copied. In the output string a '*' character can be used to "
-            "dynamically create file names, with the * being replaced at "
-            "runtime by the triggering files filename. Each output should be "
-            "defined in its own text box, and the 'Add output file' button "
-            "can be used to create additional text boxes as needed."
-            "<br/>"
-            "Example: <b>job_output = dir/some_output/*.ipynb</b>"
-            "<br/>"
-            "In this example, the file 'job_output' is created by the job and "
-            "copied to the 'some_output' directory in 'dir'. If 'some_output' "
-            "does not already exist it is created. The file will be named "
-            "according to the triggering file, and given the '.ipynb' file "
-            "extension. If the triggering file was 'sample.txt' then the "
-            "output will be called 'sample.ipynb'.",
-            INPUT_OUTPUT,
-            population_function,
-            self.__refresh_edit_form,
-            editing=editing,
-            display_dict=display_dict,
-            apply_function=self.__on_apply_pattern_changes_clicked,
-            delete_function=self.__on_delete_pattern_clicked,
-            optional=True
-        )
-        self.current_form[INPUT_VARIABLES] = self.__create_form_multi_input(
-            "Variable",
-            "Variable(s) accessible to the job at runtime. These are passed "
-            "to the job using papermill to run a parameterised notebook. Zero "
-            "or more variables can be defined and should be declared as "
-            "variable definitions. The variable name will be used as the "
-            "variable name within the job notebook, and the vraiable value "
-            "will be its value. Any Python data structure can be defined as "
-            "long as it can be declared in a single line."
-            "<br/>"
-            "Example: <b>list_a=[1,2,3]</b>"
-            "<br/>"
-            "In this example a list of numbers is created and named 'list_a'."
-            ,
-            INPUT_VARIABLES,
-            population_function,
-            self.__refresh_edit_form,
-            editing=editing,
-            display_dict=display_dict,
-            apply_function=self.__on_apply_pattern_changes_clicked,
-            delete_function=self.__on_delete_pattern_clicked,
-            optional=True
-        )
+WORKFLOW_FORM_INPUTS = {
+    FORM_WORKFLOW_NAME: {
+        INPUT_KEY: CWL_NAME,
+        INPUT_TYPE: FORM_SINGLE_INPUT,
+        INPUT_NAME: FORM_WORKFLOW_NAME,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: False
+    },
+    FORM_WORKFLOW_INPUTS: {
+        INPUT_KEY: CWL_INPUTS,
+        INPUT_TYPE: FORM_DICT_INPUT,
+        INPUT_NAME: FORM_WORKFLOW_INPUTS,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: False
+    },
+    FORM_WORKFLOW_OUTPUTS: {
+        INPUT_KEY: CWL_OUTPUTS,
+        INPUT_TYPE: FORM_DICT_INPUT,
+        INPUT_NAME: FORM_WORKFLOW_OUTPUTS,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: True
+    },
+    FORM_WORKFLOW_STEPS: {
+        INPUT_KEY: CWL_STEPS,
+        INPUT_TYPE: FORM_DICT_INPUT,
+        INPUT_NAME: FORM_WORKFLOW_STEPS,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: False
+    },
+    FORM_WORKFLOW_REQUIREMENTS: {
+        INPUT_KEY: CWL_REQUIREMENTS,
+        INPUT_TYPE: FORM_DICT_INPUT,
+        INPUT_NAME: FORM_WORKFLOW_REQUIREMENTS,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: True
+    }
+}
 
-    def __populate_new_recipe_form(self, population_function, done_function):
-        # TODO update this description
+FORM_STEP_NAME = 'Name'
+FORM_STEP_BASE_COMMAND = 'Base Command'
+FORM_STEP_STDOUT = "Stdout"
+FORM_STEP_INPUTS = "Input(s)"
+FORM_STEP_OUTPUTS = "Output(s)"
+FORM_STEP_HINTS = 'Hint(s)'
+FORM_STEP_REQUIREMENTS = 'Requirement(s)'
+FORM_STEP_ARGUMENTS = 'Argument(s)'
 
-        self.current_form[INPUT_SOURCE] = self.__create_form_single_input(
-            "Source",
-            "The Jupyter Notebook to be used as a source for the recipe. This "
-            "should be expressed as a path to the notebook. Note that if a "
-            "name is not provided below then the notebook filename will be "
-            "used as the recipe name"
-            "<br/>"
-            "Example: <b>dir/notebook_1.ipynb</b>"
-            "<br/>"
-            "In this example this notebook 'notebook_1' in the 'dir' ."
-            "directory is imported as a recipe. ",
-            INPUT_SOURCE,
-            extra_text="<br/>Current defined recipes are: ",
-            extra_func=self.__list_current_recipes()
-        )
-        self.current_form[INPUT_NAME] = self.__create_form_single_input(
-            "Name",
-            "Optional recipe name. This is used to identify the recipe and so "
-            "must be unique. If not provided then the notebook filename is "
-            "taken as the name. "
-            "<br/>"
-            "Example: <b>recipe_1</b>"
-            "<br/>"
-            "In this example this recipe is given the name 'recipe_1', "
-            "regardless of the name of the source notebook.",
-            INPUT_NAME,
-            optional=True,
-            extra_text="<br/>Current defined recipes are: ",
-            extra_func=self.__list_current_recipes()
-        )
-        self.current_form[INPUT_MOUNT_USER_DIR] = self.__create_form_checkbox(
-            "Requires external files",
-            "Check this if the recipe requires additional inputs from the "
-            "vgrid. These could be other code files, calibration data or any "
-            "other statically defined files present on the vgrid. ",
-            INPUT_MOUNT_USER_DIR
-        )
+STEP_FORM_INPUTS = {
+    FORM_STEP_NAME: {
+        INPUT_KEY: CWL_NAME,
+        INPUT_TYPE: FORM_SINGLE_INPUT,
+        INPUT_NAME: FORM_STEP_NAME,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: False
+    },
+    FORM_STEP_BASE_COMMAND: {
+        INPUT_KEY: CWL_BASE_COMMAND,
+        INPUT_TYPE: FORM_SINGLE_INPUT,
+        INPUT_NAME: FORM_STEP_BASE_COMMAND,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: False
+    },
+    FORM_STEP_STDOUT: {
+        INPUT_KEY: CWL_STDOUT,
+        INPUT_TYPE: FORM_SINGLE_INPUT,
+        INPUT_NAME: FORM_STEP_STDOUT,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: True
+    },
+    FORM_STEP_INPUTS: {
+        INPUT_KEY: CWL_INPUTS,
+        INPUT_TYPE: FORM_DICT_INPUT,
+        INPUT_NAME: FORM_STEP_INPUTS,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: False
+    },
+    FORM_STEP_OUTPUTS: {
+        INPUT_KEY: CWL_OUTPUTS,
+        INPUT_TYPE: FORM_DICT_INPUT,
+        INPUT_NAME: FORM_STEP_OUTPUTS,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: True
+    },
+    FORM_STEP_REQUIREMENTS: {
+        INPUT_KEY: CWL_REQUIREMENTS,
+        INPUT_TYPE: FORM_DICT_INPUT,
+        INPUT_NAME: FORM_STEP_REQUIREMENTS,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: True
+    },
+    FORM_STEP_ARGUMENTS: {
+        INPUT_KEY: CWL_ARGUMENTS,
+        INPUT_TYPE: FORM_MULTI_INPUT,
+        INPUT_NAME: FORM_STEP_ARGUMENTS,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: True
+    },
+    FORM_STEP_HINTS: {
+        INPUT_KEY: CWL_HINTS,
+        INPUT_TYPE: FORM_DICT_INPUT,
+        INPUT_NAME: FORM_STEP_HINTS,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: True
+    }
+}
 
-    def __populate_editing_recipe_form(
-            self, population_function, editing, display_dict):
-        # TODO update this description
+FORM_VARIABLES_NAME = 'Name'
+FORM_VARIABLES_VARIABLES = 'Variables'
 
-        self.current_form[INPUT_NAME] = self.__create_form_single_input(
-            "Source",
-            "The Jupyter Notebook to be used as a source for the recipe. "
-            "This should be expressed as a path to the notebook. Note "
-            "that if a name is not provided below then the notebook "
-            "filename will be used as the recipe name"
-            "<br/>"
-            "Example: <b>dir/notebook_1.ipynb</b>"
-            "<br/>"
-            "In this example this notebook 'notebook_1' in the 'dir' ."
-            "directory is imported as a recipe. ",
-            INPUT_SOURCE
-        )
-        self.current_form[INPUT_MOUNT_USER_DIR] = self.__create_form_checkbox(
-            "Requires external files",
-            "Check this if the recipe requires additional inputs from the "
-            "vgrid. These could be other code files, calibration data or any "
-            "other statically defined files present on the vgrid. ",
-            INPUT_MOUNT_USER_DIR
-        )
+VARIABLES_FORM_INPUTS = {
+    FORM_VARIABLES_NAME: {
+        INPUT_KEY: CWL_NAME,
+        INPUT_TYPE: FORM_SINGLE_INPUT,
+        INPUT_NAME: FORM_VARIABLES_NAME,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: False
+    },
+    FORM_VARIABLES_VARIABLES: {
+        INPUT_KEY: CWL_VARIABLES,
+        INPUT_TYPE: FORM_DICT_INPUT,
+        INPUT_NAME: FORM_VARIABLES_VARIABLES,
+        INPUT_HELP:
+            "TODO",
+        INPUT_OPTIONAL: False
+    }
+}
 
-    def __process_pattern_values(self, values, editing=False):
-        # TODO update this description
+MEOW_TOOLTIP = Tooltip(
+    fields=[
+        'Name',
+        'Recipe(s)',
+        'Trigger Path(s)',
+        'Outputs(s)',
+        'Static Inputs(s)',
+        'Input File',
+        'Variable(s)'
+    ],
+)
 
+CWL_TOOLTIP = Tooltip(
+    fields=[
+        'Name',
+        'Base Command',
+        'Inputs(s)',
+        'Outputs(s)',
+        'Argument(s)',
+        'Requirement(s)',
+        'Hint(s)',
+        'Stdout'
+    ],
+)
+
+NO_VGRID_MSG = "No VGrid has been specified so MEOW importing/exporting " \
+               "will not be possible. If this is required then specify a " \
+               "VGrid in the create_workflow_widget arguments by stating " \
+               "'create_workflow_widget(vgrid='name_of_vgrid')'. "
+
+
+# Move this to input file
+def check_input_args(args):
+    if not isinstance(args, dict):
+        raise Exception("Arguments provided in invalid format")
+
+    for arg in args.keys():
+        if arg not in SUPPORTED_ARGS:
+            raise Exception("Unsupported argument %s. Valid are: %s. "
+                            % (arg, list(SUPPORTED_ARGS.keys())))
+
+
+def strip_dirs(path):
+    if os.path.sep in path:
+        path = path[path.rfind(os.path.sep) + 1:]
+    return path
+
+
+def count_calls(calls, operation, type):
+    count = [i[2][NAME] for i in calls
+             if i[0] == operation and i[1] == type]
+    return count
+
+
+def list_to_dict(to_convert):
+    variables_dict = {}
+    for variables in to_convert:
         try:
-            pattern = Pattern(values[INPUT_NAME])
-            if not editing:
-                if values[INPUT_NAME] in self.patterns:
-                    msg = "Pattern name is not valid as another pattern is " \
-                          "already registered with that name. "
-                    self.__set_feedback(msg)
-                    return
-            file_name = values[INPUT_TRIGGER_FILE]
-            trigger_path = values[INPUT_TRIGGER_PATH]
-            trigger_output = values[INPUT_TRIGGER_OUTPUT]
-            if trigger_output:
-                pattern.add_single_input(file_name,
-                                         trigger_path,
-                                         output_path=trigger_output)
-            else:
-                pattern.add_single_input(file_name, trigger_path)
-            notebook_return = values[INPUT_NOTEBOOK_OUTPUT]
-            if notebook_return:
-                pattern.return_notebook(notebook_return)
-            for recipe in values[INPUT_RECIPES]:
-                pattern.add_recipe(recipe)
-            for variable in values[INPUT_VARIABLES]:
-                if variable:
-                    if '=' in variable:
-                        name = variable[:variable.index('=')]
-                        value = variable[variable.index('=') + 1:]
-                        pattern.add_variable(name, value)
-                    else:
-                        raise Exception("Variable needs to be declared with a "
-                                        "name and a value in the form "
-                                        "'name=value', but no '=' is present "
-                                        "in %s" % variable)
-            for output in values[INPUT_OUTPUT]:
-                if output:
-                    if '=' in output:
-                        name = output[:output.index('=')]
-                        value = output[output.index('=') + 1:]
-                        pattern.add_output(name, value)
-                    else:
-                        raise Exception("Output needs to be declared with a "
-                                        "name and a value in the form "
-                                        "'name=value', but no '=' is present "
-                                        "in %s" % output)
-            valid, warnings = pattern.integrity_check()
-            if valid:
-                if pattern.name in self.patterns:
-                    word = 'updated'
-                    try:
-                        pattern.persistence_id = \
-                            self.patterns[pattern.name].persistence_id
-                    except AttributeError:
-                        pass
+            variables[VALUE_KEY] = ast.literal_eval(
+                variables[VALUE_KEY])
+        except (SyntaxError, ValueError):
+            pass
+        if variables[NAME_KEY] and variables[VALUE_KEY]:
+            variables_dict[variables[NAME_KEY]] = variables[VALUE_KEY]
+    return variables_dict
 
-                else:
-                    word = 'created'
-                self.patterns[pattern.name] = pattern
-                msg = "pattern %s %s. " % (pattern.name, word)
-                if warnings:
-                    msg += "\n%s" % warnings
-                self.__set_feedback(msg)
+
+def prepare_to_dump(to_export):
+    new_dict = {}
+    for key, value in to_export.items():
+        if key != CWL_NAME:
+            if value:
+                new_dict[key] = value
+    return new_dict
+
+
+class WorkflowWidget:
+    def __init__(self, **kwargs):
+
+        check_input_args(kwargs)
+
+        self.mode = kwargs.get(MODE, None)
+        if not self.mode:
+            self.mode = MEOW_MODE
+        if self.mode not in WIDGET_MODES:
+            raise Exception("Unsupported mode %s specified. Valid are %s. "
+                            % (self.mode, WIDGET_MODES))
+
+        cwl_dir = kwargs.get(CWL_IMPORT_EXPORT_DIR_ARG, None)
+        if cwl_dir:
+            self.cwl_import_export_dir = cwl_dir
+        else:
+            self.cwl_import_export_dir = DEFAULT_CWL_IMPORT_EXPORT_DIR
+
+        workflow_title = kwargs.get(WORKFLOW_TITLE_ARG, None)
+        if workflow_title:
+            self.workflow_title = workflow_title
+        else:
+            self.workflow_title = DEFAULT_WORKFLOW_TITLE
+
+        self.vgrid = kwargs.get(VGRID, None)
+
+        self.mode_toggle = widgets.ToggleButtons(
+            options=[i for i in WIDGET_MODES if isinstance(i, str)],
+            description='Mode:',
+            disabled=False,
+            button_style='',
+            tooltips= [
+                "Construct workflows as defined by %s. Attempts will be made "
+                "to convert any existing objects to the %s paradigm. " % (i, i)
+                for i in WIDGET_MODES if isinstance(i, str)
+            ],
+            value=self.mode
+        )
+        self.mode_toggle.observe(self.__on_mode_selection_changed)
+
+        self.visualisation_area = widgets.Output()
+        self.button_area = widgets.Output()
+        self.form_area = widgets.Output()
+        self.feedback_area = widgets.HTML()
+
+        self.meow = {
+            PATTERNS: {},
+            RECIPES: {}
+        }
+        self.cwl = {
+            WORKFLOWS: {},
+            STEPS: {},
+            SETTINGS: {}
+        }
+
+        self.button_elements = {}
+        self.form_inputs = {}
+        self.form_sections = {}
+
+        self.BUTTONS = {
+            MEOW_MODE: {
+                MEOW_NEW_PATTERN_BUTTON: {
+                    BUTTON_ON_CLICK: self.new_pattern_clicked,
+                    BUTTON_DESC: "New %s" % PATTERN_NAME,
+                    BUTTON_TOOLTIP: 'Define a new %s. ' % PATTERN_NAME
+                },
+                MEOW_EDIT_PATTERN_BUTTON: {
+                    BUTTON_ON_CLICK: self.edit_pattern_clicked,
+                    BUTTON_DESC: "Edit %s" % PATTERN_NAME,
+                    BUTTON_TOOLTIP: 'Edit an existing %s. ' % PATTERN_NAME
+                },
+                MEOW_NEW_RECIPE_BUTTON: {
+                    BUTTON_ON_CLICK: self.new_recipe_clicked,
+                    BUTTON_DESC: "Add %s" % RECIPE_NAME,
+                    BUTTON_TOOLTIP: 'Import a new %s. ' % RECIPE_NAME
+                },
+                MEOW_EDIT_RECIPE_BUTTON: {
+                    BUTTON_ON_CLICK: self.edit_recipe_clicked,
+                    BUTTON_DESC: "Edit %s" % RECIPE_NAME,
+                    BUTTON_TOOLTIP: 'Edit an existing %s. ' % RECIPE_NAME
+                },
+                MEOW_IMPORT_CWL_BUTTON: {
+                    BUTTON_ON_CLICK: self.import_from_cwl_clicked,
+                    BUTTON_DESC: "Convert CWL",
+                    BUTTON_TOOLTIP:
+                        'Attempt to convert existing CWl definitions into '
+                        'MEOW format. '
+                },
+                MEOW_IMPORT_VGRID_BUTTON: {
+                    BUTTON_ON_CLICK: self.import_from_vgrid_clicked,
+                    BUTTON_DESC: "Read VGrid",
+                    BUTTON_TOOLTIP: 'Import data from Vgrid. '
+                },
+                MEOW_EXPORT_VGRID_BUTTON: {
+                    BUTTON_ON_CLICK: self.export_to_vgrid_clicked,
+                    BUTTON_DESC: "Export to Vgrid",
+                    BUTTON_TOOLTIP: 'Exports data to Vgrid. '
+                }
+            },
+            CWL_MODE: {
+                CWL_NEW_WORKFLOW_BUTTON: {
+                    BUTTON_ON_CLICK: self.new_workflow_clicked,
+                    BUTTON_DESC: "New %s" % WORKFLOW_NAME,
+                    BUTTON_TOOLTIP: 'Define a new %s. ' % WORKFLOW_NAME
+                },
+                CWL_EDIT_WORKFLOW_BUTTON: {
+                    BUTTON_ON_CLICK: self.edit_workflow_clicked,
+                    BUTTON_DESC: "Edit %s" % WORKFLOW_NAME,
+                    BUTTON_TOOLTIP: 'Edit an existing %s. ' % WORKFLOW_NAME
+                },
+                CWL_NEW_STEP_BUTTON: {
+                    BUTTON_ON_CLICK: self.new_step_clicked,
+                    BUTTON_DESC: "New %s" % STEP_NAME,
+                    BUTTON_TOOLTIP: 'Define a new %s. ' % STEP_NAME
+                },
+                CWL_EDIT_STEP_BUTTON: {
+                    BUTTON_ON_CLICK: self.edit_step_clicked,
+                    BUTTON_DESC: "Edit %s" % STEP_NAME,
+                    BUTTON_TOOLTIP: 'Edit an existing %s. ' % STEP_NAME
+                },
+                CWL_NEW_VARIABLES_BUTTON: {
+                    BUTTON_ON_CLICK: self.new_variables_clicked,
+                    BUTTON_DESC: "Add %s" % VARIABLES_NAME,
+                    BUTTON_TOOLTIP: 'Define new %s. ' % VARIABLES_NAME
+                },
+                CWL_EDIT_VARIABLES_BUTTON: {
+                    BUTTON_ON_CLICK: self.edit_variables_clicked,
+                    BUTTON_DESC: "Edit %s" % VARIABLES_NAME,
+                    BUTTON_TOOLTIP: 'Edit existing %s. ' % VARIABLES_NAME
+                },
+                CWL_IMPORT_MEOW_BUTTON: {
+                    BUTTON_ON_CLICK: self.import_from_meow_clicked,
+                    BUTTON_DESC: "Convert MEOW",
+                    BUTTON_TOOLTIP:
+                        "Convert existing MEOW definitions into CWL"
+                },
+                CWL_IMPORT_DIR_BUTTON: {
+                    BUTTON_ON_CLICK: self.import_from_dir_clicked,
+                    BUTTON_DESC: "Read directory",
+                    BUTTON_TOOLTIP: 'Imports CWL data from a given directory. '
+                },
+                CWL_EXPORT_DIR_BUTTON: {
+                    BUTTON_ON_CLICK: self.export_to_dir_clicked,
+                    BUTTON_DESC: "Export to directory",
+                    BUTTON_TOOLTIP: 'Exports CWL data to a given directory. '
+                }
+            }
+        }
+
+    def display_widget(self):
+        widget = widgets.VBox(
+            [
+                self.mode_toggle,
+                self.visualisation_area,
+                self.button_area,
+                self.form_area,
+                self.feedback_area
+            ],
+            layout=widgets.Layout(width='100%')
+        )
+
+        self.__update_workflow_visualisation()
+        self.__construct_widget()
+
+        return widget
+
+    def __on_mode_selection_changed(self, change):
+        new_mode = change['new']
+        if change['type'] == 'change' \
+                and change['name'] == 'value'\
+                and new_mode != self.mode:
+            if new_mode == CWL_MODE:
+                self.mode = new_mode
+                self.__construct_widget()
                 self.__update_workflow_visualisation()
-                self.__close_form()
-                return True
-            else:
-                msg = "pattern is not valid. "
-                if warnings:
-                    msg += "\n%s" % warnings
-                self.__set_feedback(msg)
-                return False
-        except Exception as e:
-            msg = "Something went wrong with pattern generation. %s" % str(e)
-            self.__set_feedback(msg)
-            return False
+            elif new_mode == MEOW_MODE:
+                self.mode = new_mode
+                self.__construct_widget()
+                self.__update_workflow_visualisation()
 
-    def __process_recipe_values(self, values, ignore_conflicts=False):
-        # TODO update this description
+    def __check_state(self, state=None):
+        if self.mode not in WIDGET_MODES:
+            raise Exception("Internal state corrupted. Invalid mode %s. Only "
+                            "valid modes are %s. " % (self.mode, WIDGET_MODES))
+        if state:
+            if self.mode != state:
+                if self.mode not in WIDGET_MODES:
+                    raise Exception(
+                        "Internal state corrupted. Invalid function call for "
+                        "state %s. Should be only accessible to %s. "
+                        % (state, self.mode))
 
-        try:
-            source = values[INPUT_SOURCE]
-            name = values[INPUT_NAME]
-            mount = values[INPUT_MOUNT_USER_DIR]
+    def __construct_widget(self):
+        self.__check_state()
 
-            valid_path(source,
-                       'Source',
-                       extensions=NOTEBOOK_EXTENSIONS
+        if self.mode == MEOW_MODE:
+            self.__construct_meow_widget()
+
+        elif self.mode == CWL_MODE:
+            self.__construct_cwl_widget()
+
+    def __construct_meow_widget(self):
+        self.__check_state(state=MEOW_MODE)
+        self.button_elements = {}
+        self.__close_form()
+
+        button_row_items = []
+        button_layout = \
+            widgets.Layout(width='%d%%' % (100/len(self.BUTTONS[MEOW_MODE])))
+        for button_key, button_value in self.BUTTONS[MEOW_MODE].items():
+            button = widgets.Button(
+                value=False,
+                description=button_value[BUTTON_DESC],
+                disabled=True,
+                button_style='',
+                tooltip=button_value[BUTTON_TOOLTIP],
+                layout=button_layout
             )
-            if os.path.sep in source:
-                filename = \
-                    source[source.index('/') + 1:source.index('.')]
+            button.on_click(button_value[BUTTON_ON_CLICK])
+            self.button_elements[button_key] = button
+            button_row_items.append(button)
+        button_row = widgets.HBox(button_row_items)
+
+        new_buttons = widgets.VBox([
+            button_row
+        ])
+
+        self.__enable_top_buttons()
+
+        if not self.meow[PATTERNS] and not self.meow[RECIPES]:
+            if self.cwl[WORKFLOWS] or self.cwl[STEPS] or self.cwl[SETTINGS]:
+                self.__set_feedback(
+                    "%s data detected, attempting to convert to %s "
+                    "format. " % (CWL_MODE, MEOW_MODE)
+                )
             else:
-                filename = source[:source.index('.')]
-            if not name:
-                name = filename
-            if not os.path.isfile(source):
-                self.__set_feedback("Source %s was not found. " % source)
-                return
-            if name:
-                valid_string(name,
-                             'Name',
-                             CHAR_UPPERCASE
-                             + CHAR_LOWERCASE
-                             + CHAR_NUMERIC
-                             + CHAR_LINES)
-                if not ignore_conflicts:
-                    if name in self.recipes:
-                        msg = "recipe name is not valid as another recipe " \
-                              "is already registered with that name. Please " \
-                              "try again using a different name. "
-                        self.__set_feedback(msg)
-                        return
+                self.__set_feedback(
+                    "No %s data detected, attempting to import data from "
+                    "VGrid. " % CWL_MODE
+                )
+                self.__import_from_vgrid(confirm=False)
+        else:
+            self.__set_feedback(
+                "As %s data is already present in the system. No automatic "
+                "import has taken place. " % MEOW_MODE
+            )
 
-            self.__set_feedback("Everything seems in order. ")
+        self.button_area.clear_output(wait=True)
+        with self.button_area:
+            display(new_buttons)
 
-            with open(source, "r") as read_file:
-                notebook = json.load(read_file)
-                recipe = create_recipe_dict(notebook, name, source, mount)
-                if name in self.recipes:
-                    word = 'updated'
-                    try:
-                        recipe[PERSISTENCE_ID] = \
-                            self.recipes[name][PERSISTENCE_ID]
-                    except KeyError:
-                        pass
-                else:
-                    word = 'created'
-                self.recipes[name] = recipe
-                self.__set_feedback("Recipe %s %s. " % (name, word))
-            self.__update_workflow_visualisation()
-            self.__close_form()
-            return True
-        except Exception as e:
-            self.__set_feedback("Something went wrong with recipe generation. "
-                              "%s " % str(e))
-            return False
+    def __construct_cwl_widget(self):
+        self.__check_state(state=MEOW_MODE)
+        self.button_elements = {}
+        self.__close_form()
 
-    def __on_new_pattern_clicked(self, button):
-        # TODO update this description
+        button_row_items = []
+        button_layout = \
+            widgets.Layout(width='%d%%' % (100 / len(self.BUTTONS[CWL_MODE])))
+        for button_key, button_value in self.BUTTONS[CWL_MODE].items():
+            button = widgets.Button(
+                value=False,
+                description=button_value[BUTTON_DESC],
+                disabled=True,
+                button_style='',
+                tooltip=button_value[BUTTON_TOOLTIP],
+                layout=button_layout
+            )
+            button.on_click(button_value[BUTTON_ON_CLICK])
+            self.button_elements[button_key] = button
+            button_row_items.append(button)
+        button_row = widgets.HBox(button_row_items)
 
-        self.__clear_current_form()
-        self.__refresh_new_form(
-            self.__populate_new_pattern_form,
-            self.__process_pattern_values
-        )
+        new_buttons = widgets.VBox([
+            button_row
+        ])
+
+        self.__enable_top_buttons()
+
+        if not self.cwl[WORKFLOWS] \
+                and not self.cwl[STEPS] \
+                and not self.cwl[SETTINGS]:
+            if self.meow[PATTERNS] or self.meow[RECIPES]:
+                self.__set_feedback(
+                    "%s data detected, attempting to convert to %s "
+                    "format. " % (MEOW_MODE, CWL_MODE)
+                )
+                status, result = self.__meow_to_cwl()
+
+                if status:
+                    self.__import_cwl(**result)
+                self.__enable_top_buttons()
+
+            else:
+                self.__set_feedback(
+                    "No %s data detected. " % MEOW_MODE
+                )
+        else:
+            self.__set_feedback(
+                "As %s data is already present in the system. No automatic "
+                "import has taken place. " % CWL_MODE
+            )
+
+        self.button_area.clear_output(wait=True)
+        with self.button_area:
+            display(new_buttons)
+
+    def new_pattern_clicked(self, button):
         self.__clear_feedback()
-
-    def __on_edit_pattern_clicked(self, button):
-        # TODO update this description
-
-        self.__construct_new_edit_form()
-
-    def __on_new_recipe_clicked(self, button):
-        # TODO update this description
-
-        self.__clear_current_form()
-        self.__refresh_new_form(
-            self.__populate_new_recipe_form, self.__process_recipe_values
+        self.__create_new_form(
+            [
+                PATTERN_FORM_INPUTS[FORM_PATTERN_NAME],
+                PATTERN_FORM_INPUTS[FORM_PATTERN_TRIGGER_PATH],
+                PATTERN_FORM_INPUTS[FORM_PATTERN_RECIPES],
+                PATTERN_FORM_INPUTS[FORM_PATTERN_TRIGGER_FILE],
+                PATTERN_FORM_INPUTS[FORM_PATTERN_TRIGGER_OUTPUT],
+                PATTERN_FORM_INPUTS[FORM_PATTERN_NOTEBOOK_OUTPUT],
+                PATTERN_FORM_INPUTS[FORM_PATTERN_OUTPUT],
+                PATTERN_FORM_INPUTS[FORM_PATTERN_VARIABLES]
+            ],
+            self.__process_new_pattern,
+            PATTERN_NAME
         )
+
+    def edit_pattern_clicked(self, button):
         self.__clear_feedback()
+        self.__create_new_form(
+            [
+                PATTERN_FORM_INPUTS[FORM_PATTERN_TRIGGER_PATH],
+                PATTERN_FORM_INPUTS[FORM_PATTERN_RECIPES],
+                PATTERN_FORM_INPUTS[FORM_PATTERN_TRIGGER_FILE],
+                PATTERN_FORM_INPUTS[FORM_PATTERN_TRIGGER_OUTPUT],
+                PATTERN_FORM_INPUTS[FORM_PATTERN_NOTEBOOK_OUTPUT],
+                PATTERN_FORM_INPUTS[FORM_PATTERN_OUTPUT],
+                PATTERN_FORM_INPUTS[FORM_PATTERN_VARIABLES]
+            ],
+            self.__process_editing_pattern,
+            PATTERN_NAME,
+            delete_func=self.__process_delete_pattern,
+            selector_key=NAME,
+            selector_dict=self.meow[PATTERNS]
+        )
 
-    def __on_edit_recipe_clicked(self, button):
-        # TODO update this description
+    def new_recipe_clicked(self, button):
+        self.__clear_feedback()
+        self.__create_new_form(
+            [
+                RECIPE_FORM_INPUTS[FORM_RECIPE_SOURCE],
+                RECIPE_FORM_INPUTS[FORM_RECIPE_NAME]
+            ],
+            self.__process_new_recipe,
+            RECIPE_NAME
+        )
 
-        self.__clear_current_form()
-        self.__refresh_edit_form(
+    def edit_recipe_clicked(self, button):
+        self.__clear_feedback()
+        self.__create_new_form(
+            [
+                RECIPE_FORM_INPUTS[FORM_RECIPE_SOURCE]
+            ],
+            self.__process_editing_recipe,
             RECIPE_NAME,
-            self.recipes,
-            self.__populate_editing_recipe_form,
-            self.__on_apply_recipe_changes_clicked,
-            self.__on_delete_recipe_clicked
+            delete_func=self.__process_delete_recipe,
+            selector_key=NAME,
+            selector_dict=self.meow[RECIPES]
         )
+
+    # TODO implement
+    def import_from_cwl_clicked(self, button):
+        self.__close_form()
         self.__clear_feedback()
 
-    def __refresh_new_form(
-            self, population_function, done_function, wait=False):
+        self.__set_feedback("Goes nowhere, does nothing")
+
+    def import_from_vgrid_clicked(self, button):
+        self.__close_form()
+        self.__clear_feedback()
+        self.__import_from_vgrid()
+
+    def export_to_vgrid_clicked(self, button):
+        self.__close_form()
+        self.__clear_feedback()
+        self.__export_to_vgrid()
+
+    def new_workflow_clicked(self, button):
+        self.__clear_feedback()
+        self.__create_new_form(
+            [
+                WORKFLOW_FORM_INPUTS[FORM_WORKFLOW_NAME],
+                WORKFLOW_FORM_INPUTS[FORM_WORKFLOW_INPUTS],
+                WORKFLOW_FORM_INPUTS[FORM_WORKFLOW_OUTPUTS],
+                WORKFLOW_FORM_INPUTS[FORM_WORKFLOW_STEPS],
+                WORKFLOW_FORM_INPUTS[FORM_WORKFLOW_REQUIREMENTS]
+            ],
+            self.__process_new_workflow,
+            WORKFLOW_NAME
+        )
+
+    def edit_workflow_clicked(self, button):
+        self.__clear_feedback()
+        self.__create_new_form(
+            [
+                WORKFLOW_FORM_INPUTS[FORM_WORKFLOW_INPUTS],
+                WORKFLOW_FORM_INPUTS[FORM_WORKFLOW_OUTPUTS],
+                WORKFLOW_FORM_INPUTS[FORM_WORKFLOW_STEPS],
+                WORKFLOW_FORM_INPUTS[FORM_WORKFLOW_REQUIREMENTS]
+            ],
+            self.__process_editing_workflow,
+            WORKFLOW_NAME,
+            delete_func=self.__process_delete_workflow,
+            selector_key=CWL_NAME,
+            selector_dict=self.cwl[WORKFLOWS]
+        )
+
+    def new_step_clicked(self, button):
+        self.__clear_feedback()
+        self.__create_new_form(
+            [
+                STEP_FORM_INPUTS[FORM_STEP_NAME],
+                STEP_FORM_INPUTS[FORM_STEP_BASE_COMMAND],
+                STEP_FORM_INPUTS[FORM_STEP_INPUTS],
+                STEP_FORM_INPUTS[FORM_STEP_OUTPUTS],
+                STEP_FORM_INPUTS[FORM_STEP_ARGUMENTS],
+                STEP_FORM_INPUTS[FORM_STEP_REQUIREMENTS],
+                STEP_FORM_INPUTS[FORM_STEP_HINTS],
+                STEP_FORM_INPUTS[FORM_STEP_STDOUT]
+            ],
+            self.__process_new_step,
+            STEP_NAME
+        )
+
+    def edit_step_clicked(self, button):
+        self.__clear_feedback()
+        self.__create_new_form(
+            [
+                STEP_FORM_INPUTS[FORM_STEP_BASE_COMMAND],
+                STEP_FORM_INPUTS[FORM_STEP_INPUTS],
+                STEP_FORM_INPUTS[FORM_STEP_OUTPUTS],
+                STEP_FORM_INPUTS[FORM_STEP_ARGUMENTS],
+                STEP_FORM_INPUTS[FORM_STEP_REQUIREMENTS],
+                STEP_FORM_INPUTS[FORM_STEP_HINTS],
+                STEP_FORM_INPUTS[FORM_STEP_STDOUT]
+            ],
+            self.__process_editing_step,
+            STEP_NAME,
+            delete_func=self.__process_delete_step,
+            selector_key=NAME,
+            selector_dict=self.cwl[STEPS]
+        )
+
+    def new_variables_clicked(self, button):
+        self.__clear_feedback()
+        self.__create_new_form(
+            [
+                VARIABLES_FORM_INPUTS[FORM_VARIABLES_NAME],
+                VARIABLES_FORM_INPUTS[FORM_VARIABLES_VARIABLES]
+            ],
+            self.__process_new_variables,
+            VARIABLES_NAME
+        )
+
+    def edit_variables_clicked(self, button):
+        self.__clear_feedback()
+        self.__create_new_form(
+            [
+                VARIABLES_FORM_INPUTS[FORM_VARIABLES_VARIABLES]
+            ],
+            self.__process_editing_variables,
+            VARIABLES_NAME,
+            delete_func=self.__process_delete_variables,
+            selector_key=NAME,
+            selector_dict=self.cwl[VARIABLES],
+        )
+
+    def import_from_meow_clicked(self, button):
+        self.__close_form()
+        self.__clear_feedback()
+
+        status, result = self.__meow_to_cwl()
+
+        if status:
+            self.__add_to_feedback(
+                "%s(s) %s, %s(s) %s, and %s(s) %s have been identified for "
+                "import. Any currently registered %s(s), %s(s), and %s(s) "
+                "will be overwritten. "
+                % (
+                    WORKFLOW_NAME,
+                    str(list(result[WORKFLOWS].keys())),
+                    STEP_NAME,
+                    str(list(result[STEPS].keys())),
+                    VARIABLES_NAME,
+                    str(list(result[VARIABLES].keys())),
+                    WORKFLOW_NAME,
+                    STEP_NAME,
+                    VARIABLES_NAME
+                )
+            )
+
+            self.__create_confirmation_buttons(
+                self.__import_cwl,
+                result,
+                "Confirm Import",
+                "Cancel Import",
+                "Import canceled. No local data has been changed. "
+            )
+        self.__enable_top_buttons()
+
+    def import_from_dir_clicked(self, button):
+        self.__close_form()
+        self.__clear_feedback()
+
+        buffer_cwl = {
+            WORKFLOWS: {},
+            STEPS: {},
+            SETTINGS: {}
+        }
+
+        if not os.path.exists(self.cwl_import_export_dir):
+            self.__set_feedback(
+                "Cannot import from directory %s as it does not exist. If you "
+                "intended to import from another directory it can be set "
+                "during widget creation using the parameter '%s'. "
+                % (self.cwl_import_export_dir, CWL_IMPORT_EXPORT_DIR_ARG)
+            )
+            return
+
+        directories = [
+            d for d in os.listdir(self.cwl_import_export_dir)
+            if os.path.isdir(os.path.join(self.cwl_import_export_dir, d))
+        ]
+        self.__add_to_feedback(
+            "Found directories %s with CWL import/export directory '%s'. "
+            % (directories, self.cwl_import_export_dir))
+
+        for directory in directories:
+            dir_path = os.path.join(self.cwl_import_export_dir, directory)
+            files = [
+                f for f in os.listdir(dir_path)
+                if os.path.isfile(os.path.join(dir_path, f))
+            ]
+            self.__add_to_feedback(
+                "Within directory '%s', found files %s. " % (directory, files)
+            )
+
+            for file in files:
+                if '.' not in file:
+                    break
+                filename = file[:file.index('.')]
+                extension = file[file.index('.'):]
+                if extension in YAML_EXTENSIONS:
+                    with open(os.path.join(dir_path, file), 'r') as yaml_file:
+                        yaml_dict = yaml.full_load(yaml_file)
+                        settings = make_settings_dict(filename, yaml_dict)
+                        buffer_cwl[SETTINGS][filename] = settings
+                elif extension in CWL_EXTENSIONS:
+                    with open(os.path.join(dir_path, file), 'r') as yaml_file:
+                        yaml_dict = yaml.full_load(yaml_file)
+                        if CWL_CLASS not in yaml_dict:
+                            break
+
+                        if yaml_dict[CWL_CLASS] == CWL_CLASS_WORKFLOW:
+                            workflow = make_workflow_dict(filename)
+                            if CWL_INPUTS in yaml_dict:
+                                workflow[CWL_INPUTS] = yaml_dict[CWL_INPUTS]
+                            if CWL_OUTPUTS in yaml_dict:
+                                workflow[CWL_OUTPUTS] = yaml_dict[CWL_OUTPUTS]
+                            if CWL_STEPS in yaml_dict:
+                                workflow[CWL_STEPS] = yaml_dict[CWL_STEPS]
+                            if CWL_REQUIREMENTS in yaml_dict:
+                                workflow[CWL_REQUIREMENTS] = \
+                                    yaml_dict[CWL_REQUIREMENTS]
+                            buffer_cwl[WORKFLOWS][filename] = workflow
+
+                        if yaml_dict[CWL_CLASS] == CWL_CLASS_COMMAND_LINE_TOOL:
+                            if CWL_BASE_COMMAND not in yaml_dict:
+                                break
+                            base_command = yaml_dict[CWL_BASE_COMMAND]
+                            step = make_step_dict(filename, base_command)
+                            if CWL_INPUTS in yaml_dict:
+                                step[CWL_INPUTS] = yaml_dict[CWL_INPUTS]
+                            if CWL_OUTPUTS in yaml_dict:
+                                step[CWL_OUTPUTS] = yaml_dict[CWL_OUTPUTS]
+                            if CWL_ARGUMENTS in yaml_dict:
+                                step[CWL_ARGUMENTS] = yaml_dict[CWL_ARGUMENTS]
+                            if CWL_REQUIREMENTS in yaml_dict:
+                                step[CWL_REQUIREMENTS] = \
+                                    yaml_dict[CWL_REQUIREMENTS]
+                            if CWL_HINTS in yaml_dict:
+                                step[CWL_HINTS] = yaml_dict[CWL_HINTS]
+                            if CWL_STDOUT in yaml_dict:
+                                step[CWL_STDOUT] = yaml_dict[CWL_STDOUT]
+                            buffer_cwl[STEPS][filename] = step
+
+        if buffer_cwl[WORKFLOWS] or buffer_cwl[STEPS] or buffer_cwl[VARIABLES]:
+            self.__add_to_feedback(
+                "%s(s) %s, %s(s) %s, and %s(s) %s have been identified for "
+                "import. Any currently registered %s(s), %s(s), and %s(s) "
+                "will be overwritten. "
+                % (
+                    WORKFLOW_NAME,
+                    str(list(buffer_cwl[WORKFLOWS].keys())),
+                    STEP_NAME,
+                    str(list(buffer_cwl[STEPS].keys())),
+                    VARIABLES_NAME,
+                    str(list(buffer_cwl[VARIABLES].keys())),
+                    WORKFLOW_NAME,
+                    STEP_NAME,
+                    VARIABLES_NAME
+                )
+            )
+
+            self.__create_confirmation_buttons(
+                self.__import_cwl,
+                buffer_cwl,
+                "Confirm Import",
+                "Cancel Import",
+                "Import canceled. No local data has been changed. "
+            )
+        else:
+            self.__add_to_feedback("No CWL inputs were found")
+        self.__enable_top_buttons()
+
+    def export_to_dir_clicked(self, button):
         # TODO update this description
+        self.__close_form()
+        self.__clear_feedback()
 
-        if self.current_form:
-            self.current_old_values = {}
-            for key in self.current_form_rows.keys():
-                self.current_old_values[key] = self.current_form_rows[key]
-        self.current_form = {}
-        # if self.displayed_form:
-        #     self.displayed_form.close()
-        self.display_area.clear_output(wait=wait)
+        if not os.path.exists(self.cwl_import_export_dir):
+            os.mkdir(self.cwl_import_export_dir)
 
-        population_function(population_function, done_function)
+        for workflow_name, workflow in self.cwl[WORKFLOWS].items():
 
-        items = []
-        for key in self.current_form.keys():
-            items.append(self.current_form[key])
+            status, feedback = check_workflow_is_valid(
+                workflow_name,
+                self.cwl
+            )
 
-        self.current_form["done_button"] = widgets.Button(
+            if not status:
+                self.__add_to_feedback(
+                    "Could not export %s %s. %s"
+                    % (WORKFLOW_NAME, workflow_name, feedback)
+                )
+                break
+
+            workflow_dir = os.path.join(
+                self.cwl_import_export_dir,
+                workflow_name
+            )
+            if not os.path.exists(workflow_dir):
+                os.mkdir(workflow_dir)
+
+            # copy required files
+            missing_files = set()
+            outlines = []
+            for step_name, step in workflow[CWL_STEPS].items():
+                for input_name, input_value in step[CWL_WORKFLOW_IN].items():
+                    if input_value in workflow[CWL_INPUTS]\
+                            and workflow[CWL_INPUTS][input_value] == 'File':
+                        settings = \
+                            self.cwl[SETTINGS][workflow_name][CWL_VARIABLES]
+                        file_name = settings[input_value][CWL_YAML_PATH]
+                        if not os.path.exists(file_name):
+                            missing_files.add(file_name)
+                        else:
+                            dest_path = os.path.join(workflow_dir, file_name)
+                            copyfile(file_name, dest_path)
+
+                for output_name, output_value in \
+                        self.cwl[STEPS][step_name][CWL_OUTPUTS].items():
+                    outline = "    out: '[%s]'\n" % output_name
+                    outlines.append(outline)
+
+            for step_name, step in self.cwl[STEPS].items():
+                step_filename = '%s.cwl' % step_name
+                step_file_path = os.path.join(
+                    workflow_dir,
+                    step_filename
+                )
+                with open(step_file_path, 'w') as cwl_file:
+                    yaml.dump(
+                        prepare_to_dump(step),
+                        cwl_file,
+                        default_flow_style=False
+                    )
+
+            # create workflow cwl file
+            cwl_filename = '%s.cwl' % self.workflow_title
+            cwl_file_path = os.path.join(workflow_dir, cwl_filename)
+            with open(cwl_file_path, 'w') as cwl_file:
+                yaml.dump(
+                    prepare_to_dump(workflow),
+                    cwl_file,
+                    default_flow_style=False
+                )
+
+            # Edit yaml export of workflow_cwl_dict as it won't like exporting
+            # the outputs section
+            with open(cwl_file_path, 'r') as input_file:
+                data = input_file.readlines()
+
+            # TODO improve this, this will produce unpredictable behaviour
+            for index, line in enumerate(data):
+                for outline in outlines:
+                    if line == outline:
+                        data[index] = outline.replace('\'', '')
+
+            with open(cwl_file_path, 'w') as output_file:
+                output_file.writelines(data)
+
+            # create yaml file
+            yaml_filename = '%s.yml' % self.workflow_title
+            yaml_file_path = os.path.join(workflow_dir, yaml_filename)
+            with open(yaml_file_path, 'w') as yaml_file:
+                yaml.dump(
+                    self.cwl[SETTINGS][workflow_name][CWL_VARIABLES],
+                    yaml_file,
+                    default_flow_style=False
+                )
+
+            if not missing_files:
+                self.__add_to_feedback(
+                    "Export performed successfully. Files are present in "
+                    "directory '%s' and can be called with:" % workflow_dir
+                )
+            else:
+                self.__add_to_feedback(
+                    "Export performed partially successfully. Workflow "
+                    "definitions and steps were exported successfully but "
+                    "some input files are missing. Please make the following "
+                    "files available within the directory %s: "
+                    % workflow_dir
+                )
+                self.__add_to_feedback(str(missing_files))
+                self.__add_to_feedback(
+                    "Once these files are present within the directory %s "
+                    "the workflow can be called with: " % workflow_dir
+                )
+
+            self.__add_to_feedback(
+                "toil-cwl-runner %s %s" % (cwl_filename, yaml_filename))
+
+    def __enable_top_buttons(self):
+
+        if self.button_elements:
+            if self.mode == MEOW_MODE:
+                self.button_elements[MEOW_NEW_PATTERN_BUTTON].disabled = \
+                    False
+                if self.meow[PATTERNS]:
+                    self.button_elements[MEOW_EDIT_PATTERN_BUTTON].disabled = \
+                        False
+                else:
+                    self.button_elements[MEOW_EDIT_PATTERN_BUTTON].disabled = \
+                        True
+
+                self.button_elements[MEOW_NEW_RECIPE_BUTTON].disabled = False
+                if self.meow[RECIPES]:
+                    self.button_elements[MEOW_EDIT_RECIPE_BUTTON].disabled = \
+                        False
+                else:
+                    self.button_elements[MEOW_EDIT_RECIPE_BUTTON].disabled = \
+                        True
+
+                if self.cwl[WORKFLOWS] \
+                        or self.cwl[STEPS] \
+                        or self.cwl[SETTINGS]:
+                    self.button_elements[MEOW_IMPORT_CWL_BUTTON].disabled = \
+                        False
+                else:
+                    self.button_elements[MEOW_IMPORT_CWL_BUTTON].disabled = \
+                        True
+
+                if self.vgrid:
+                    self.button_elements[MEOW_IMPORT_VGRID_BUTTON].disabled = \
+                        False
+                    self.button_elements[MEOW_EXPORT_VGRID_BUTTON].disabled = \
+                        False
+                else:
+                    self.button_elements[MEOW_IMPORT_VGRID_BUTTON].disabled = \
+                        True
+                    self.button_elements[MEOW_IMPORT_VGRID_BUTTON].tooltip = \
+                        "Import is not available as VGrid has not been " \
+                        "specified. "
+                    self.button_elements[MEOW_EXPORT_VGRID_BUTTON].disabled = \
+                        True
+                    self.button_elements[MEOW_EXPORT_VGRID_BUTTON].tooltip = \
+                        "Export is not available as VGrid has not been " \
+                        "specified. "
+
+            elif self.mode == CWL_MODE:
+                self.button_elements[CWL_NEW_WORKFLOW_BUTTON].disabled = False
+                if self.cwl[WORKFLOWS]:
+                    self.button_elements[CWL_EDIT_WORKFLOW_BUTTON].disabled = \
+                        False
+                else:
+                    self.button_elements[CWL_EDIT_WORKFLOW_BUTTON].disabled = \
+                        True
+
+                self.button_elements[CWL_NEW_STEP_BUTTON].disabled = False
+                if self.cwl[STEPS]:
+                    self.button_elements[CWL_EDIT_STEP_BUTTON].disabled = False
+                else:
+                    self.button_elements[CWL_EDIT_STEP_BUTTON].disabled = True
+
+                self.button_elements[CWL_NEW_VARIABLES_BUTTON].disabled = False
+                if self.cwl[SETTINGS]:
+                    self.button_elements[CWL_EDIT_VARIABLES_BUTTON].disabled =\
+                        False
+                else:
+                    self.button_elements[CWL_EDIT_VARIABLES_BUTTON].disabled = \
+                        True
+
+                if self.meow[PATTERNS] or self.meow[RECIPES]:
+                    self.button_elements[CWL_IMPORT_MEOW_BUTTON].disabled = \
+                        False
+                else:
+                    self.button_elements[CWL_IMPORT_MEOW_BUTTON].disabled = \
+                        True
+
+                self.button_elements[CWL_IMPORT_DIR_BUTTON].disabled = False
+                self.button_elements[CWL_EXPORT_DIR_BUTTON].disabled = False
+
+    def __create_new_form(
+            self, form_parts, done_function, label_text, selector_key=None,
+            selector_dict=None, delete_func=None
+    ):
+        self.form_inputs = {}
+        self.form_sections = {}
+
+        rows = []
+        if selector_key is not None and selector_dict is not None:
+            options = []
+            for key in selector_dict:
+                options.append(key)
+
+            label = widgets.Label(
+                value="Select %s: " % label_text,
+                layout=widgets.Layout(width='20%', min_width='10ex')
+            )
+
+            def on_dropdown_select(change):
+                if change['type'] == 'change' and change['name'] == 'value':
+                    to_update = [i[INPUT_KEY] for i in form_parts]
+                    selected_object = selector_dict[change['new']]
+                    if isinstance(selected_object, Pattern):
+                        selected_object = selected_object.to_display_dict()
+                    # Generate a form with enough inputs for all the data
+                    for form_part in form_parts:
+                        updating_element = \
+                            self.form_inputs[form_part[INPUT_KEY]]
+                        if isinstance(updating_element, list):
+
+                            values_count = \
+                                len(selected_object[form_part[INPUT_KEY]])
+                            required_inputs = values_count - 1
+                            if required_inputs < 0:
+                                required_inputs = 0
+                            if type(selected_object[form_part[INPUT_KEY]]) \
+                                    == dict:
+                                section = self.__form_multi_dict_input(
+                                    form_part[INPUT_KEY],
+                                    form_part[INPUT_NAME],
+                                    form_part[INPUT_HELP],
+                                    form_part[INPUT_OPTIONAL],
+                                    required_inputs
+                                )
+                            else:
+                                section = self.__form_multi_text_input(
+                                    form_part[INPUT_KEY],
+                                    form_part[INPUT_NAME],
+                                    form_part[INPUT_HELP],
+                                    form_part[INPUT_OPTIONAL],
+                                    required_inputs
+                                )
+                            self.form_sections[form_part[INPUT_KEY]] = section
+
+                    # Populate form with selected object information
+                    for update in to_update:
+                        updating_element = self.form_inputs[update]
+                        if isinstance(updating_element, list):
+                            value_list = selected_object[update]
+                            for index, item in enumerate(updating_element):
+                                # TODO get rid of this distinction
+                                if isinstance(value_list, dict):
+                                    keys = list(value_list.keys())
+                                    if index < len(selected_object[update]):
+                                        item[NAME_KEY].value = keys[index]
+                                        item[VALUE_KEY].value = str(value_list[keys[index]])
+                                else:
+                                    if index < len(selected_object[update]):
+                                        item.value = value_list[index]
+                        else:
+                            self.form_inputs[update].value = \
+                                str(selected_object[update])
+
+                    delete_button.disabled = False
+                    self.__refresh_current_form_layout()
+            dropdown = widgets.Dropdown(
+                options=options,
+                value=None,
+                description="",
+                disabled=False,
+                layout=widgets.Layout(width='65%')
+            )
+            dropdown.observe(on_dropdown_select)
+
+            def delete_button_click(button):
+                delete_func(dropdown.value)
+            delete_button = widgets.Button(
+                value=False,
+                description="Delete",
+                disabled=True,
+                button_style='',
+                tooltip='Deletes the selected %s. Once done, this cannot be '
+                        'undone. ' % label_text,
+                layout=widgets.Layout(width='10%', min_width='8ex')
+            )
+            delete_button.on_click(delete_button_click)
+
+            selector_row = widgets.HBox([
+                label,
+                dropdown,
+                delete_button
+            ])
+
+            self.form_sections[FORM_SELECTOR_KEY] = selector_row
+            rows.append(selector_row)
+
+        for element in form_parts:
+            if element[INPUT_TYPE] == FORM_SINGLE_INPUT:
+                form_section = self.__form_single_text_input(
+                    element[INPUT_KEY],
+                    element[INPUT_NAME],
+                    element[INPUT_HELP],
+                    element[INPUT_OPTIONAL]
+                )
+                self.form_sections[element[INPUT_KEY]] = form_section
+                rows.append(form_section)
+            elif element[INPUT_TYPE] == FORM_MULTI_INPUT:
+                form_section = self.__form_multi_text_input(
+                    element[INPUT_KEY],
+                    element[INPUT_NAME],
+                    element[INPUT_HELP],
+                    element[INPUT_OPTIONAL]
+                )
+                self.form_sections[element[INPUT_KEY]] = form_section
+                rows.append(form_section)
+            elif element[INPUT_TYPE] == FORM_DICT_INPUT:
+                form_section = self.__form_multi_dict_input(
+                    element[INPUT_KEY],
+                    element[INPUT_NAME],
+                    element[INPUT_HELP],
+                    element[INPUT_OPTIONAL],
+                )
+                self.form_sections[element[INPUT_KEY]] = form_section
+                rows.append(form_section)
+
+        def done_button_click(button):
+            values = {}
+            if dropdown:
+                values[selector_key] = dropdown.value
+            for key, form_input in self.form_inputs.items():
+                if isinstance(form_input, list):
+                    values_list = []
+                    for row in form_input:
+                        if isinstance(row, dict):
+                            values_dict = {}
+                            for k, v in row.items():
+                                values_dict[k] = v.value
+                            values_list.append(values_dict)
+                        else:
+                            values_list.append(row.value)
+                    values[key] = values_list
+                else:
+                    values[key] = form_input.value
+            done_function(values)
+        done_button = widgets.Button(
             value=False,
             description="Done",
             disabled=False,
             button_style='',
-            tooltip='Here is a tooltip for this button'
+            tooltip='Create new %s with the given parameters. ' % label_text
         )
+        done_button.on_click(done_button_click)
 
-        def done_button_click(button):
-            values = {}
-            for key in self.current_form_rows.keys():
-                row = self.current_form_rows[key]
-                if isinstance(row, list):
-                    values_list = []
-                    for element in row:
-                        values_list.append(element.value)
-                    values[key] = values_list
-                else:
-                    values[key] = self.current_form_rows[key].value
+        def cancel_button_click(button):
+            self.__close_form()
+            self.__clear_feedback()
 
-            done_function(values)
-
-        self.current_form["done_button"].on_click(done_button_click)
-
-        self.current_form["cancel_button"] = widgets.Button(
+            pass
+        cancel_button = widgets.Button(
             value=False,
             description="Cancel",
             disabled=False,
             button_style='',
-            tooltip='Here is a tooltip for this button'
+            tooltip='Cancel %s creation. No data will be saved. ' % label_text
+        )
+        cancel_button.on_click(cancel_button_click)
+
+        if selector_key is not None and selector_dict is not None:
+            done_button.tooltip = \
+                'Apply changes to selected %s. This will overwrite existing ' \
+                'data and cannot be undone. ' % label_text
+            cancel_button.tooltip = \
+                'Cancel editing the selected %s. No data will be changed. ' \
+                % label_text
+
+        bottom_row = widgets.HBox([
+            done_button,
+            cancel_button
+        ])
+        self.form_sections[FORM_BUTTONS_KEY] = bottom_row
+        rows.append(bottom_row)
+
+        form = widgets.VBox(
+            rows
         )
 
-        def cancel_button_click(button):
-            if isinstance(self.displayed_form, widgets.VBox):
-                self.__close_form()
-                self.current_old_values = {}
-                for text_key in self.current_form_rows.keys():
-                    self.current_old_values[text_key] = \
-                        self.current_form_rows[text_key]
-                self.__clear_feedback()
+        self.form_area.clear_output(wait=True)
+        with self.form_area:
+            display(form)
 
-        self.current_form["cancel_button"].on_click(cancel_button_click)
+    def __refresh_current_form_layout(self):
 
-        bottom_row_items = [
-            self.current_form["done_button"],
-            self.current_form["cancel_button"]
-        ]
-        bottom_row = widgets.HBox(bottom_row_items)
-        items.append(bottom_row)
+        rows = []
+        for section in self.form_sections.values():
+            rows.append(section)
 
-        self.displayed_form = widgets.VBox(
-            items,
-            layout=widgets.Layout(width='100%')
+        form = widgets.VBox(
+            rows
         )
 
-        with self.display_area:
-            form_id = display(self.displayed_form, display_id=True)
+        self.form_area.clear_output(wait=True)
+        with self.form_area:
+            display(form)
 
-    def __refresh_edit_form(
-            self, editing, display_dict, population_function, apply_function,
-            delete_function, wait=False, default=None):
+    def __close_form(self):
+        # self.displayed_form = None
+        self.form_area.clear_output()
+        self.__enable_top_buttons()
+        self.__clear_current_form()
+
+    def __clear_current_form(self):
         # TODO update this description
 
-        if self.current_form:
-            self.current_old_values = {}
-            for key in self.current_form_rows.keys():
-                self.current_old_values[key] = self.current_form_rows[key]
-        self.current_form = {}
-        # if self.displayed_form:
-        #     self.displayed_form.close()
-        self.display_area.clear_output(wait=wait)
-        self.editing_area = None
+        self.form_inputs = {}
+        # self.current_form_rows = {}
+        # self.current_form_line_counts = {}
 
-        options = []
-        for key in display_dict:
-            options.append(key)
-
-        dropdown = widgets.Dropdown(
-            options=options,
-            value=None,
-            description="%s: " % editing,
-            disabled=False,
-        )
-
-        def on_dropdown_select(change):
-            if change['type'] == 'change' and change['name'] == 'value':
-                to_edit = display_dict[change['new']]
-                self.editing = (editing, to_edit)
-
-                # update row counts
-                if isinstance(to_edit, Pattern) and not default:
-                    pattern = to_edit
-                    extra_outputs = []
-                    for out in pattern.outputs.keys():
-                        if out != DEFAULT_JOB_NAME \
-                                and out != pattern.trigger_file:
-                            extra_outputs.append(out)
-                    if len(extra_outputs) > 1:
-                        self.current_form_line_counts[INPUT_OUTPUT] = \
-                            len(extra_outputs) - 1
-                    else:
-                        self.current_form_line_counts[INPUT_OUTPUT] = 0
-
-                    if len(pattern.recipes) > 1:
-                        self.current_form_line_counts[INPUT_OUTPUT] = \
-                            len(pattern.recipes) - 1
-                    else:
-                        self.current_form_line_counts[INPUT_OUTPUT] = 0
-
-                    extra_variables = []
-                    for variable in pattern.variables.keys():
-                        if variable != pattern.trigger_file and variable != \
-                                DEFAULT_JOB_NAME:
-                            extra_variables.append(variable)
-                    if len(extra_variables) > 1:
-                        self.current_form_line_counts[INPUT_VARIABLES] = \
-                            len(extra_variables) - 1
-                    else:
-                        self.current_form_line_counts[INPUT_VARIABLES] = 0
-
-                if not default:
-                    self.__refresh_edit_form(
-                        editing,
-                        display_dict,
-                        population_function,
-                        apply_function,
-                        delete_function,
-                        wait=False,
-                        default=to_edit
-                    )
-
-        dropdown.observe(on_dropdown_select)
-
-        top_row_items = [
-            dropdown
-        ]
-        top_row = widgets.HBox(top_row_items)
-
-        items = [
-            top_row
-        ]
-
-        self.displayed_form = widgets.VBox(items)
-
-        with self.display_area:
-            form_id = display(self.displayed_form, display_id=True)
-
-        # TODO fix this to distinguish between patterns and recipes
-        if default:
-            if isinstance(default, Pattern):
-                default_name = default.name
-            else:
-                default_name = default[NAME]
-            if default_name in options:
-                dropdown.value = default_name
-                self.__editor(
-                    population_function,
-                    editing,
-                    display_dict,
-                    apply_function,
-                    delete_function
-                )
-                default = None
-
-    def __editor(
-            self, population_function, editing, display_dict, apply_function,
-            delete_function):
-        # TODO update this description
-
-        if not self.editing_area:
-            population_function(population_function, editing, display_dict)
-
-            items = []
-            for key in self.current_form.keys():
-                items.append(self.current_form[key])
-
-            apply = widgets.Button(
-                value=False,
-                description="Apply Changes",
-                disabled=False,
-                button_style='',
-                tooltip='Save changes to the local copy of the selected '
-                        'object. '
-            )
-            apply.on_click(apply_function)
-
-            delete = widgets.Button(
-                value=False,
-                description="Delete",
-                disabled=False,
-                button_style='',
-                tooltip='Delete the local copy of the currently selected '
-                        'object. '
-            )
-            delete.on_click(delete_function)
-
-            cancel = widgets.Button(
-                value=False,
-                description="Cancel",
-                disabled=False,
-                button_style='',
-                tooltip='Undo editing, no changes will be saved. '
-            )
-            cancel.on_click(self.__on_cancel_clicked)
-
-            button_items = [
-                apply,
-                delete,
-                cancel
-            ]
-            button_row = widgets.HBox(button_items)
-            self.current_form['buttons'] = button_row
-
-            items.append(button_row)
-
-            self.editing_area = widgets.VBox(items)
-
-            with self.display_area:
-                display(self.editing_area)
-
-        if isinstance(self.editing[1], Pattern):
-            pattern = self.editing[1]
-
-            self.current_form_rows[INPUT_TRIGGER_FILE].value = \
-                pattern.trigger_file
-
-            if pattern.trigger_paths:
-                # TODO note this deletes any extra paths as currently only
-                #  one at a time. change this
-                self.current_form_rows[INPUT_TRIGGER_PATH].value = \
-                    pattern.trigger_paths[0]
-
-            if pattern.trigger_file in pattern.outputs.keys():
-                self.current_form_rows[INPUT_TRIGGER_OUTPUT].value = \
-                    pattern.outputs[pattern.trigger_file]
-
-            if DEFAULT_JOB_NAME in pattern.outputs.keys():
-                self.current_form_rows[INPUT_NOTEBOOK_OUTPUT].value = \
-                    pattern.outputs[DEFAULT_JOB_NAME]
-
-            extra_outputs = []
-            for out in pattern.outputs.keys():
-                if out != DEFAULT_JOB_NAME and out != pattern.trigger_file:
-                    extra_outputs.append(out)
-            if extra_outputs:
-                for i in range(0, len(self.current_form_rows[INPUT_OUTPUT])):
-                    if i < len(extra_outputs):
-                        self.current_form_rows[INPUT_OUTPUT][i].value = \
-                            "%s=%s" % (extra_outputs[i],
-                                       pattern.outputs[extra_outputs[i]])
-
-            for i in range(0, len(self.current_form_rows[INPUT_RECIPES])):
-                if i < len(pattern.recipes):
-                    self.current_form_rows[INPUT_RECIPES][i].value = \
-                        "%s" % pattern.recipes[i]
-
-            extra_variables = []
-            for variable in pattern.variables.keys():
-                if variable != pattern.trigger_file \
-                        and variable != DEFAULT_JOB_NAME\
-                        and variable not in pattern.outputs.keys():
-                    extra_variables.append(variable)
-            if extra_variables:
-                for i in range(0, len(self.current_form_rows[INPUT_VARIABLES])):
-                    if i < len(extra_variables):
-                        self.current_form_rows[INPUT_VARIABLES][i].value = \
-                            "%s=%s" % (extra_variables[i],
-                                       pattern.variables[extra_variables[i]])
-        else:
-            recipe = self.editing[1]
-            self.current_form_rows[INPUT_SOURCE].value = recipe[SOURCE]
-            self.current_form_rows[INPUT_MOUNT_USER_DIR].value = \
-                recipe[MOUNT_USER_DIR]
-
-    def __on_apply_recipe_changes_clicked(self, button):
-        # TODO update this description
-
-        values = {
-            INPUT_NAME: self.editing[1][NAME],
-            INPUT_SOURCE: self.current_form[INPUT_SOURCE].value
-        }
-        if self.__process_recipe_values(values, ignore_conflicts=True):
-            self.__done_editing()
-
-    def __on_delete_recipe_clicked(self, button):
-        # TODO update this description
-
-        to_delete = self.editing[1][NAME]
-        if to_delete in self.recipes.keys():
-            self.recipes.pop(to_delete)
-        self.__set_feedback("Recipe %s deleted. " % to_delete)
-        self.__update_workflow_visualisation()
-        self.__done_editing()
-
-    def __on_apply_pattern_changes_clicked(self, button):
-        # TODO update this description
-
-        values = {
-            INPUT_NAME: self.editing[1].name
-        }
-        for key in self.current_form_rows.keys():
-            row = self.current_form_rows[key]
-            if isinstance(row, list):
-                values_list = []
-                for element in row:
-                    values_list.append(element.value)
-                values[key] = values_list
-            else:
-                values[key] = self.current_form_rows[key].value
-        if self.__process_pattern_values(values, editing=True):
-            self.__done_editing()
-
-    def __on_delete_pattern_clicked(self, button):
-        # TODO update this description
-
-        to_delete = self.editing[1].name
-        if to_delete in self.patterns.keys():
-            self.patterns.pop(to_delete)
-        self.__set_feedback("Pattern %s deleted. " % to_delete)
-        self.__update_workflow_visualisation()
-        self.__done_editing()
-
-    def __on_cancel_clicked(self, button):
-        # TODO update this description
-
-        if isinstance(self.displayed_form, widgets.VBox):
-            self.__done_editing()
-            self.__clear_feedback()
-
-    def __done_editing(self):
-        # TODO update this description
-
-        self.__close_form()
-        self.editing_area = None
-        self.editing = None
-
-    def __make_help_button(self, help_text, extra_text, extra_func):
+    def __make_help_button(self, help_text):
         # TODO update this description
 
         default_tooltip_text = 'Displays additional help text. '
@@ -1153,46 +1551,78 @@ class WorkflowWidget:
         def help_button_click(button):
             if help_html.value is "":
                 message = help_text
-                if extra_text:
-                    message += extra_text
-                if extra_func:
-                    message += str(extra_func)
                 help_html.value = message
                 help_button.tooltip = 'Hides the related help text. '
             else:
                 help_html.value = ""
                 help_button.tooltip = default_tooltip_text
-
         help_button.on_click(help_button_click)
 
         return help_button, help_html
 
-    def __create_form_single_input(
-            self, text, help_text, key, extra_text=None, extra_func=None,
-            optional=False):
-        # TODO update this description
+    def __make_additional_input_row(self, key):
+        hidden_label = widgets.Label(
+            value="",
+            layout=widgets.Layout(width='20%', min_width='10ex')
+        )
 
-        msg = text
+        additional_input = widgets.Text(
+            layout=widgets.Layout(width='75%')
+        )
+
+        self.form_inputs[key].append(additional_input)
+
+        return widgets.HBox([
+            hidden_label,
+            additional_input
+        ])
+
+    def __make_dict_input_row(self, key, output_items):
+
+        hidden_label = widgets.Label(
+            value="",
+            layout=widgets.Layout(width='20%', min_width='10ex')
+        )
+
+        name_input = widgets.Text(
+            layout=widgets.Layout(width='20%')
+        )
+
+        value_input = widgets.Text(
+            layout=widgets.Layout(width='55%')
+        )
+
+        self.form_inputs[key].append({
+            NAME_KEY: name_input,
+            VALUE_KEY: value_input
+        })
+
+        row = widgets.HBox([
+            hidden_label,
+            name_input,
+            value_input
+        ])
+
+        output_items.insert(-1, row)
+
+    def __form_single_text_input(
+            self, key, display_text, help_text, optional=False
+    ):
+        label_text = display_text
         if optional:
-            msg += " (optional)"
+            label_text += " (optional)"
         label = widgets.Label(
-            value="%s: " % msg,
+            value="%s: " % label_text,
             layout=widgets.Layout(width='20%', min_width='10ex')
         )
 
         input = widgets.Text(
             layout=widgets.Layout(width='70%')
         )
-        if key in self.current_old_values:
-            input.value = self.current_old_values[key].value
-            self.current_old_values.pop(key, None)
 
-        # self.current_form[key] = input
-        self.current_form_rows[key] = input
+        self.form_inputs[key] = input
 
-        help_button, help_text = self.__make_help_button(help_text,
-                                                         extra_text=extra_text,
-                                                         extra_func=extra_func)
+        help_button, help_text = self.__make_help_button(help_text)
 
         top_row_items = [
             label,
@@ -1212,102 +1642,78 @@ class WorkflowWidget:
             layout=widgets.Layout(width='100%'))
         return input_widget
 
-    def __create_form_multi_input(
-            self, text, help_text, key, population_function, refresh_function,
-            done_function=None, display_dict=None, editing=None,
-            apply_function=None, delete_function=None, extra_text=None,
-            extra_func=None, optional=False):
-        # TODO update this description
+    def __form_multi_text_input(
+            self, key, display_text, help_text, optional=False,
+            additional_inputs=None,
+    ):
+        output_items = []
 
-        msg = text
+        label_text = display_text
+        if optional:
+            label_text += " (optional)"
         label = widgets.Label(
-            value="%s(s): " % msg,
+            value="%s: " % label_text,
             layout=widgets.Layout(width='20%', min_width='10ex')
         )
-        if optional:
-            label.value += " (optional)"
+
         input = widgets.Text(
             layout=widgets.Layout(width='59%')
         )
 
-        help_button, help_text = self.__make_help_button(help_text,
-                                                         extra_text=extra_text,
-                                                         extra_func=extra_func)
+        self.form_inputs[key] = [input]
 
-        input_old_values = []
-        if key in self.current_old_values:
-            input_old_values = self.current_old_values[key]
-        if input_old_values:
-            input.value = input_old_values[0].value
-            del input_old_values[0]
+        def activate_remove_button():
+            if key in self.form_inputs.keys():
+                if len(self.form_inputs[key]) > 1:
+                    remove_button.disabled = False
+                    return
+            remove_button.disabled = True
 
-        self.current_form_rows[key] = [input]
-
+        def add_button_click(button):
+            additional_row = self.__make_additional_input_row(key)
+            output_items.insert(-1, additional_row)
+            expanded_section = widgets.VBox(
+                output_items,
+                layout=widgets.Layout(width='100%')
+            )
+            self.form_sections[key] = expanded_section
+            activate_remove_button()
+            self.__refresh_current_form_layout()
         add_button = widgets.Button(
             value=False,
             description='',
             disabled=False,
             button_style='',
-            tooltip="Add %s" % text.lower(),
+            tooltip="Add %s" % display_text.lower(),
             icon='plus',
             layout=widgets.Layout(width='5%', min_width='5ex')
         )
-
-        def add_button_click(button):
-            if key in self.current_form_line_counts.keys():
-                self.current_form_line_counts[key] += 1
-            else:
-                self.current_form_line_counts[key] = 1
-            if refresh_function == self.__refresh_new_form:
-                self.__refresh_new_form(population_function,
-                                        done_function,
-                                        wait=True)
-            elif refresh_function == self.__refresh_edit_form:
-                self.__refresh_edit_form(editing,
-                                         display_dict,
-                                         population_function,
-                                         apply_function,
-                                         delete_function,
-                                         wait=True,
-                                         default=self.editing[1])
-
         add_button.on_click(add_button_click)
 
+        def remove_button_click(button):
+            del self.form_inputs[key][-1]
+            del output_items[-2]
+            reduced_section = widgets.VBox(
+                output_items,
+                layout=widgets.Layout(width='100%')
+            )
+            self.form_sections[key] = reduced_section
+            activate_remove_button()
+            self.__refresh_current_form_layout()
         remove_button = widgets.Button(
             value=False,
             description='',
             disabled=False,
             button_style='',
-            tooltip='Removes the last %s. Note that if a '
-                    'value is in this box it will be lost. ' % text.lower(),
+            tooltip='Removes the last %s. Note that if a value is in this '
+                    'box it will be lost. ' % label_text.lower(),
             icon='minus',
             layout=widgets.Layout(width='5%', min_width='5ex')
         )
-
-        def remove_button_click(button):
-            if key in self.current_form_line_counts.keys():
-                if self.current_form_line_counts[key] > 0:
-                    self.current_form_line_counts[key] -= 1
-            if refresh_function == self.__refresh_new_form:
-                self.__refresh_new_form(population_function,
-                                        done_function,
-                                        wait=True)
-            elif refresh_function == self.__refresh_edit_form:
-                self.__refresh_edit_form(editing,
-                                         display_dict,
-                                         population_function,
-                                         apply_function,
-                                         delete_function,
-                                         wait=True,
-                                         default=self.editing[1])
-
-        if key in self.current_form_line_counts.keys():
-            if self.current_form_line_counts[key] == 0:
-                remove_button.disabled = True
-        else:
-            remove_button.disabled = True
-
         remove_button.on_click(remove_button_click)
+        activate_remove_button()
+
+        help_button, help_text = self.__make_help_button(help_text)
 
         top_row_items = [
             label,
@@ -1316,102 +1722,545 @@ class WorkflowWidget:
             remove_button,
             help_button
         ]
+
         top_row = widgets.HBox(top_row_items)
 
-        extra_rows = []
-
-        if key in self.current_form_line_counts.keys():
-            extra_rows_count = self.current_form_line_counts[key]
-            for x in range(0, extra_rows_count):
-                blank_label = widgets.Label(
-                    value="",
-                    layout=widgets.Layout(width='20%', min_width='10ex')
-                )
-                extra_input = widgets.Text(
-                    layout=widgets.Layout(
-                        width='75%'
-                    )
-                )
-                if input_old_values:
-                    extra_input.value = input_old_values[0].value
-                    del input_old_values[0]
-                extra_row_items = [
-                    blank_label,
-                    extra_input
-                ]
-                extra_row = widgets.HBox(extra_row_items)
-                extra_rows.append(extra_row)
-
-                self.current_form_rows[key].append(extra_input)
-
-                # if key in form:
-                #     form[key].append(extra_input)
-
-        if key in self.current_old_values:
-            self.current_old_values.pop(key, None)
-
-        form_items = [
+        output_items = [
             top_row,
+            help_text
         ]
-        for row in extra_rows:
-            form_items.append(row)
-        form_items.append(help_text)
 
-        form_row = widgets.VBox(
-            form_items,
+        if additional_inputs:
+            for x in range(0, additional_inputs):
+                additional_row = self.__make_additional_input_row(key)
+                output_items.insert(-1, additional_row)
+
+        section = widgets.VBox(
+            output_items,
             layout=widgets.Layout(width='100%')
         )
+        return section
 
-        return form_row
+    def __form_multi_dict_input(
+            self, key, display_text, help_text,
+            optional=False, additional_inputs=None,
+    ):
+        output_items = []
 
-    def __create_form_checkbox(
-            self, text, help_text, key, extra_text=None, extra_func=None):
+        label_text = display_text
+        if optional:
+            label_text += " (optional)"
         label = widgets.Label(
-            value="%s: " % text
+            value="%s: " % label_text,
+            layout=widgets.Layout(width='20%', min_width='10ex')
         )
 
-        input = widgets.Checkbox(
+        key_label = widgets.Label(
+            value="%s: " % NAME_KEY,
+            layout=widgets.Layout(width='20%')
+        )
+
+        value_label = widgets.Label(
+            value="%s: " % VALUE_KEY,
+            layout=widgets.Layout(width='39%')
+        )
+
+        def activate_remove_button():
+            if key in self.form_inputs.keys():
+                if len(self.form_inputs[key]) > 1:
+                    remove_button.disabled = False
+                    return
+            remove_button.disabled = True
+
+        def add_button_click(button):
+            self.__make_dict_input_row(key, output_items)
+            expanded_section = widgets.VBox(
+                output_items,
+                layout=widgets.Layout(width='100%')
+            )
+            self.form_sections[key] = expanded_section
+            activate_remove_button()
+            self.__refresh_current_form_layout()
+        add_button = widgets.Button(
             value=False,
             description='',
             disabled=False,
-            layout=widgets.Layout(width='76%')
+            button_style='',
+            tooltip="Add %s" % display_text.lower(),
+            icon='plus',
+            layout=widgets.Layout(width='5%', min_width='5ex')
         )
-        if key in self.current_old_values:
-            input.value = self.current_old_values[key].value
-            self.current_old_values.pop(key, None)
+        add_button.on_click(add_button_click)
 
-        self.current_form_rows[key] = input
+        def remove_button_click(button):
+            del self.form_inputs[key][-1]
+            del output_items[-2]
+            reduced_section = widgets.VBox(
+                output_items,
+                layout=widgets.Layout(width='100%')
+            )
+            self.form_sections[key] = reduced_section
+            activate_remove_button()
+            self.__refresh_current_form_layout()
+        remove_button = widgets.Button(
+            value=False,
+            description='',
+            disabled=False,
+            button_style='',
+            tooltip='Removes the last %s. Note that if a value is in this '
+                    'box it will be lost. ' % label_text.lower(),
+            icon='minus',
+            layout=widgets.Layout(width='5%', min_width='5ex')
+        )
+        remove_button.on_click(remove_button_click)
+        activate_remove_button()
 
-        help_button, help_text = self.__make_help_button(help_text,
-                                                         extra_text=extra_text,
-                                                         extra_func=extra_func)
+        help_button, help_text = self.__make_help_button(help_text)
 
         top_row_items = [
             label,
-            input,
+            key_label,
+            value_label,
+            add_button,
+            remove_button,
             help_button
         ]
 
         top_row = widgets.HBox(top_row_items)
 
-        items = [
+        output_items = [
             top_row,
             help_text
         ]
 
-        input_widget = widgets.VBox(items)
-        return input_widget
+        self.form_inputs[key] = []
 
-    def __on_import_from_vgrid_clicked(self, button):
+        self.__make_dict_input_row(key, output_items)
+
+        if additional_inputs:
+            for x in range(0, additional_inputs):
+                self.__make_dict_input_row(key, output_items)
+
+        section = widgets.VBox(
+            output_items,
+            layout=widgets.Layout(width='100%')
+        )
+        return section
+
+    def __create_confirmation_buttons(
+            self, confirmation_function, confirmation_args, confirm_text,
+            cancel_text, cancel_feedback
+    ):
+        confirm_button = widgets.Button(
+            value=False,
+            description=confirm_text,
+            disabled=False,
+            button_style='',
+            tooltip='TODO'
+        )
+
+        def confirm_button_click(button):
+            confirmation_function(**confirmation_args)
+
+        confirm_button.on_click(confirm_button_click)
+
+        cancel_button = widgets.Button(
+            value=False,
+            description=cancel_text,
+            disabled=False,
+            button_style='',
+            tooltip='TODO'
+        )
+
+        def cancel_button_click(button):
+            self.__set_feedback(cancel_feedback)
+            self.__close_form()
+
+        cancel_button.on_click(cancel_button_click)
+
+        buttons_list = [
+            confirm_button,
+            cancel_button
+        ]
+
+        confirmation_buttons = widgets.HBox(buttons_list)
+
+        with self.form_area:
+            display(confirmation_buttons)
+
+    def __process_new_pattern(self, values, editing=False):
         # TODO update this description
 
+        try:
+            pattern = Pattern(values[NAME])
+            if not editing:
+                if values[NAME] in self.meow[PATTERNS]:
+                    msg = "%s name is not valid as another %s is " \
+                          "already registered with that name. " \
+                          % (PATTERN_NAME, PATTERN_NAME)
+                    self.__set_feedback(msg)
+                    return
+            file_name = values[INPUT_FILE]
+            trigger_paths = values[TRIGGER_PATHS]
+            trigger_output = values[TRIGGER_OUTPUT]
+            if len(trigger_paths) == 1:
+                if trigger_output:
+                    pattern.add_single_input(file_name,
+                                             trigger_paths[0],
+                                             output_path=trigger_output)
+                else:
+                    pattern.add_single_input(file_name, trigger_paths[0])
+            else:
+                # TODO Currently ignores any additional trigger paths.
+                #  fix this once mig formatting complete.
+                if trigger_output:
+                    pattern.add_single_input(file_name,
+                                             trigger_paths[0],
+                                             output_path=trigger_output)
+                else:
+                    pattern.add_single_input(file_name, trigger_paths[0])
+            notebook_return = values[NOTEBOOK_OUTPUT]
+            if notebook_return:
+                pattern.return_notebook(notebook_return)
+            for recipe in values[RECIPES]:
+                pattern.add_recipe(recipe)
+            for variable in values[VARIABLES]:
+                if variable[VALUE_KEY]:
+                    pattern.add_variable(variable[NAME_KEY], variable[VALUE_KEY])
+            for output in values[OUTPUT]:
+                if output[VALUE_KEY]:
+                    pattern.add_output(output[NAME_KEY], output[VALUE_KEY])
+            valid, warnings = pattern.integrity_check()
+            if valid:
+                if pattern.name in self.meow[PATTERNS]:
+                    word = 'updated'
+                    try:
+                        pattern.persistence_id = \
+                            self.meow[PATTERNS][pattern.name].persistence_id
+                    except AttributeError:
+                        pass
+
+                else:
+                    word = 'created'
+                self.meow[PATTERNS][pattern.name] = pattern
+                msg = "%s \'%s\' %s. " % (PATTERN_NAME, pattern.name, word)
+                if warnings:
+                    msg += "\n%s" % warnings
+                self.__set_feedback(msg)
+                self.__update_workflow_visualisation()
+                self.__close_form()
+                return True
+            else:
+                msg = "%s is not valid. " % PATTERN_NAME
+                if warnings:
+                    msg += "\n%s" % warnings
+                self.__set_feedback(msg)
+                return False
+        except Exception as e:
+            msg = "Something went wrong with %s generation. %s" \
+                  % (PATTERN_NAME, str(e))
+            self.__set_feedback(msg)
+            return False
+
+    def __process_new_recipe(self, values, ignore_conflicts=False):
+        # TODO update this description
+
+        try:
+            source = values[SOURCE]
+            name = values[NAME]
+
+            valid_path(
+                source,
+                'Source',
+                extensions=NOTEBOOK_EXTENSIONS
+            )
+            if os.path.sep in source:
+                filename = \
+                    source[source.index('/') + 1:source.index('.')]
+            else:
+                filename = source[:source.index('.')]
+            if not name:
+                name = filename
+            if not os.path.isfile(source):
+                self.__set_feedback("Source %s was not found. " % source)
+                return
+            if name:
+                valid_string(name,
+                             'Name',
+                             CHAR_UPPERCASE
+                             + CHAR_LOWERCASE
+                             + CHAR_NUMERIC
+                             + CHAR_LINES)
+                if not ignore_conflicts:
+                    if name in self.meow[RECIPES]:
+                        msg = "%s name is not valid as another %s " \
+                              "is already registered with that name. Please " \
+                              "try again using a different name. " \
+                              % (RECIPE_NAME, RECIPE_NAME)
+                        self.__set_feedback(msg)
+                        return
+
+            with open(source, "r") as read_file:
+                notebook = json.load(read_file)
+                recipe = create_recipe_dict(notebook, name, source)
+                if name in self.meow[RECIPES]:
+                    word = 'updated'
+                    try:
+                        recipe[PERSISTENCE_ID] = \
+                            self.meow[RECIPES][name][PERSISTENCE_ID]
+                    except KeyError:
+                        pass
+                else:
+                    word = 'created'
+                self.meow[RECIPES][name] = recipe
+                self.__set_feedback(
+                    "%s \'%s\' %s. " % (RECIPE_NAME, name, word)
+                )
+            self.__update_workflow_visualisation()
+            self.__close_form()
+            return True
+        except Exception as e:
+            self.__set_feedback(
+                "Something went wrong with %s generation. %s "
+                % (RECIPE_NAME, str(e))
+            )
+            return False
+
+    def __process_new_workflow(self, values, editing=False):
+        try:
+            name = values[CWL_NAME]
+            inputs_list = values[CWL_INPUTS]
+            outputs_list = values[CWL_OUTPUTS]
+            requirements_list = values[CWL_REQUIREMENTS]
+            steps_list = values[CWL_STEPS]
+
+            if not name:
+                msg = "%s name was not provided. " % WORKFLOW_NAME
+                self.__set_feedback(msg)
+                return False
+
+            valid_string(name,
+                         'Name',
+                         CHAR_UPPERCASE
+                         + CHAR_LOWERCASE
+                         + CHAR_NUMERIC
+                         + CHAR_LINES)
+            if not editing:
+                if name in self.cwl[WORKFLOWS]:
+                    msg = "%s name is not valid as another %s " \
+                          "is already registered with that name. Please " \
+                          "try again using a different name. " \
+                          % (WORKFLOW_NAME, WORKFLOW_NAME)
+                    self.__set_feedback(msg)
+                    return False
+
+            inputs_dict = list_to_dict(inputs_list)
+            outputs_dict = list_to_dict(outputs_list)
+            requirements_dict = list_to_dict(requirements_list)
+            steps_dict = list_to_dict(steps_list)
+
+            workflow = make_workflow_dict(name)
+            workflow[CWL_INPUTS] = inputs_dict
+            workflow[CWL_OUTPUTS] = outputs_dict
+            workflow[CWL_REQUIREMENTS] = requirements_dict
+            workflow[CWL_STEPS] = steps_dict
+
+            self.cwl[WORKFLOWS][name] = workflow
+
+            self.__set_feedback(
+                "%s \'%s\': %s. " % (WORKFLOW_NAME, name, workflow)
+            )
+
+            self.__update_workflow_visualisation()
+            self.__close_form()
+            return True
+        except Exception as e:
+            self.__set_feedback(
+                "Something went wrong with %s generation. %s "
+                % (WORKFLOW_NAME, str(e))
+            )
+            return False
+
+    def __process_new_step(self, values, editing=False):
+        try:
+            name = values[CWL_NAME]
+            base_command = values[CWL_BASE_COMMAND]
+            stdout = values[CWL_STDOUT]
+            inputs_list = values[CWL_INPUTS]
+            outputs_list = values[CWL_OUTPUTS]
+            arguments_buffer = values[CWL_ARGUMENTS]
+            requirements_list = values[CWL_REQUIREMENTS]
+            hints_list = values[CWL_HINTS]
+
+            # This is necessary as arguments_buffer may contain empty strings
+            arguments = []
+            for argument in arguments_buffer:
+                if argument:
+                    arguments.append(argument)
+
+            if not name:
+                msg = "%s name was not provided. " % STEP_NAME
+                self.__set_feedback(msg)
+                return False
+
+            valid_string(name,
+                         'Name',
+                         CHAR_UPPERCASE
+                         + CHAR_LOWERCASE
+                         + CHAR_NUMERIC
+                         + CHAR_LINES)
+            if not editing:
+                if name in self.cwl[STEPS]:
+                    msg = "%s name is not valid as another %s " \
+                          "is already registered with that name. Please " \
+                          "try again using a different name. " \
+                          % (STEP_NAME, STEP_NAME)
+                    self.__set_feedback(msg)
+                    return False
+
+            inputs_dict = list_to_dict(inputs_list)
+            outputs_dict = list_to_dict(outputs_list)
+            requirements_dict = list_to_dict(requirements_list)
+            hints_dict = list_to_dict(hints_list)
+
+            step = make_step_dict(name, base_command)
+            step[CWL_STDOUT] = stdout
+            step[CWL_INPUTS] = inputs_dict
+            step[CWL_OUTPUTS] = outputs_dict
+            step[CWL_ARGUMENTS] = arguments
+            step[CWL_REQUIREMENTS] = requirements_dict
+            step[CWL_HINTS] = hints_dict
+
+            self.cwl[STEPS][name] = step
+
+            self.__set_feedback(
+                "%s \'%s\': %s. " % (STEP_NAME, name, step)
+            )
+
+            self.__update_workflow_visualisation()
+            self.__close_form()
+            return True
+        except Exception as e:
+            self.__set_feedback(
+                "Something went wrong with %s generation. %s "
+                % (STEP_NAME, str(e))
+            )
+            return False
+
+    def __process_new_variables(self, values, editing=False):
+        try:
+            name = values[CWL_NAME]
+            variables_list = values[CWL_VARIABLES]
+
+            if not name:
+                msg = "%s name was not provided. " % VARIABLES_NAME
+                self.__set_feedback(msg)
+                return False
+
+            valid_string(name,
+                         'Name',
+                         CHAR_UPPERCASE
+                         + CHAR_LOWERCASE
+                         + CHAR_NUMERIC
+                         + CHAR_LINES)
+            if not editing:
+                if name in self.cwl[SETTINGS]:
+                    msg = "%s name is not valid as another %s " \
+                          "is already registered with that name. Please " \
+                          "try again using a different name. " \
+                          % (VARIABLES_NAME, VARIABLES_NAME)
+                    self.__set_feedback(msg)
+                    return False
+
+            variables_dict = list_to_dict(variables_list)
+            settings = make_settings_dict(name, variables_dict)
+            self.cwl[VARIABLES][name] = settings
+
+            self.__set_feedback(
+                "%s \'%s\': %s. " % (VARIABLES_NAME, name, variables_dict)
+            )
+
+            self.__update_workflow_visualisation()
+            self.__close_form()
+            return True
+        except Exception as e:
+            self.__set_feedback(
+                "Something went wrong with %s generation. %s "
+                % (VARIABLES_NAME, str(e))
+            )
+            return False
+
+    def __process_editing_pattern(self, values):
+        # TODO update this description
+
+        if self.__process_new_pattern(values, editing=True):
+            self.__update_workflow_visualisation()
+            self.__close_form()
+
+    def __process_editing_recipe(self, values):
+        # TODO update this description
+
+        if self.__process_new_recipe(values, ignore_conflicts=True):
+            self.__update_workflow_visualisation()
+            self.__close_form()
+
+    def __process_editing_workflow(self, values):
+        if self.__process_new_workflow(values, editing=True):
+            self.__update_workflow_visualisation()
+            self.__close_form()
+
+    def __process_editing_step(self, values):
+        if self.__process_new_step(values, editing=True):
+            self.__update_workflow_visualisation()
+            self.__close_form()
+
+    def __process_editing_variables(self, values):
+        if self.__process_new_variables(values, editing=True):
+            self.__update_workflow_visualisation()
+            self.__close_form()
+
+    def __process_delete_pattern(self, to_delete):
+        if to_delete in self.meow[PATTERNS]:
+            self.meow[PATTERNS].pop(to_delete)
+        self.__set_feedback("%s %s deleted. " % (RECIPE_NAME, to_delete))
+        self.__update_workflow_visualisation()
         self.__close_form()
-        self.__clear_feedback()
-        self.__import_from_vgrid()
+
+    def __process_delete_recipe(self, to_delete):
+        if to_delete in self.meow[RECIPES]:
+            self.meow[RECIPES].pop(to_delete)
+        self.__set_feedback("%s %s deleted. " % (PATTERN_NAME, to_delete))
+        self.__update_workflow_visualisation()
+        self.__close_form()
+
+    def __process_delete_workflow(self, to_delete):
+        if to_delete in self.cwl[WORKFLOWS]:
+            self.cwl[WORKFLOWS].pop(to_delete)
+        self.__set_feedback("%s %s deleted. " % (WORKFLOW_NAME, to_delete))
+        self.__update_workflow_visualisation()
+        self.__close_form()
+
+    def __process_delete_step(self, to_delete):
+        if to_delete in self.cwl[STEPS]:
+            self.cwl[STEPS].pop(to_delete)
+        self.__set_feedback("%s %s deleted. " % (STEP_NAME, to_delete))
+        self.__update_workflow_visualisation()
+        self.__close_form()
+
+    def __process_delete_variables(self, to_delete):
+        if to_delete in self.cwl[SETTINGS]:
+            self.cwl[SETTINGS].pop(to_delete)
+        self.__set_feedback("%s %s deleted. " % (VARIABLES_NAME, to_delete))
+        self.__update_workflow_visualisation()
+        self.__close_form()
 
     def __import_from_vgrid(self, confirm=True):
-        self.__set_feedback("Importing workflow from Vgrid. This may take a "
-                            "few seconds.")
+        if not self.vgrid:
+            self.__add_to_feedback(NO_VGRID_MSG)
+            return
+
+        self.__add_to_feedback(
+            "Importing workflow from Vgrid. This may take a few seconds.")
 
         try:
             _, response, _ = vgrid_workflow_json_call(
@@ -1425,8 +2274,8 @@ class WorkflowWidget:
             self.__set_feedback(error)
             self.__enable_top_buttons()
             return
-        except Exception as err:
-            self.__set_feedback(str(err))
+        except Exception as error:
+            self.__set_feedback(str(error))
             self.__enable_top_buttons()
             return
         self.__clear_feedback()
@@ -1444,37 +2293,41 @@ class WorkflowWidget:
                 RECIPES: response_recipes
             }
             if confirm:
-                self.__add_to_feedback("Found %s pattern(s) from Vgrid %s: %s "
-                                       % (len(response_patterns), self.vgrid,
-                                          list(response_patterns.keys())))
-                self.__add_to_feedback("Found %s recipe(s) from Vgrid %s: %s "
-                                       % (len(response_recipes), self.vgrid,
-                                          list(response_recipes.keys())))
+                self.__add_to_feedback(
+                    "Found %s %s(s) from Vgrid %s: %s "
+                    % (len(response_patterns), PATTERN_NAME, self.vgrid,
+                       list(response_patterns.keys()))
+                )
+                self.__add_to_feedback(
+                    "Found %s %s(s) from Vgrid %s: %s "
+                   % (len(response_recipes), RECIPE_NAME, self.vgrid,
+                      list(response_recipes.keys())))
 
-                self.__add_to_feedback("Import these patterns and recipes "
-                                       "into local memory? This will "
-                                       "overwrite any patterns or recipes "
-                                       "currently in memory that share the "
-                                       "same name. ")
+                self.__add_to_feedback(
+                    "Import these %s(s) and %s(s) into local memory? This "
+                    "will overwrite any %s(s) or %s(s) currently in memory "
+                    "that share the same name. "
+                    % (PATTERN_NAME, RECIPE_NAME, PATTERN_NAME, RECIPE_NAME)
+                )
 
                 self.__create_confirmation_buttons(
-                    self.__import_workflow,
+                    self.__import_meow_workflow,
                     args,
                     "Confirm Import",
                     "Cancel Import",
                     "Import canceled. No local data has been changed. "
                 )
             else:
-                self.__import_workflow(**args)
+                self.__import_meow_workflow(**args)
 
         elif response[OBJECT_TYPE] == VGRID_ERROR_TYPE:
             self.__set_feedback(response[VGRID_TEXT_TYPE])
         else:
-            print('Got an unexpected response')
-            print("Unexpected response: {}".format(response))
+            self.__set_feedback('Got an unexpected response')
+            self.__add_to_feedback("Unexpected response: {}".format(response))
         self.__enable_top_buttons()
 
-    def __import_workflow(self, **kwargs):
+    def __import_meow_workflow(self, **kwargs):
         response_patterns = kwargs.get(PATTERNS, None)
         response_recipes = kwargs.get(RECIPES, None)
 
@@ -1485,49 +2338,46 @@ class WorkflowWidget:
         overwritten_patterns = []
         overwritten_recipes = []
         for key, pattern in response_patterns.items():
-            if key in self.patterns:
+            if key in self.meow[PATTERNS]:
                 overwritten_patterns.append(key)
             new_pattern = Pattern(pattern)
-            self.patterns[key] = new_pattern
+            self.meow[PATTERNS][key] = new_pattern
             try:
                 self.mig_imports[PATTERNS][new_pattern.persistence_id] = \
                     deepcopy(new_pattern)
             except AttributeError:
                 pass
         for key, recipe in response_recipes.items():
-            if key in self.recipes:
+            if key in self.meow[RECIPES]:
                 overwritten_recipes.append(key)
-            self.recipes[key] = recipe
+            self.meow[RECIPES][key] = recipe
             try:
                 self.mig_imports[RECIPES][recipe[PERSISTENCE_ID]] = \
                     deepcopy(recipe)
             except AttributeError:
                 pass
 
-        msg = "Imported %s patterns and %s recipes. " \
-              % (len(response_patterns), len(response_recipes))
+        msg = "Imported %s %s(s) and %s %s(s). " \
+              % (len(response_patterns), PATTERN_NAME,
+                 len(response_recipes), RECIPE_NAME)
         if overwritten_patterns:
-            msg += "<br/>Overwritten patterns: %s " % overwritten_patterns
+            msg += "<br/>Overwritten %s(s): %s " \
+                   % (PATTERN_NAME, overwritten_patterns)
         if overwritten_recipes:
-            msg += "<br/>Overwritten recipes: %s " % overwritten_recipes
+            msg += "<br/>Overwritten %s(s): %s " \
+                   % (RECIPE_NAME, overwritten_recipes)
         self.__set_feedback(msg)
         self.__update_workflow_visualisation()
         self.__close_form()
 
-    def __count_calls(self, calls, operation, type):
-        count = [i[2][NAME] for i in calls
-                 if i[0] == operation and i[1] == type]
-        return count
-
-    def __on_export_to_vgrid_clicked(self, button):
-        # TODO update this description
-
-        self.__close_form()
-        self.__clear_feedback()
+    def __export_to_vgrid(self):
+        if not self.vgrid:
+            self.__set_feedback(NO_VGRID_MSG)
+            return
 
         calls = []
         pattern_ids = []
-        for _, pattern in self.patterns.items():
+        for _, pattern in self.meow[PATTERNS].items():
             attributes = {
                 NAME: pattern.name,
                 INPUT_FILE: pattern.trigger_file,
@@ -1545,7 +2395,7 @@ class WorkflowWidget:
             try:
                 operation = None
                 if PERSISTENCE_ID in attributes:
-                    if self.patterns[pattern.name] != \
+                    if self.meow[PATTERNS][pattern.name] != \
                             self.mig_imports[PATTERNS][pattern.persistence_id]:
                         operation = VGRID_UPDATE
 
@@ -1566,7 +2416,7 @@ class WorkflowWidget:
                 return
 
         recipe_ids = []
-        for _, recipe in self.recipes.items():
+        for _, recipe in self.meow[RECIPES].items():
             try:
                 attributes = {
                     NAME: recipe[NAME],
@@ -1581,7 +2431,7 @@ class WorkflowWidget:
                     pass
                 operation = None
                 if PERSISTENCE_ID in attributes:
-                    if self.recipes[recipe[NAME]] != \
+                    if self.meow[RECIPES][recipe[NAME]] != \
                             self.mig_imports[RECIPES][recipe[PERSISTENCE_ID]]:
                         operation = VGRID_UPDATE
                 else:
@@ -1632,10 +2482,11 @@ class WorkflowWidget:
         self.__enable_top_buttons()
 
         if not calls:
-            self.__set_feedback("No patterns or recipes have been created, "
-                                "updated or deleted so there is nothing to "
-                                "export to the Vgrid")
-            self.__enable_top_buttons()
+            self.__set_feedback(
+                "No %ss or %ss have been created, updated or "
+                "deleted so there is nothing to export to the Vgrid"
+                % (PATTERN_NAME, RECIPE_NAME)
+            )
             return
 
         operation_combinations = [
@@ -1648,8 +2499,7 @@ class WorkflowWidget:
         ]
 
         for operation in operation_combinations:
-            relevant_calls = \
-                self.__count_calls(calls, operation[0], operation[1])
+            relevant_calls = count_calls(calls, operation[0], operation[1])
 
             if relevant_calls:
                 self.__add_to_feedback("Will %s %s %s: %s. "
@@ -1668,253 +2518,6 @@ class WorkflowWidget:
             "Cancel Export",
             "Export canceled. No VGrid data has been changed. "
         )
-
-    def __on_export_to_cwl_clicked(self, button):
-        # TODO update this description
-
-        self.__close_form()
-        self.__clear_feedback()
-
-        status, workflow = get_linear_workflow(self.workflow, self.patterns, self.recipes)
-        workflow_title = "exported_workflow"
-
-        if not status:
-            msg = "Could not identify linear workflow for export. %s" \
-                  % workflow
-            self.__set_feedback(msg)
-            return
-        top = workflow[0]
-
-        cwl_dir = "cwl_export_dir"
-        if not os.path.exists(cwl_dir):
-            os.mkdir(cwl_dir)
-
-        if len(top.trigger_paths) > 1:
-            self.__set_feedback("CWL export only supports patterns with a "
-                                "single trigger path. Pattern %s has trigger "
-                                "paths %s" % (top.name, top.trigger_paths))
-            return
-        for pattern in workflow:
-            if len(pattern.recipes) > 1:
-                self.__set_feedback("CWL export only supports patterns with a "
-                                    "single recipe. Pattern %s has recipes %s"
-                                    % (pattern.name, pattern.recipes))
-                return
-            if len(pattern.outputs) > 1:
-                self.__set_feedback("CWL export only supports patterns with a "
-                                    "single out. Pattern %s has outputs %s"
-                                    % (pattern.name, pattern.outputs))
-                return
-        data_path = top.trigger_paths[0]
-        if not os.path.exists(data_path):
-            self.__set_feedback("CWL export expects input data %s, but it "
-                                "does not exist. " % data_path)
-            return
-        data_filename = self.__strip_dirs(data_path)
-        dest_path = os.path.join(cwl_dir, data_filename)
-
-        copyfile(data_path, dest_path)
-
-        step_count = 1
-        yaml_dict = {}
-        step_dicts = {}
-        cwl_dict = {}
-        variable_references = {}
-        pattern_references = {}
-        required_recipes = set()
-        for pattern in workflow:
-            required_recipes.add(pattern.recipes[0])
-
-            step_variable_dict = {}
-            step_cwl_dict = {
-                'cwlVersion': 'v1.0',
-                'class': 'CommandLineTool',
-                'baseCommand': 'papermill',
-                'inputs': {},
-                'outputs': {}
-            }
-
-            output_count = 0
-            for output_key, output_value in pattern.outputs.items():
-                local_output_key = "output_%d" % output_count
-                output_binding = "inputs.%s_value" % output_key
-                step_cwl_dict['outputs'][local_output_key] = {
-                    'type': 'File',
-                    'outputBinding': {
-                        'glob': "$(%s)" % output_binding
-                    }
-                }
-                output_count += 1
-
-            recipe_entry = "%d_notebook" % step_count
-            result_entry = "%d_result" % step_count
-            step_cwl_dict['inputs']['notebook'] = {
-                'type': 'File',
-                'inputBinding': {
-                    'position': 1
-                }
-            }
-            recipe = self.recipes[pattern.recipes[0]]
-            source_filename = self.__strip_dirs(recipe[SOURCE])
-            yaml_dict[recipe_entry] = {
-                'class': 'File',
-                'path': source_filename
-            }
-            step_cwl_dict['inputs']['result'] = {
-                'type': 'string',
-                'inputBinding': {
-                    'position': 2
-                }
-            }
-            yaml_dict[result_entry] = source_filename
-            step_variable_dict['notebook'] = recipe_entry
-            step_variable_dict['result'] = result_entry
-
-            variable_count = 3
-            for variable_key, variable_value in pattern.variables.items():
-
-                if isinstance(variable_value, str):
-                    if variable_value.startswith('"')\
-                            and variable_value.endswith('"'):
-                        variable_value = variable_value[1:-1]
-                    if variable_value.startswith('\'')\
-                            and variable_value.endswith('\''):
-                        variable_value = variable_value[1:-1]
-                variable_value = self.__strip_dirs(variable_value)
-
-                local_arg_key = "%s_key" % variable_key
-                local_arg_value = "%s_value" % variable_key
-                arg_key = "%d_%s" % (step_count, local_arg_key)
-                arg_value = "%d_%s" % (step_count, local_arg_value)
-                yaml_dict[arg_key] = variable_key
-                step_cwl_dict['inputs'][local_arg_key] = {
-                    'type': 'string',
-                    'inputBinding': {
-                        'prefix': '-p',
-                        'position': variable_count
-                    }
-                }
-                variable_count += 1
-                input_type = 'string'
-                if variable_key in pattern.outputs:
-                    variable_value = \
-                        self.__strip_dirs(pattern.outputs[variable_key])
-                yaml_dict[arg_value] = variable_value
-                if variable_key == pattern.trigger_file:
-                    input_type = 'File'
-                    yaml_dict[arg_value] = {
-                        'class': 'File',
-                        'path': self.__strip_dirs(pattern.trigger_paths[0])
-                    }
-
-                step_cwl_dict['inputs'][local_arg_value] = {
-                    'type': input_type,
-                    'inputBinding': {
-                        'position': variable_count
-                    }
-                }
-                step_variable_dict[local_arg_key] = arg_key
-                step_variable_dict[local_arg_value] = arg_value
-                variable_count += 1
-            cwl_filename = '%s.cwl' % pattern.recipes[0]
-            cwl_file_path = os.path.join(cwl_dir, cwl_filename)
-            with open(cwl_file_path, 'w') as cwl_file:
-                yaml.dump(step_cwl_dict, cwl_file, default_flow_style=False)
-            step_title = "step_%d" % step_count
-            step_dicts[step_title] = step_cwl_dict
-            cwl_dict[step_title] = cwl_filename
-            variable_references[step_title] = step_variable_dict
-            pattern_references[step_title] = pattern.name
-            step_count += 1
-
-        yaml_filename = '%s.yml' % workflow_title
-        yaml_file_path = os.path.join(cwl_dir, yaml_filename)
-        with open(yaml_file_path, 'w') as yaml_file:
-            yaml.dump(yaml_dict, yaml_file, default_flow_style=False)
-
-        for recipe_name in required_recipes:
-            recipe = self.recipes[recipe_name]
-            source_path = recipe[SOURCE]
-            source_filename = self.__strip_dirs(recipe[SOURCE])
-            dest_path = os.path.join(cwl_dir, source_filename)
-            if not os.path.exists(source_path):
-                self.__set_feedback("CWL export expects recipe source %s, but "
-                                    "it does not exist. " % source_path)
-                return
-            copyfile(recipe[SOURCE], dest_path)
-
-        workflow_cwl_dict = {
-            'cwlVersion': 'v1.0',
-            'class': 'Workflow',
-            'inputs': {},
-            'outputs': {},
-            'steps': {}
-        }
-
-        for key, value in yaml_dict.items():
-            if isinstance(value, dict):
-                workflow_cwl_dict['inputs'][key] = 'File'
-            else:
-                workflow_cwl_dict['inputs'][key] = 'string'
-
-        outlines = []
-        for key, value in step_dicts.items():
-            output_name = list(value['outputs'].keys())[0]
-
-            step_dict = {
-                'run': cwl_dict[key],
-                'in': {},
-                'out': '[%s]' % output_name
-            }
-            outline = "    out: '[%s]'\n" % output_name
-            outlines.append(outline)
-            for input_key, input_value in value['inputs'].items():
-                step_dict['in'][input_key] = \
-                    variable_references[key][input_key]
-
-            current = self.workflow[pattern_references[key]]
-            if current[ANCESTORS]:
-                ancestor_step_num = int(key[key.rfind('_') + 1:]) - 1
-                ancestor_out = list(step_dicts["step_%d" % ancestor_step_num]['outputs'].keys())[0]
-                current_key = "%s_value" % self.patterns[pattern_references[key]].trigger_file
-                step_dict['in'][current_key] \
-                    = "step_%d/%s" % (ancestor_step_num, ancestor_out)
-
-            workflow_cwl_dict['steps'][key] = step_dict
-
-            workflow_cwl_dict['outputs']["output_%s" % key] = {
-                'type': 'File',
-                'outputSource': '%s/%s' % (key, output_name)
-            }
-
-        cwl_filename = '%s.cwl' % workflow_title
-        cwl_file_path = os.path.join(cwl_dir, cwl_filename)
-        with open(cwl_file_path, 'w') as cwl_file:
-            yaml.dump(workflow_cwl_dict, cwl_file, default_flow_style=False)
-
-        # Edit taml export of workflow_cwl_dict as it won't like exporting
-        # the outputs section
-        with open(cwl_file_path, 'r') as input_file:
-            data = input_file.readlines()
-
-        for index, line in enumerate(data):
-            for outline in outlines:
-                if line == outline:
-                    data[index] = outline.replace('\'', '')
-
-        with open(cwl_file_path, 'w') as output_file:
-            output_file.writelines(data)
-
-        self.__set_feedback("Export performed successfully. Files are present "
-                            "in directory '%s' and can be called with:"
-                            % cwl_dir)
-        self.__add_to_feedback("toil-cwl-runner %s %s" %
-                               (cwl_filename, yaml_filename))
-
-    def __strip_dirs(self, path):
-        if os.path.sep in path:
-            path = path[path.rfind(os.path.sep) + 1:]
-        return path
 
     def __export_workflow(self, **kwargs):
         self.__clear_feedback()
@@ -1942,30 +2545,36 @@ class WorkflowWidget:
                             pattern.persistence_id = persistence_id
                             self.mig_imports[PATTERNS][persistence_id] = \
                                 pattern
-                            msg = "Created pattern %s. " % pattern.name
+                            msg = "Created %s '%s'. " \
+                                  % (PATTERN_NAME, pattern.name)
                         elif object_type == VGRID_RECIPE_OBJECT_TYPE:
                             recipe = call[4]
                             recipe[PERSISTENCE_ID] = persistence_id
                             self.mig_imports[RECIPES][persistence_id] = recipe
-                            msg = "Created recipe %s. " % recipe[NAME]
+                            msg = "Created %s '%s'. " \
+                                  % (RECIPE_NAME, recipe[NAME])
 
                     if operation == VGRID_UPDATE:
                         if object_type == VGRID_PATTERN_OBJECT_TYPE:
                             pattern = call[4]
                             self.mig_imports[PATTERNS][
                                 pattern.persistence_id] = pattern
-                            msg = "Updated pattern %s. " % pattern.name
+                            msg = "Updated %s '%s'. " \
+                                  % (PATTERN_NAME, pattern.name)
                         elif object_type == VGRID_RECIPE_OBJECT_TYPE:
                             recipe = call[4]
                             self.mig_imports[RECIPES][
                                 recipe[PERSISTENCE_ID]] = recipe
-                            msg = "Updated recipe %s. " % recipe[NAME]
+                            msg = "Updated %s '%s'. " \
+                                  % (RECIPE_NAME, recipe[NAME])
 
                     if operation == VGRID_DELETE:
                         if object_type == VGRID_PATTERN_OBJECT_TYPE:
-                            msg = "Deleted pattern %s. " % args[NAME]
+                            msg = "Deleted %s '%s'. " \
+                                  % (PATTERN_NAME, args[NAME])
                         elif object_type == VGRID_RECIPE_OBJECT_TYPE:
-                            msg = "Deleted recipe %s. " % args[NAME]
+                            msg = "Deleted %s '%s'. " \
+                                  % (RECIPE_NAME, args[NAME])
 
                 if 'error_text' in response:
                     feedback = response['error_text'].replace('\n', '<br/>')
@@ -1976,101 +2585,416 @@ class WorkflowWidget:
                 self.__set_feedback(err)
         self.__close_form()
 
-    def __create_confirmation_buttons(
-            self, confirmation_function, confirmation_args, confirm_text,
-            cancel_text, cancel_feedback):
-        confirm_button = widgets.Button(
-            value=False,
-            description=confirm_text,
-            disabled=False,
-            button_style='',
-            tooltip='Here is a tooltip for this button'
+    def __meow_to_cwl(self):
+
+        meow_workflow = build_workflow_object(
+            self.meow[PATTERNS],
+            self.meow[RECIPES]
         )
 
-        def confirm_button_click(button):
-            confirmation_function(**confirmation_args)
+        buffer_cwl = {
+            WORKFLOWS: {},
+            STEPS: {},
+            SETTINGS: {}
+        }
 
-        confirm_button.on_click(confirm_button_click)
+        step_count = 1
+        yaml_dict = {}
+        step_true_names = {}
+        variable_references = {}
+        pattern_references = {}
+        for pattern in self.meow[PATTERNS].values():
+            step_variable_dict = {}
+            step_title = "step_%d" % step_count
+            step_cwl_dict = make_step_dict(step_title, 'papermill')
 
-        cancel_button = widgets.Button(
-            value=False,
-            description=cancel_text,
-            disabled=False,
-            button_style='',
-            tooltip='Here is a tooltip for this button'
-        )
+            output_count = 0
+            for output_key, output_value in pattern.outputs.items():
+                local_output_key = "output_%d" % output_count
+                output_binding = "inputs.%s_value" % output_key
+                step_cwl_dict['outputs'][local_output_key] = {
+                    CWL_OUTPUT_TYPE: 'File',
+                    CWL_OUTPUT_BINDING: {
+                        CWL_OUTPUT_GLOB: "$(%s)" % output_binding
+                    }
+                }
+                output_count += 1
 
-        def cancel_button_click(button):
-            self.__set_feedback(cancel_feedback)
-            self.__close_form()
+            recipe_entry = "%d_notebook" % step_count
+            result_entry = "%d_result" % step_count
+            step_cwl_dict['inputs']['notebook'] = {
+                CWL_INPUT_TYPE: 'File',
+                CWL_INPUT_BINDING: {
+                    CWL_INPUT_POSITION: 1
+                }
+            }
+            # TODO edit this to combine recipes into one rather than ignoring
+            #  them. Is currently misleading
+            try:
+                recipe = self.meow[RECIPES][pattern.recipes[0]]
+                source_filename = strip_dirs(recipe[SOURCE])
+            except KeyError:
+                source_filename = PLACEHOLDER
+            yaml_dict[recipe_entry] = {
+                CWL_YAML_CLASS: 'File',
+                CWL_YAML_PATH: source_filename
+            }
+            step_cwl_dict['inputs']['result'] = {
+                CWL_INPUT_TYPE: 'string',
+                CWL_INPUT_BINDING: {
+                    CWL_INPUT_POSITION: 2
+                }
+            }
+            yaml_dict[result_entry] = source_filename
+            step_variable_dict['notebook'] = recipe_entry
+            step_variable_dict['result'] = result_entry
 
-        cancel_button.on_click(cancel_button_click)
+            variable_count = 3
+            for variable_key, variable_value in pattern.variables.items():
 
-        buttons_list = [
-            confirm_button,
-            cancel_button
-        ]
+                if isinstance(variable_value, str):
+                    if variable_value.startswith('"') \
+                            and variable_value.endswith('"'):
+                        variable_value = variable_value[1:-1]
+                    if variable_value.startswith('\'') \
+                            and variable_value.endswith('\''):
+                        variable_value = variable_value[1:-1]
+                variable_value = strip_dirs(variable_value)
 
-        confirmation_buttons = widgets.HBox(buttons_list)
+                local_arg_key = "%s_key" % variable_key
+                local_arg_value = "%s_value" % variable_key
+                arg_key = "%d_%s" % (step_count, local_arg_key)
+                arg_value = "%d_%s" % (step_count, local_arg_value)
+                yaml_dict[arg_key] = variable_key
+                step_cwl_dict['inputs'][local_arg_key] = {
+                    CWL_INPUT_TYPE: 'string',
+                    CWL_INPUT_BINDING: {
+                        CWL_INPUT_PREFIX: '-p',
+                        CWL_INPUT_POSITION: variable_count
+                    }
+                }
+                variable_count += 1
+                input_type = 'string'
+                if variable_key in pattern.outputs:
+                    variable_value = strip_dirs(pattern.outputs[variable_key])
+                yaml_dict[arg_value] = variable_value
+                if variable_key == pattern.trigger_file:
+                    input_type = 'File'
+                    yaml_dict[arg_value] = {
+                        CWL_YAML_CLASS: 'File',
+                        CWL_YAML_PATH: strip_dirs(pattern.trigger_paths[0])
+                    }
 
-        with self.display_area:
-            display(confirmation_buttons, display_id=True)
+                step_cwl_dict['inputs'][local_arg_value] = {
+                    CWL_INPUT_TYPE: input_type,
+                    CWL_INPUT_BINDING: {
+                        CWL_INPUT_POSITION: variable_count
+                    }
+                }
+                step_variable_dict[local_arg_key] = arg_key
+                step_variable_dict[local_arg_value] = arg_value
+                variable_count += 1
 
-    def __add_to_feedback(self, to_add):
-        # TODO update this description
+            buffer_cwl[STEPS][step_title] = step_cwl_dict
+            step_filename = '%s.cwl' % pattern.recipes[0]
+            step_true_names[step_title] = step_filename
+            variable_references[step_title] = step_variable_dict
+            pattern_references[step_title] = pattern.name
+            step_count += 1
 
-        if self.feedback.value:
-            self.feedback.value += "<br/>"
-        self.feedback.value += to_add
+        buffer_cwl[SETTINGS][self.workflow_title] = \
+            make_settings_dict(self.workflow_title, yaml_dict)
 
-    def __set_feedback(self, to_set):
-        # TODO update this description
+        workflow_cwl_dict = make_workflow_dict(self.workflow_title)
 
-        self.feedback.value = to_set
+        for key, value in yaml_dict.items():
+            if isinstance(value, dict):
+                workflow_cwl_dict['inputs'][key] = 'File'
+            else:
+                workflow_cwl_dict['inputs'][key] = 'string'
 
-    def __clear_feedback(self):
-        # TODO update this description
+        outlines = []
+        for key, value in buffer_cwl[STEPS].items():
+            output_name = list(value['outputs'].keys())[0]
 
-        self.feedback.value = ""
+            step_dict = {
+                CWL_WORKFLOW_RUN: step_true_names[key],
+                CWL_WORKFLOW_IN: {},
+                CWL_WORKFLOW_OUT: '[%s]' % output_name
+            }
+            outline = "    %s: '[%s]'\n" % (CWL_WORKFLOW_RUN, output_name)
+            outlines.append(outline)
+            for input_key, input_value in value['inputs'].items():
+                step_dict['in'][input_key] = \
+                    variable_references[key][input_key]
 
-    def __close_form(self):
-        # TODO update this description
+            current = meow_workflow[pattern_references[key]]
+            if current[ANCESTORS]:
+                ancestor_step_num = int(key[key.rfind('_') + 1:]) - 1
+                ancestor_out = \
+                    list(buffer_cwl[STEPS]["step_%d" % ancestor_step_num][
+                             'outputs'].keys())[0]
+                current_key = "%s_value" % self.meow[PATTERNS][
+                    pattern_references[key]].trigger_file
+                step_dict['in'][current_key] \
+                    = "step_%d/%s" % (ancestor_step_num, ancestor_out)
 
-        self.displayed_form = None
-        self.display_area.clear_output()
-        self.__enable_top_buttons()
-        self.__clear_current_form()
+            workflow_cwl_dict['steps'][key] = step_dict
 
-    def __clear_current_form(self):
-        # TODO update this description
+            workflow_cwl_dict['outputs']["output_%s" % key] = {
+                CWL_OUTPUT_TYPE: 'File',
+                CWL_OUTPUT_SOURCE: '%s/%s' % (key, output_name)
+            }
 
-        self.current_form = {}
-        self.current_old_values = {}
-        self.current_form_rows = {}
-        self.current_form_line_counts = {}
+        buffer_cwl[WORKFLOWS] = {
+            self.workflow_title: workflow_cwl_dict
+        }
+
+        return True, buffer_cwl
+
+    # TODO implement
+    def __cwl_to_meow(self):
+        for workflow_name, workflow in self.cwl[WORKFLOWS]:
+            status, msg = check_workflow_is_valid(workflow_name, self.cwl)
+
+    def __import_cwl(self, **kwargs):
+        workflows = kwargs.get(WORKFLOWS, None)
+        steps = kwargs.get(STEPS, None)
+        variables = kwargs.get(SETTINGS, None)
+
+        self.cwl[WORKFLOWS] = workflows
+        self.cwl[STEPS] = steps
+        self.cwl[SETTINGS] = variables
+
+        feedback = "%d Workflow definition(s), %d Step " \
+                   "definition(s), and %s Variable " \
+                   "definition(s) have been imported" \
+                   % (len(self.cwl[WORKFLOWS]),
+                      len(self.cwl[STEPS]),
+                      len(self.cwl[SETTINGS]))
+
+        self.__set_feedback(feedback)
+        self.__update_workflow_visualisation()
+        self.__close_form()
 
     def __update_workflow_visualisation(self):
         # TODO update this description
 
-        # try:
-        self.workflow = build_workflow_object(
-            self.patterns,
-            self.recipes
+        self.__check_state()
+
+        if self.mode == MEOW_MODE:
+            # try:
+            meow_workflow = build_workflow_object(
+                self.meow[PATTERNS],
+                self.meow[RECIPES]
+            )
+            # except:
+            #     meow_workflow = {}
+
+            visualisation = self.__get_meow_workflow_visualisation(
+                self.meow[PATTERNS],
+                self.meow[RECIPES],
+                meow_workflow
+            )
+
+            self.visualisation_area.clear_output(wait=True)
+            with self.visualisation_area:
+                display(visualisation)
+        elif self.mode == CWL_MODE:
+
+            visualisation = self.__get_cwl_workflow_visualisation(
+                self.cwl[WORKFLOWS],
+                self.cwl[STEPS],
+                self.cwl[SETTINGS]
+            )
+
+            self.visualisation_area.clear_output(wait=True)
+            with self.visualisation_area:
+                display(visualisation)
+
+    def __get_meow_workflow_visualisation(self, patterns, recipes, workflow):
+        # TODO update this description
+
+        pattern_display = []
+
+        for pattern in workflow.keys():
+            pattern_display.append(
+                self.__set_meow_node_dict(patterns[pattern])
+            )
+
+        link_display = []
+        colour_display = [RED] * len(pattern_display)
+
+        path_nodes = {}
+
+        for pattern, pattern_dict in workflow.items():
+            pattern_index = self.__get_node_index(pattern, pattern_display)
+            if pattern_has_recipes(patterns[pattern], recipes):
+                colour_display[pattern_index] = GREEN
+            else:
+                colour_display[pattern_index] = RED
+            for file, input in pattern_dict[WORKFLOW_INPUTS].items():
+                pattern_display.append(
+                    self.__set_phantom_meow_node_dict(input)
+                )
+                colour_display.append(WHITE)
+                node_index = len(pattern_display) - 1
+                node_name = "%s_input_%s" % (pattern, file)
+                path_nodes[node_name] = node_index
+                link_display.append({
+                    'source': node_index,
+                    'target': pattern_index
+                })
+            for file, output in pattern_dict[WORKFLOW_OUTPUTS].items():
+                pattern_display.append(
+                    self.__set_phantom_meow_node_dict(output)
+                )
+                colour_display.append(WHITE)
+                node_index = len(pattern_display) - 1
+                node_name = "%s_output_%s" % (pattern, file)
+                path_nodes[node_name] = node_index
+                link_display.append({
+                    'source': pattern_index,
+                    'target': node_index
+                })
+
+        # Do this second as we need to make sure all patterns have been set
+        # up before we can link them
+        for pattern, pattern_dict in workflow.items():
+            pattern_index = self.__get_node_index(pattern, pattern_display)
+            for name, ancestor in pattern_dict[ANCESTORS].items():
+                node_name = "%s_%s_%s" % (
+                    ancestor['output_pattern'],
+                    'output',
+                    ancestor['output_file']
+                )
+                if node_name in path_nodes:
+                    link_display.append({
+                        'source': path_nodes[node_name],
+                        'target': pattern_index
+                    })
+
+        graph = Graph(
+            node_data=pattern_display,
+            link_data=link_display,
+            charge=-400,
+            colors=colour_display,
+            tooltip=MEOW_TOOLTIP
         )
-        # except:
-        #     self.workflow = {}
 
-        visualisation = self.__get_workflow_visualisation(
-            self.patterns,
-            self.recipes,
-            self.workflow
+        # TODO investiaget graph.interactions to see if we can get tooltip to
+        #  only display for patterns
+        graph.on_element_click(self.__meow_visualisation_element_click)
+        graph.on_hover(self.__toggle_tooltips)
+
+        fig_layout = widgets.Layout(width='100%', height='600px')
+
+        return Figure(marks=[graph], layout=fig_layout)
+
+    def __get_cwl_workflow_visualisation(self, workflows, steps, settings):
+        # TODO update this description
+
+        node_data = []
+        link_data = []
+        colour_data = []
+
+        linked_workflows = {}
+        node_indexes = {}
+        index = 0
+
+        for workflow_key, workflow in workflows.items():
+            status, feedback = get_linked_workflow(
+                workflow,
+                steps,
+                settings[workflow_key][CWL_VARIABLES]
+            )
+            if status:
+                linked_workflows[workflow_key] = feedback
+
+                for step_name, step_value in feedback.items():
+                    step = steps[step_name]
+                    node_data.append(self.__set_cwl_step_dict(step))
+                    colour_data.append(GREEN)
+                    name = "%s_%s" % (workflow_key, step_name)
+                    node_indexes[name] = index
+                    index += 1
+
+                    for key, input in step_value['inputs'].items():
+                        node_data.append(
+                            self.__set_phantom_cwl_node_dict(input)
+                        )
+                        colour_data.append(WHITE)
+                        descendant_index = index
+                        link_data.append({
+                            'source': descendant_index,
+                            'target': node_indexes[name]
+                        })
+                        index += 1
+
+                    for key, output in step_value['outputs'].items():
+                        node_data.append(
+                            self.__set_phantom_cwl_node_dict(output)
+                        )
+                        output_node_name = "%s_%s" % (name, key)
+                        node_indexes[output_node_name] = index
+                        colour_data.append(WHITE)
+                        descendant_index = index
+                        link_data.append({
+                            'source': node_indexes[name],
+                            'target': descendant_index
+                        })
+                        index += 1
+
+                    for key, input in workflow[CWL_STEPS][step_name][CWL_WORKFLOW_IN].items():
+                        if input not in settings[workflow_key][CWL_VARIABLES]:
+                            if input not in list(step_value['ancestors'].values()):
+                                colour_data[node_indexes[name]] = RED
+                        elif settings[workflow_key][CWL_VARIABLES][input] == PLACEHOLDER:
+                            colour_data[node_indexes[name]] = RED
+
+                # loop through again once we know all steps have been set up
+                # to link steps together
+                for step_name, step_value in feedback.items():
+                    name = "%s_%s" % (workflow_key, step_name)
+                    for key, ancestor in step_value['ancestors'].items():
+                        source_name = "%s_%s_%s" \
+                                      % (workflow_key, key, ancestor)
+
+                        link_data.append({
+                            'source': node_indexes[source_name],
+                            'target': node_indexes[name]
+                        })
+
+        graph = Graph(
+            node_data=node_data,
+            link_data=link_data,
+            charge=-400,
+            colors=colour_data,
+            tooltip=CWL_TOOLTIP
         )
 
-        self.visualisation_area.clear_output(wait=True)
-        with self.visualisation_area:
-            display(visualisation)
+        graph.on_element_click(self.__cwl_visualisation_element_click)
+        graph.on_hover(self.__toggle_tooltips)
 
-    def __set_node_dict(self, pattern):
+        fig_layout = widgets.Layout(width='100%', height='600px')
+
+        return Figure(marks=[graph], layout=fig_layout)
+
+    # TODO improve this to remove occasional flickering
+    def __toggle_tooltips(self, graph, node):
+        if node['data']['tooltip']:
+            if not graph.tooltip:
+                graph.tooltip_style = {'opacity': 0.9}
+                if node['data']['tooltip'] == MEOW_MODE:
+                    graph.tooltip = MEOW_TOOLTIP
+                elif node['data']['tooltip'] == CWL_MODE:
+                    graph.tooltip = CWL_TOOLTIP
+        else:
+            if graph.tooltip:
+                graph.tooltip_style = {'opacity': 0.0}
+                graph.tooltip = None
+
+    def __set_meow_node_dict(self, pattern):
         # TODO update this description
 
         node_dict = {
@@ -2079,26 +3003,55 @@ class WorkflowWidget:
             'Recipe(s)': str(pattern.recipes),
             'Trigger Path(s)': str(pattern.trigger_paths),
             'Outputs(s)': str(pattern.outputs),
-            'Static Inputs(s)': str(pattern.inputs),
             'Input File': pattern.trigger_file,
             'Variable(s)': str(pattern.variables),
             'shape': 'circle',
-            'shape_attrs': {'r': 30}
+            'shape_attrs': {'r': 30},
+            'tooltip': MEOW_MODE
         }
         return node_dict
 
-    def __set_phantom_node_dict(self, label):
+    def __set_phantom_meow_node_dict(self, label):
         # TODO update this description
-
         node_dict = {
             'label': label,
-            'shape': 'circle',
-            'shape_attrs': {'r': 30},
+            'shape': 'rect',
+            'shape_attrs': {'rx': 6, 'ry': 6, 'width': 60, 'height': 30},
             'tooltip': False
         }
         return node_dict
 
-    def __get_index(self, pattern, nodes):
+    def __set_cwl_step_dict(self, step):
+        # TODO update this description
+
+        node_dict = {
+            'label': step[CWL_NAME],
+            'Name': step[CWL_NAME],
+            'Base Command': step[CWL_BASE_COMMAND],
+            'Inputs(s)': str(list(step[CWL_INPUTS].keys())),
+            'Outputs(s)': str(step[CWL_OUTPUTS]),
+            'Argument(s)': str(step[CWL_ARGUMENTS]),
+            'Requirement(s)': str(step[CWL_REQUIREMENTS]),
+            'Hint(s)': str(step[CWL_HINTS]),
+            'Stdout': step[CWL_STDOUT],
+            'shape': 'circle',
+            'shape_attrs': {'r': 30},
+            'tooltip': CWL_MODE
+        }
+        return node_dict
+
+    def __set_phantom_cwl_node_dict(self, label):
+        # TODO update this description
+
+        node_dict = {
+            'label': label,
+            'shape': 'rect',
+            'shape_attrs': {'rx': 6, 'ry': 6, 'width': 60, 'height': 30},
+            'tooltip': False
+        }
+        return node_dict
+
+    def __get_node_index(self, pattern, nodes):
         # TODO update this description
 
         for index in range(0, len(nodes)):
@@ -2106,131 +3059,30 @@ class WorkflowWidget:
                 return index
         return -1
 
-    def __visualisation_element_click(self, graph, element):
+    def __meow_visualisation_element_click(self, graph, element):
         # TODO update this description
 
         # pattern = self.patterns[element['data']['label']]
         # self.construct_new_edit_form(default=pattern)
         pass
 
-    def __construct_new_edit_form(self, default=None):
+    def __cwl_visualisation_element_click(self, graph, element):
+        # TODO update this description
+        pass
+
+    def __add_to_feedback(self, to_add):
         # TODO update this description
 
-        self.__clear_current_form()
-        self.__refresh_edit_form(
-            PATTERN_NAME,
-            self.patterns,
-            self.__populate_editing_pattern_form,
-            self.__on_apply_pattern_changes_clicked,
-            self.__on_delete_pattern_clicked,
-            default=default
-        )
-        self.__clear_feedback()
+        if self.feedback_area.value:
+            self.feedback_area.value += "<br/>"
+        self.feedback_area.value += to_add
 
-    def __get_workflow_visualisation(self, patterns, recipes, workflow):
+    def __set_feedback(self, to_set):
         # TODO update this description
 
-        fig_layout = widgets.Layout(width='900px', height='500px')
+        self.feedback_area.value = to_set
 
-        pattern_display = []
+    def __clear_feedback(self):
+        # TODO update this description
 
-        for pattern in workflow.keys():
-            pattern_display.append(self.__set_node_dict(patterns[pattern]))
-
-        link_display = []
-        colour_display = [RED] * len(pattern_display)
-
-        for pattern, pattern_dict in workflow.items():
-            pattern_index = self.__get_index(pattern, pattern_display)
-            if pattern_has_recipes(patterns[pattern], recipes):
-                colour_display[pattern_index] = GREEN
-            else:
-                colour_display[pattern_index] = RED
-            for descendant in pattern_dict[DESCENDANTS]:
-                descendant_index = \
-                    self.__get_index(descendant, pattern_display)
-
-                link_display.append({
-                    'source': pattern_index,
-                    'target': descendant_index
-                })
-            for input in pattern_dict[WORKFLOW_INPUTS]:
-                pattern_display.append(self.__set_phantom_node_dict(input))
-                colour_display.append(WHITE)
-                descendant_index = len(pattern_display) - 1
-                link_display.append({
-                    'source': descendant_index,
-                    'target': pattern_index
-                })
-            for output in pattern_dict[WORKFLOW_OUTPUTS]:
-                pattern_display.append(self.__set_phantom_node_dict(output))
-                colour_display.append(WHITE)
-                descendant_index = len(pattern_display) - 1
-                link_display.append({
-                    'source': pattern_index,
-                    'target': descendant_index
-                })
-        graph = Graph(
-            node_data=pattern_display,
-            link_data=link_display,
-            charge=-400,
-            colors=colour_display
-        )
-        tooltip = Tooltip(
-            fields=[
-                'Name',
-                'Recipe(s)',
-                'Trigger Path(s)',
-                'Outputs(s)',
-                'Static Inputs(s)',
-                'Input File',
-                'Variable(s)'
-            ],
-            # formats=['', '', '']
-        )
-        graph.tooltip = tooltip
-        # TODO investiaget graph.interactions to see if we can get tooltip to
-        #  only display for patterns
-        graph.on_element_click(self.__visualisation_element_click)
-
-        return Figure(marks=[graph], layout=fig_layout)
-
-    def display_widget(self):
-        # TODO update this
-        """Displays a widget for workflow defitions. Can optionally take a
-        predefined workflow as input"""
-
-        workflow_image = [self.visualisation_area]
-        image_row = widgets.HBox(workflow_image)
-
-        button_row_items = [
-            self.new_pattern_button,
-            self.edit_pattern_button,
-            self.new_recipe_button,
-            self.edit_recipe_button,
-            self.import_from_vgrid_button,
-            self.export_to_vgrid_button,
-            self.export_to_cwl_button
-        ]
-        button_row = widgets.HBox(button_row_items)
-
-        feedback_items = [
-            self.feedback
-        ]
-        feedback_row = widgets.HBox(feedback_items)
-
-        display_items = [
-            self.display_area
-        ]
-        display_row = widgets.HBox(display_items)
-
-        widget = widgets.VBox(
-            [
-                image_row,
-                button_row,
-                display_row,
-                feedback_row
-            ]
-        )
-        self.__enable_top_buttons()
-        return widget
+        self.feedback_area.value = ""
