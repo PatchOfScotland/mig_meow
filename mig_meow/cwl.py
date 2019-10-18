@@ -106,7 +106,6 @@ def get_linked_workflow(workflow, steps, settings):
 
 
 def check_workflow_is_valid(workflow_name, cwl):
-
     if workflow_name not in cwl[WORKFLOWS]:
         msg = "%s \'%s\' does not exist within the current CWL definitions. " \
               % (WORKFLOW_NAME, workflow_name)
@@ -146,4 +145,14 @@ def check_workflow_is_valid(workflow_name, cwl):
                           % (VARIABLES_NAME, settings[CWL_NAME], input_key,
                              key, PLACEHOLDER)
                     return False, msg
+    return True, ''
+
+
+def check_step_is_valid(step_name, cwl):
+    if step_name not in cwl[STEPS]:
+        msg = "%s \'%s\' does not exist within the current CWL definitions. " \
+              % (STEP_NAME, step_name)
+        return False, msg
+    step = cwl[WORKFLOWS][step_name]
+
     return True, ''

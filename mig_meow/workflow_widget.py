@@ -31,7 +31,7 @@ from .constants import GREEN, RED, \
     SETTINGS, YAML_EXTENSIONS, CWL_EXTENSIONS, CWL_CLASS, CWL_CLASS_WORKFLOW, \
     CWL_CLASS_COMMAND_LINE_TOOL
 from .cwl import make_step_dict, make_workflow_dict, get_linked_workflow, \
-    make_settings_dict, check_workflow_is_valid
+    make_settings_dict, check_workflow_is_valid, check_step_is_valid
 from .mig import vgrid_workflow_json_call
 from .pattern import Pattern, is_valid_pattern_object
 from .recipe import is_valid_recipe_dict, create_recipe_dict
@@ -2601,7 +2601,6 @@ class WorkflowWidget:
 
         step_count = 1
         yaml_dict = {}
-        step_true_names = {}
         variable_references = {}
         pattern_to_step = {}
         step_to_pattern = {}
@@ -2703,8 +2702,6 @@ class WorkflowWidget:
                 variable_count += 1
 
             buffer_cwl[STEPS][step_title] = step_cwl_dict
-            step_filename = '%s.cwl' % pattern.recipes[0]
-            step_true_names[step_title] = step_filename
             variable_references[step_title] = step_variable_dict
             pattern_to_step[pattern.name] = step_title
             step_to_pattern[step_title] = pattern.name
@@ -2723,9 +2720,6 @@ class WorkflowWidget:
 
         outlines = []
         for step_name, step in buffer_cwl[STEPS].items():
-            # output_name = ''
-            # if value['outputs'].keys():
-            #     output_name = list(value['outputs'].keys())[0]
 
             separator = ', '
             all_outputs = separator.join(list(step[CWL_OUTPUTS].keys()))
@@ -2734,14 +2728,12 @@ class WorkflowWidget:
             outlines.append(outline)
 
             step_dict = {
-                CWL_WORKFLOW_RUN: step_true_names[step_name],
+                CWL_WORKFLOW_RUN: '%s.cwl' % step_name,
                 CWL_WORKFLOW_IN: {},
                 CWL_WORKFLOW_OUT: cwl_output
             }
 
             for output_key, output_value in step[CWL_OUTPUTS].items():
-                # step_dict[CWL_WORKFLOW_OUT][output_key] = \
-                #     variable_references[key][output_key]
 
                 workflow_output_key = "output_%s_%s" % (step_name, output_key)
                 workflow_cwl_dict[CWL_OUTPUTS][workflow_output_key] = {
@@ -2751,7 +2743,7 @@ class WorkflowWidget:
 
             separator = ', '
             all_outputs = separator.join(list(step[CWL_OUTPUTS].keys()))
-            outline = "    %s: '[%s]'\n" % (CWL_WORKFLOW_RUN, all_outputs)
+            outline = "    %s: '[%s]'\n" % (CWL_WORKFLOW_OUT, all_outputs)
             outlines.append(outline)
 
             for input_key, input_value in step[CWL_INPUTS].items():
@@ -2762,14 +2754,13 @@ class WorkflowWidget:
             if current[ANCESTORS]:
                 for ancestor_key, ancestor_value in current[ANCESTORS].items():
                     ancestor_step_name = pattern_to_step[ancestor_key]
-                    ancestor_step = buffer_cwl[STEPS][ancestor_step_name]
                     ancestor_outfile_key = ancestor_value['output_file']
                     output_lookup = \
                         "%s_%s" % (ancestor_key, ancestor_outfile_key)
                     ancestor_out = output_lookups[output_lookup]
                     current_key = \
-                        "%s_value" % self.meow[PATTERNS][ancestor_key].\
-                            trigger_file
+                        "%s_value" \
+                        % self.meow[PATTERNS][ancestor_key].trigger_file
                     step_dict[CWL_WORKFLOW_IN][current_key] = \
                         "%s/%s" % (ancestor_step_name, ancestor_out)
 
@@ -2783,8 +2774,21 @@ class WorkflowWidget:
 
     # TODO implement
     def __cwl_to_meow(self):
+        buffer_meow = {
+            PATTERNS: {},
+            RECIPES: {}
+        }
+
         for workflow_name, workflow in self.cwl[WORKFLOWS]:
             status, msg = check_workflow_is_valid(workflow_name, self.cwl)
+
+            if not status:
+                return False, msg
+
+            for step_name in workflow[CWL_STEPS]:
+                status, msg = check_step_is_valid(step_name, self.cwl)
+                if not status:
+                    break
 
     def __import_cwl(self, **kwargs):
         workflows = kwargs.get(WORKFLOWS, None)
@@ -3043,7 +3047,7 @@ class WorkflowWidget:
             if graph.tooltip:
                 graph.tooltip_style = {'opacity': 0.0}
                 graph.tooltip = None
-
+    
     def __set_meow_node_dict(self, pattern):
         # TODO update this description
 
