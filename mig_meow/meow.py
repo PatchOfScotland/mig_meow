@@ -1,4 +1,6 @@
 import re
+import os
+
 from PIL import Image
 
 from .input import check_input, valid_path
@@ -64,9 +66,14 @@ def build_workflow_object(patterns, recipes):
             other_output_dict = other.outputs
             for input_regex in input_regex_list:
                 for key, value in other_output_dict.items():
+                    filename = value
+                    if os.path.sep in filename:
+                        filename = filename[filename.rfind(os.path.sep)+1:]
                     match_dict = {
                         'output_pattern': other.name,
                         'output_file': key,
+                        'value': value,
+                        'filename': filename
                     }
                     if re.match(input_regex, value):
                         workflow[other.name][DESCENDANTS][pattern.name] = \

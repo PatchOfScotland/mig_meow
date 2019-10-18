@@ -72,7 +72,7 @@ def get_linked_workflow(workflow, steps, settings):
                 if '"' in output:
                     output = output.replace('"', '')
 
-        if output[0] == '[' and output[-1] == ']':
+        if output[0] == '[' and output[-1] == ']' and output != '[]':
             output = output[1:-1]
 
             full_output = '%s/%s' % (step_name, output)
