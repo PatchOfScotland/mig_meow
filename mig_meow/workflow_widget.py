@@ -57,11 +57,13 @@ CWL_IMPORT_DIR_BUTTON = 'cwl_import_dir_button'
 CWL_EXPORT_DIR_BUTTON = 'cwl_export_dir_button'
 
 MODE = 'mode'
+AUTO_IMPORT = 'auto_import'
 SUPPORTED_ARGS = {
     MODE: str,
     PATTERNS: dict,
     RECIPES: dict,
-    VGRID: str
+    VGRID: str,
+    AUTO_IMPORT: bool
 }
 
 DEFAULT_WORKFLOW_TITLE = 'exported_workflow'
@@ -437,6 +439,8 @@ NO_VGRID_MSG = "No VGrid has been specified so MEOW importing/exporting " \
                "'create_workflow_widget(vgrid='name_of_vgrid')'. "
 
 
+
+
 # Move this to input file
 def check_input_args(args):
     if not isinstance(args, dict):
@@ -507,6 +511,7 @@ class WorkflowWidget:
             self.workflow_title = DEFAULT_WORKFLOW_TITLE
 
         self.vgrid = kwargs.get(VGRID, None)
+        self.auto_import = kwargs.get(AUTO_IMPORT, False)
 
         self.mode_toggle = widgets.ToggleButtons(
             options=[i for i in WIDGET_MODES if isinstance(i, str)],
@@ -710,24 +715,26 @@ class WorkflowWidget:
         ])
 
         self.__enable_top_buttons()
-
-        if not self.meow[PATTERNS] and not self.meow[RECIPES]:
-            if self.cwl[WORKFLOWS] or self.cwl[STEPS] or self.cwl[SETTINGS]:
-                self.__set_feedback(
-                    "%s data detected, attempting to convert to %s "
-                    "format. " % (CWL_MODE, MEOW_MODE)
-                )
+        if self.auto_import:
+            if not self.meow[PATTERNS] and not self.meow[RECIPES]:
+                if self.cwl[WORKFLOWS] \
+                        or self.cwl[STEPS] \
+                        or self.cwl[SETTINGS]:
+                    self.__set_feedback(
+                        "%s data detected, attempting to convert to %s "
+                        "format. " % (CWL_MODE, MEOW_MODE)
+                    )
+                else:
+                    self.__set_feedback(
+                        "No %s data detected, attempting to import data from "
+                        "VGrid. " % CWL_MODE
+                    )
+                    self.__import_from_vgrid(confirm=False)
             else:
                 self.__set_feedback(
-                    "No %s data detected, attempting to import data from "
-                    "VGrid. " % CWL_MODE
+                    "As %s data is already present in the system. No "
+                    "automatic import has taken place. " % MEOW_MODE
                 )
-                self.__import_from_vgrid(confirm=False)
-        else:
-            self.__set_feedback(
-                "As %s data is already present in the system. No automatic "
-                "import has taken place. " % MEOW_MODE
-            )
 
         self.button_area.clear_output(wait=True)
         with self.button_area:
@@ -761,29 +768,55 @@ class WorkflowWidget:
 
         self.__enable_top_buttons()
 
-        if not self.cwl[WORKFLOWS] \
-                and not self.cwl[STEPS] \
-                and not self.cwl[SETTINGS]:
-            if self.meow[PATTERNS] or self.meow[RECIPES]:
-                self.__set_feedback(
-                    "%s data detected, attempting to convert to %s "
-                    "format. " % (MEOW_MODE, CWL_MODE)
-                )
-                status, result = self.__meow_to_cwl()
+        if self.auto_import:
+            if not self.cwl[WORKFLOWS] \
+                    and not self.cwl[STEPS] \
+                    and not self.cwl[SETTINGS]:
+                status, feedback = self.__import_from_dir()
 
                 if status:
-                    self.__import_cwl(**result)
-                self.__enable_top_buttons()
+                    self.cwl[WORKFLOWS] = feedback[WORKFLOWS]
+                    self.cwl[STEPS] = feedback[STEPS]
+                    self.cwl[SETTINGS] = feedback[SETTINGS]
 
+                    self.__set_feedback(
+                        "%s(s) %s, %s(s) %s, and %s(s) %s have been "
+                        "automatically imported from %s. "
+                        % (
+                            WORKFLOW_NAME,
+                            str(list(feedback[WORKFLOWS].keys())),
+                            STEP_NAME,
+                            str(list(feedback[STEPS].keys())),
+                            VARIABLES_NAME,
+                            str(list(feedback[VARIABLES].keys())),
+                            self.cwl_import_export_dir
+                        )
+                    )
+                    self.__update_workflow_visualisation()
+                    self.__enable_top_buttons()
+
+                elif self.meow[PATTERNS] or self.meow[RECIPES]:
+                    self.__set_feedback(
+                        "%s data detected, attempting to convert to %s "
+                        "format. " % (MEOW_MODE, CWL_MODE)
+                    )
+                    status, result = self.__meow_to_cwl()
+
+                    if status:
+                        self.__import_cwl(**result)
+                    self.__enable_top_buttons()
+
+                else:
+                    self.__set_feedback(
+                        "No %s data to import from %s and no %s data "
+                        "detected. "
+                        % (CWL_MODE, self.cwl_import_export_dir, MEOW_MODE)
+                    )
             else:
                 self.__set_feedback(
-                    "No %s data detected. " % MEOW_MODE
+                    "As %s data is already present in the system. No "
+                    "automatic import has taken place. " % CWL_MODE
                 )
-        else:
-            self.__set_feedback(
-                "As %s data is already present in the system. No automatic "
-                "import has taken place. " % CWL_MODE
-            )
 
         self.button_area.clear_output(wait=True)
         with self.button_area:
@@ -993,100 +1026,25 @@ class WorkflowWidget:
         self.__close_form()
         self.__clear_feedback()
 
-        buffer_cwl = {
-            WORKFLOWS: {},
-            STEPS: {},
-            SETTINGS: {}
-        }
+        status, feedback = self.__import_from_dir()
 
-        if not os.path.exists(self.cwl_import_export_dir):
-            self.__set_feedback(
-                "Cannot import from directory %s as it does not exist. If you "
-                "intended to import from another directory it can be set "
-                "during widget creation using the parameter '%s'. "
-                % (self.cwl_import_export_dir, CWL_IMPORT_EXPORT_DIR_ARG)
-            )
+        if not status:
+            self.__set_feedback(feedback)
+            self.__enable_top_buttons()
             return
 
-        directories = [
-            d for d in os.listdir(self.cwl_import_export_dir)
-            if os.path.isdir(os.path.join(self.cwl_import_export_dir, d))
-        ]
-        self.__add_to_feedback(
-            "Found directories %s with CWL import/export directory '%s'. "
-            % (directories, self.cwl_import_export_dir))
-
-        for directory in directories:
-            dir_path = os.path.join(self.cwl_import_export_dir, directory)
-            files = [
-                f for f in os.listdir(dir_path)
-                if os.path.isfile(os.path.join(dir_path, f))
-            ]
-            self.__add_to_feedback(
-                "Within directory '%s', found files %s. " % (directory, files)
-            )
-
-            for file in files:
-                if '.' not in file:
-                    break
-                filename = file[:file.index('.')]
-                extension = file[file.index('.'):]
-                if extension in YAML_EXTENSIONS:
-                    with open(os.path.join(dir_path, file), 'r') as yaml_file:
-                        yaml_dict = yaml.full_load(yaml_file)
-                        settings = make_settings_dict(filename, yaml_dict)
-                        buffer_cwl[SETTINGS][filename] = settings
-                elif extension in CWL_EXTENSIONS:
-                    with open(os.path.join(dir_path, file), 'r') as yaml_file:
-                        yaml_dict = yaml.full_load(yaml_file)
-                        if CWL_CLASS not in yaml_dict:
-                            break
-
-                        if yaml_dict[CWL_CLASS] == CWL_CLASS_WORKFLOW:
-                            workflow = make_workflow_dict(filename)
-                            if CWL_INPUTS in yaml_dict:
-                                workflow[CWL_INPUTS] = yaml_dict[CWL_INPUTS]
-                            if CWL_OUTPUTS in yaml_dict:
-                                workflow[CWL_OUTPUTS] = yaml_dict[CWL_OUTPUTS]
-                            if CWL_STEPS in yaml_dict:
-                                workflow[CWL_STEPS] = yaml_dict[CWL_STEPS]
-                            if CWL_REQUIREMENTS in yaml_dict:
-                                workflow[CWL_REQUIREMENTS] = \
-                                    yaml_dict[CWL_REQUIREMENTS]
-                            buffer_cwl[WORKFLOWS][filename] = workflow
-
-                        if yaml_dict[CWL_CLASS] == CWL_CLASS_COMMAND_LINE_TOOL:
-                            if CWL_BASE_COMMAND not in yaml_dict:
-                                break
-                            base_command = yaml_dict[CWL_BASE_COMMAND]
-                            step = make_step_dict(filename, base_command)
-                            if CWL_INPUTS in yaml_dict:
-                                step[CWL_INPUTS] = yaml_dict[CWL_INPUTS]
-                            if CWL_OUTPUTS in yaml_dict:
-                                step[CWL_OUTPUTS] = yaml_dict[CWL_OUTPUTS]
-                            if CWL_ARGUMENTS in yaml_dict:
-                                step[CWL_ARGUMENTS] = yaml_dict[CWL_ARGUMENTS]
-                            if CWL_REQUIREMENTS in yaml_dict:
-                                step[CWL_REQUIREMENTS] = \
-                                    yaml_dict[CWL_REQUIREMENTS]
-                            if CWL_HINTS in yaml_dict:
-                                step[CWL_HINTS] = yaml_dict[CWL_HINTS]
-                            if CWL_STDOUT in yaml_dict:
-                                step[CWL_STDOUT] = yaml_dict[CWL_STDOUT]
-                            buffer_cwl[STEPS][filename] = step
-
-        if buffer_cwl[WORKFLOWS] or buffer_cwl[STEPS] or buffer_cwl[VARIABLES]:
+        if feedback[WORKFLOWS] or feedback[STEPS] or feedback[VARIABLES]:
             self.__add_to_feedback(
                 "%s(s) %s, %s(s) %s, and %s(s) %s have been identified for "
                 "import. Any currently registered %s(s), %s(s), and %s(s) "
                 "will be overwritten. "
                 % (
                     WORKFLOW_NAME,
-                    str(list(buffer_cwl[WORKFLOWS].keys())),
+                    str(list(feedback[WORKFLOWS].keys())),
                     STEP_NAME,
-                    str(list(buffer_cwl[STEPS].keys())),
+                    str(list(feedback[STEPS].keys())),
                     VARIABLES_NAME,
-                    str(list(buffer_cwl[VARIABLES].keys())),
+                    str(list(feedback[VARIABLES].keys())),
                     WORKFLOW_NAME,
                     STEP_NAME,
                     VARIABLES_NAME
@@ -1095,7 +1053,7 @@ class WorkflowWidget:
 
             self.__create_confirmation_buttons(
                 self.__import_cwl,
-                buffer_cwl,
+                feedback,
                 "Confirm Import",
                 "Cancel Import",
                 "Import canceled. No local data has been changed. "
@@ -2779,16 +2737,242 @@ class WorkflowWidget:
             RECIPES: {}
         }
 
-        for workflow_name, workflow in self.cwl[WORKFLOWS]:
+        for workflow_name, workflow in self.cwl[WORKFLOWS].items():
             status, msg = check_workflow_is_valid(workflow_name, self.cwl)
 
             if not status:
                 return False, msg
 
-            for step_name in workflow[CWL_STEPS]:
+            settings = self.cwl[SETTINGS][workflow_name]
+
+            for argument_key, argument_value in settings.items():
+                if isinstance(argument_value, dict) \
+                        and CWL_YAML_CLASS in argument_value\
+                        and CWL_YAML_CLASS == 'File'\
+                        and CWL_YAML_PATH in argument_value\
+                        and '.' in argument_value[CWL_YAML_PATH]:
+                    input_file = argument_value[CWL_YAML_PATH]
+                    extension = input_file[input_file.rfind('.'):]
+
+                    if extension in NOTEBOOK_EXTENSIONS:
+
+                        source = input_file
+                        name = input_file[:input_file.rfind('.')]
+
+                        try:
+                            valid_string(
+                                name,
+                                'Name',
+                                CHAR_UPPERCASE
+                                + CHAR_LOWERCASE
+                                + CHAR_NUMERIC
+                                + CHAR_LINES
+                            )
+                        except Exception:
+                            break
+                        if name not in buffer_meow[RECIPES]:
+                            with open(source, "r") as read_file:
+                                notebook = json.load(read_file)
+                                recipe = create_recipe_dict(
+                                    notebook,
+                                    name,
+                                    source
+                                )
+                                buffer_meow[RECIPES][name] = recipe
+
+            key_text = '_key'
+            value_text = '_value'
+            for step_name, workflow_step in workflow[CWL_STEPS].items():
                 status, msg = check_step_is_valid(step_name, self.cwl)
                 if not status:
                     break
+
+                step = self.cwl[STEPS][step_name]
+                try:
+                    pattern = Pattern(step_name)
+                except Exception:
+                    break
+
+                entries = {}
+                unlinked = {}
+                input_files = []
+                for input_key, input_value in step[CWL_INPUTS].items():
+                    if input_key.endswith(key_text):
+                        entry = input_key[:input_key.rfind(key_text)]
+                        entries[entry]['key'] = input_value
+                    elif input_key.endswith(value_text):
+                        entry = input_key[:input_key.rfind(value_text)]
+                        entries[entry]['value'] = input_value
+                    else:
+                        entry = input_key
+                        unlinked[input_key] = [input_value]
+                    if input_value[CWL_INPUT_TYPE] == 'File':
+                        input_files.append(entry)
+
+                # remove incomplete entries
+                entry_keys = list(entries.keys())
+                for entry in entry_keys:
+                    if 'key' not in entries[entry] \
+                            or 'value' not in entries[entry]:
+                        entries.pop(entry)
+
+                to_remove = []
+                for file in input_files:
+                    # this is probably a recipe
+                    if file in unlinked:
+                        try:
+                            settings_key = workflow_step[CWL_WORKFLOW_IN][file]
+                            if '/' in settings_key:
+                                # TODO potentially do something here
+                                break
+                            filename = \
+                                settings[settings_key][CWL_YAML_PATH]
+                            extension = filename[filename.rfind('.'):]
+                            if extension not in NOTEBOOK_EXTENSIONS:
+                                break
+                            name = filename[:filename.rfind('.')]
+                            pattern.add_recipe(name)
+                            to_remove.append(file)
+                        except Exception:
+                            pass
+                for item in to_remove:
+                    input_files.remove(item)
+                    unlinked.pop(item)
+
+                # this is probably the input file
+                if len(input_files) == 1:
+                    if input_files[0] in entries:
+                        pattern.add_single_input(
+                            entries[input_files[0]]['key'],
+                            entries[input_files[0]]['value']
+                        )
+                        input_files = []
+
+                # output
+                for output_name, output in step[CWL_OUTPUTS].items():
+                    if CWL_OUTPUT_TYPE not in output or \
+                            output[CWL_OUTPUT_TYPE] != 'File' or \
+                            CWL_OUTPUT_BINDING not in output or \
+                            not isinstance(
+                                output[CWL_OUTPUT_BINDING], dict
+                            ) or \
+                            'glob' not in output[CWL_OUTPUT_BINDING]:
+                        break
+                    glob = output[CWL_OUTPUT_BINDING]['glob']
+                    if '$' in glob:
+                        try:
+                            glob = glob[glob.index('(')+1:glob.index(')')]
+                            inputs = glob.split('.')
+                            if inputs[0] != CWL_INPUTS:
+                                break
+                            settings_key = \
+                                workflow_step[CWL_WORKFLOW_IN][inputs[1]]
+                            setting = settings[settings_key]
+
+                            if not setting.endswith(key_text) and \
+                                    not setting.endswith(value_text):
+                                break
+                            entry = setting[:setting.rfind('_')]
+                            if entry in entries:
+                                pattern.add_output(entries[entry]['key'], glob)
+                                entries.pop(entry)
+                            else:
+                                pattern.add_output(PLACEHOLDER, glob)
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            pattern.add_output(PLACEHOLDER, glob)
+                        except Exception:
+                            pass
+
+                for key, entry in entries.items():
+                    try:
+                        pattern.add_variable(entry['key'], entry['value'])
+                    except Exception:
+                        pass
+
+                for key, value in unlinked:
+                    try:
+                        pattern.add_variable(key, value)
+                    except Exception:
+                        pass
+
+    def __import_from_dir(self):
+        buffer_cwl = {
+            WORKFLOWS: {},
+            STEPS: {},
+            SETTINGS: {}
+        }
+
+        if not os.path.exists(self.cwl_import_export_dir):
+            msg = "Cannot import from directory %s as it does not exist. If " \
+                  "you intended to import from another directory it can be " \
+                  "set during widget creation using the parameter '%s'. " \
+                  % (self.cwl_import_export_dir, CWL_IMPORT_EXPORT_DIR_ARG)
+            return False, msg
+
+        directories = [
+            d for d in os.listdir(self.cwl_import_export_dir)
+            if os.path.isdir(os.path.join(self.cwl_import_export_dir, d))
+        ]
+
+        for directory in directories:
+            dir_path = os.path.join(self.cwl_import_export_dir, directory)
+            files = [
+                f for f in os.listdir(dir_path)
+                if os.path.isfile(os.path.join(dir_path, f))
+            ]
+
+            for file in files:
+                if '.' not in file:
+                    break
+                filename = file[:file.index('.')]
+                extension = file[file.index('.'):]
+                if extension in YAML_EXTENSIONS:
+                    with open(os.path.join(dir_path, file), 'r') as yaml_file:
+                        yaml_dict = yaml.full_load(yaml_file)
+                        settings = make_settings_dict(filename, yaml_dict)
+                        buffer_cwl[SETTINGS][filename] = settings
+                elif extension in CWL_EXTENSIONS:
+                    with open(os.path.join(dir_path, file), 'r') as yaml_file:
+                        yaml_dict = yaml.full_load(yaml_file)
+                        if CWL_CLASS not in yaml_dict:
+                            break
+
+                        if yaml_dict[CWL_CLASS] == CWL_CLASS_WORKFLOW:
+                            workflow = make_workflow_dict(filename)
+                            if CWL_INPUTS in yaml_dict:
+                                workflow[CWL_INPUTS] = yaml_dict[CWL_INPUTS]
+                            if CWL_OUTPUTS in yaml_dict:
+                                workflow[CWL_OUTPUTS] = yaml_dict[CWL_OUTPUTS]
+                            if CWL_STEPS in yaml_dict:
+                                workflow[CWL_STEPS] = yaml_dict[CWL_STEPS]
+                            if CWL_REQUIREMENTS in yaml_dict:
+                                workflow[CWL_REQUIREMENTS] = \
+                                    yaml_dict[CWL_REQUIREMENTS]
+                            buffer_cwl[WORKFLOWS][filename] = workflow
+
+                        if yaml_dict[CWL_CLASS] == CWL_CLASS_COMMAND_LINE_TOOL:
+                            if CWL_BASE_COMMAND not in yaml_dict:
+                                break
+                            base_command = yaml_dict[CWL_BASE_COMMAND]
+                            step = make_step_dict(filename, base_command)
+                            if CWL_INPUTS in yaml_dict:
+                                step[CWL_INPUTS] = yaml_dict[CWL_INPUTS]
+                            if CWL_OUTPUTS in yaml_dict:
+                                step[CWL_OUTPUTS] = yaml_dict[CWL_OUTPUTS]
+                            if CWL_ARGUMENTS in yaml_dict:
+                                step[CWL_ARGUMENTS] = yaml_dict[CWL_ARGUMENTS]
+                            if CWL_REQUIREMENTS in yaml_dict:
+                                step[CWL_REQUIREMENTS] = \
+                                    yaml_dict[CWL_REQUIREMENTS]
+                            if CWL_HINTS in yaml_dict:
+                                step[CWL_HINTS] = yaml_dict[CWL_HINTS]
+                            if CWL_STDOUT in yaml_dict:
+                                step[CWL_STDOUT] = yaml_dict[CWL_STDOUT]
+                            buffer_cwl[STEPS][filename] = step
+        return True, buffer_cwl
 
     def __import_cwl(self, **kwargs):
         workflows = kwargs.get(WORKFLOWS, None)
@@ -3047,7 +3231,7 @@ class WorkflowWidget:
             if graph.tooltip:
                 graph.tooltip_style = {'opacity': 0.0}
                 graph.tooltip = None
-    
+
     def __set_meow_node_dict(self, pattern):
         # TODO update this description
 
