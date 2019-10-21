@@ -153,6 +153,56 @@ def check_step_is_valid(step_name, cwl):
         msg = "%s \'%s\' does not exist within the current CWL definitions. " \
               % (STEP_NAME, step_name)
         return False, msg
-    step = cwl[WORKFLOWS][step_name]
+    step = cwl[STEPS][step_name]
 
     return True, ''
+
+
+def get_glob_value(glob, step_name, workflow_cwl, settings_cwl):
+    if '$' in glob:
+        try:
+            glob = glob[glob.index('(') + 1:glob.index(')')]
+            inputs = glob.split('.')
+            if inputs[0] != CWL_INPUTS:
+                msg = "Unexpected path. %s did not equal expected path " \
+                      "%s" % (inputs[0], CWL_INPUTS)
+                return False, msg
+            settings_key = \
+                workflow_cwl[CWL_STEPS][step_name][CWL_WORKFLOW_IN][inputs[1]]
+            setting = settings_cwl[settings_key]
+
+            return True, setting
+        except Exception as exception:
+            return False, str(exception)
+    else:
+        return True, glob
+
+
+def get_glob_entry_keys(glob, step_name, workflow_cwl):
+    if '$' in glob:
+        try:
+            glob = glob[glob.index('(') + 1:glob.index(')')]
+            inputs = glob.split('.')
+            if inputs[0] != CWL_INPUTS:
+                msg = "Unexpected path. %s did not equal expected path " \
+                      "%s" % (inputs[0], CWL_INPUTS)
+                return False, msg
+            settings_key = \
+                workflow_cwl[CWL_STEPS][step_name][CWL_WORKFLOW_IN][inputs[1]]
+
+            if settings_key.endswith('_key'):
+                entry = settings_key[:settings_key.rfind('_')]
+                value_key = "%s_value" % entry
+
+                return True, (settings_key, value_key)
+
+            elif settings_key.endswith('_value'):
+                entry = settings_key[:settings_key.rfind('_')]
+                key_key = "%s_key" % entry
+                return True, (key_key, settings_key)
+
+        except Exception as exception:
+            return False, str(exception)
+    msg = 'Could not identify matching key pairs for glob %s. ' % glob
+    return False, msg
+

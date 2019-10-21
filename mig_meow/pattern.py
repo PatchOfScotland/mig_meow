@@ -2,7 +2,7 @@
 from .constants import DEFAULT_JOB_NAME, VALID_PATTERN, NAME, INPUT_FILE, \
     TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, CHAR_UPPERCASE, \
     CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, PERSISTENCE_ID, \
-    TRIGGER_OUTPUT, NOTEBOOK_OUTPUT
+    TRIGGER_OUTPUT, NOTEBOOK_OUTPUT, PLACEHOLDER
 from .input import valid_string, check_input
 
 
@@ -119,22 +119,30 @@ class Pattern:
         warning = ''
         if self.name is None:
             return False, "A pattern name must be defined. "
-        if self.trigger_file is None:
+        if self.trigger_file is None \
+                or self.trigger_file == PLACEHOLDER:
             return (False, "An input file must be defined. This is the file "
                            "that is used to trigger any processing and can be "
                            "defined using the methods '.add_single_input' or "
                            "'add_gathering_input. ")
-        if len(self.trigger_paths) == 0:
+        if len(self.trigger_paths) == 0 \
+                or PLACEHOLDER in self.trigger_paths:
             return (False, "At least one input path must be defined. This is "
                            "the path to the file that is used to trigger any "
                            "processing and can be defined using the methods "
                            "'.add_single_input' or 'add_gathering_input. ")
-        if len(self.outputs) == 0:
+        if len(self.outputs) == 0 \
+                or PLACEHOLDER in self.outputs.keys()\
+                or PLACEHOLDER in self.outputs.values():
             warning += 'No output has been set, meaning no resulting ' \
                        'data will be copied back into the vgrid. ANY OUTPUT ' \
                        'WILL BE LOST. '
-        if len(self.recipes) == 0:
+        if len(self.recipes) == 0 \
+                or PLACEHOLDER in self.recipes:
             return False, "No recipes have been defined. "
+        if PLACEHOLDER in self.variables.keys() \
+                or PLACEHOLDER in self.variables.values():
+            return False, "A variable uses a placeholder value. "
         if self.trigger_file not in self.variables.keys():
             return (False, "Trigger file has been defined but is not "
                            "accessible as a variable within the job. If you "

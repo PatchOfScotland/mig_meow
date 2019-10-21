@@ -31,7 +31,8 @@ from .constants import GREEN, RED, \
     SETTINGS, YAML_EXTENSIONS, CWL_EXTENSIONS, CWL_CLASS, CWL_CLASS_WORKFLOW, \
     CWL_CLASS_COMMAND_LINE_TOOL
 from .cwl import make_step_dict, make_workflow_dict, get_linked_workflow, \
-    make_settings_dict, check_workflow_is_valid, check_step_is_valid
+    make_settings_dict, check_workflow_is_valid, check_step_is_valid, \
+    get_glob_value, get_glob_entry_keys
 from .mig import vgrid_workflow_json_call
 from .pattern import Pattern, is_valid_pattern_object
 from .recipe import is_valid_recipe_dict, create_recipe_dict
@@ -724,6 +725,12 @@ class WorkflowWidget:
                         "%s data detected, attempting to convert to %s "
                         "format. " % (CWL_MODE, MEOW_MODE)
                     )
+                    status, result = self.__cwl_to_meow()
+
+                    if status:
+                        self.__import_meow_workflow(**result)
+                    self.__enable_top_buttons()
+
                 else:
                     self.__set_feedback(
                         "No %s data detected, attempting to import data from "
@@ -2299,11 +2306,12 @@ class WorkflowWidget:
         for key, pattern in response_patterns.items():
             if key in self.meow[PATTERNS]:
                 overwritten_patterns.append(key)
-            new_pattern = Pattern(pattern)
-            self.meow[PATTERNS][key] = new_pattern
+            if not isinstance(pattern, Pattern):
+                pattern = Pattern(pattern)
+            self.meow[PATTERNS][key] = pattern
             try:
-                self.mig_imports[PATTERNS][new_pattern.persistence_id] = \
-                    deepcopy(new_pattern)
+                self.mig_imports[PATTERNS][pattern.persistence_id] = \
+                    deepcopy(pattern)
             except AttributeError:
                 pass
         for key, recipe in response_recipes.items():
@@ -2743,7 +2751,7 @@ class WorkflowWidget:
             if not status:
                 return False, msg
 
-            settings = self.cwl[SETTINGS][workflow_name]
+            settings = self.cwl[SETTINGS][workflow_name][CWL_VARIABLES]
 
             for argument_key, argument_value in settings.items():
                 if isinstance(argument_value, dict) \
@@ -2759,17 +2767,17 @@ class WorkflowWidget:
                         source = input_file
                         name = input_file[:input_file.rfind('.')]
 
-                        try:
-                            valid_string(
-                                name,
-                                'Name',
-                                CHAR_UPPERCASE
-                                + CHAR_LOWERCASE
-                                + CHAR_NUMERIC
-                                + CHAR_LINES
-                            )
-                        except Exception:
-                            break
+                        # try:
+                        valid_string(
+                            name,
+                            'Name',
+                            CHAR_UPPERCASE
+                            + CHAR_LOWERCASE
+                            + CHAR_NUMERIC
+                            + CHAR_LINES
+                        )
+                        # except Exception:
+                        #     break
                         if name not in buffer_meow[RECIPES]:
                             with open(source, "r") as read_file:
                                 notebook = json.load(read_file)
@@ -2797,23 +2805,66 @@ class WorkflowWidget:
                 unlinked = {}
                 input_files = []
                 for input_key, input_value in step[CWL_INPUTS].items():
+                    settings_key = workflow_step[CWL_WORKFLOW_IN][input_key]
+                    if '/' in settings_key:
+                        target_step_key, target_value = settings_key.split('/')
+                        if target_step_key not in self.cwl[STEPS]:
+                            break
+                        target_step = self.cwl[STEPS][target_step_key]
+                        if target_value not in target_step[CWL_OUTPUTS]:
+                            break
+                        target_output = target_step[CWL_OUTPUTS][target_value]
+
+                        if CWL_OUTPUT_TYPE not in target_output \
+                                or target_output[CWL_OUTPUT_TYPE] != 'File' \
+                                or CWL_OUTPUT_BINDING not in target_output \
+                                or not isinstance(
+                                    target_output[CWL_OUTPUT_BINDING], dict
+                                ) \
+                                or 'glob' not in \
+                                target_output[CWL_OUTPUT_BINDING]:
+                            break
+                        glob = target_output[CWL_OUTPUT_BINDING]['glob']
+                        status, result = get_glob_value(
+                            glob,
+                            target_step_key,
+                            workflow,
+                            settings
+                        )
+                        if not status:
+                            break
+
+                        setting = result
+
+                    else:
+                        setting = settings[settings_key]
+
                     if input_key.endswith(key_text):
                         entry = input_key[:input_key.rfind(key_text)]
-                        entries[entry]['key'] = input_value
+                        if entry not in entries:
+                            entries[entry] = {}
+                        entries[entry]['key'] = setting
                     elif input_key.endswith(value_text):
                         entry = input_key[:input_key.rfind(value_text)]
-                        entries[entry]['value'] = input_value
+                        if entry not in entries:
+                            entries[entry] = {}
+                        entries[entry]['value'] = setting
                     else:
                         entry = input_key
                         unlinked[input_key] = [input_value]
-                    if input_value[CWL_INPUT_TYPE] == 'File':
+                    if isinstance(input_value, dict) and \
+                            CWL_INPUT_TYPE in input_value and \
+                            input_value[CWL_INPUT_TYPE] == 'File':
                         input_files.append(entry)
 
                 # remove incomplete entries
                 entry_keys = list(entries.keys())
                 for entry in entry_keys:
-                    if 'key' not in entries[entry] \
-                            or 'value' not in entries[entry]:
+                    if 'key' not in entries[entry]:
+                        unlinked[entry] = entries['value']
+                        entries.pop(entry)
+                    if 'value' not in entries[entry]:
+                        unlinked[entry] = entries['key']
                         entries.pop(entry)
 
                 to_remove = []
@@ -2842,11 +2893,23 @@ class WorkflowWidget:
                 # this is probably the input file
                 if len(input_files) == 1:
                     if input_files[0] in entries:
-                        pattern.add_single_input(
-                            entries[input_files[0]]['key'],
-                            entries[input_files[0]]['value']
-                        )
-                        input_files = []
+                        value = entries[input_files[0]]['value']
+                        if isinstance(value, str):
+                            pattern.add_single_input(
+                                entries[input_files[0]]['key'],
+                                value
+                            )
+                        elif isinstance(value, dict) \
+                                and CWL_YAML_CLASS in value \
+                                and CWL_YAML_PATH in value \
+                                and value[CWL_YAML_CLASS] == 'File':
+                            path = value[CWL_YAML_PATH]
+
+                            pattern.add_single_input(
+                                entries[input_files[0]]['key'],
+                                path
+                            )
+                            input_files = []
 
                 # output
                 for output_name, output in step[CWL_OUTPUTS].items():
@@ -2859,32 +2922,28 @@ class WorkflowWidget:
                             'glob' not in output[CWL_OUTPUT_BINDING]:
                         break
                     glob = output[CWL_OUTPUT_BINDING]['glob']
-                    if '$' in glob:
-                        try:
-                            glob = glob[glob.index('(')+1:glob.index(')')]
-                            inputs = glob.split('.')
-                            if inputs[0] != CWL_INPUTS:
-                                break
-                            settings_key = \
-                                workflow_step[CWL_WORKFLOW_IN][inputs[1]]
-                            setting = settings[settings_key]
 
-                            if not setting.endswith(key_text) and \
-                                    not setting.endswith(value_text):
-                                break
-                            entry = setting[:setting.rfind('_')]
-                            if entry in entries:
-                                pattern.add_output(entries[entry]['key'], glob)
-                                entries.pop(entry)
-                            else:
-                                pattern.add_output(PLACEHOLDER, glob)
-                        except Exception:
-                            pass
-                    else:
-                        try:
-                            pattern.add_output(PLACEHOLDER, glob)
-                        except Exception:
-                            pass
+                    status, result = \
+                        get_glob_entry_keys(glob, step_name, workflow)
+
+                    if status:
+                        key_setting = result[0]
+                        value_setting = result[1]
+                        if key_setting in settings \
+                                and value_setting in settings:
+                            pattern.add_output(
+                                settings[key_setting],
+                                settings[value_setting]
+                            )
+                            break
+
+                    status, result = \
+                        get_glob_value(glob, step_name, workflow, settings)
+
+                    if not status:
+                        break
+
+                    pattern.add_output(PLACEHOLDER, result)
 
                 for key, entry in entries.items():
                     try:
@@ -2892,11 +2951,24 @@ class WorkflowWidget:
                     except Exception:
                         pass
 
-                for key, value in unlinked:
+                for key, value in unlinked.items():
                     try:
-                        pattern.add_variable(key, value)
+                        settings_key = workflow_step[CWL_WORKFLOW_IN][key]
+                        setting = settings[settings_key]
+                        pattern.add_variable(key, setting)
                     except Exception:
                         pass
+
+                if not pattern.trigger_file:
+                    pattern.trigger_file = PLACEHOLDER
+                if not pattern.trigger_paths:
+                    pattern.trigger_paths = [PLACEHOLDER]
+                if not pattern.recipes:
+                    pattern.recipes = [PLACEHOLDER]
+
+                buffer_meow[PATTERNS][pattern.name] = pattern
+
+        return True, buffer_meow
 
     def __import_from_dir(self):
         buffer_cwl = {
