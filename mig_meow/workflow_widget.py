@@ -1118,11 +1118,9 @@ class WorkflowWidget:
             outlines = []
             for step_name, step in workflow[CWL_STEPS].items():
                 for input_name, input_value in step[CWL_WORKFLOW_IN].items():
-                    print('Considering for export file %s with value %s ' % (input_name, input_value))
                     if '/' not in input_value \
                             and input_value in workflow[CWL_INPUTS]\
                             and workflow[CWL_INPUTS][input_value] == 'File':
-                        print('%s is a file' % input_value)
                         settings = \
                             self.cwl[SETTINGS][workflow_name][CWL_VARIABLES]
                         file_name = settings[input_value][CWL_YAML_PATH]
@@ -1132,7 +1130,6 @@ class WorkflowWidget:
                             dest_path = os.path.join(workflow_dir, file_name)
                             copyfile(file_name, dest_path)
 
-                print('Considering outputs %s for export' % list(self.cwl[STEPS][step_name][CWL_OUTPUTS].keys()))
                 outputs_list = \
                     list(self.cwl[STEPS][step_name][CWL_OUTPUTS].keys())
                 outputs_string = '['
@@ -2634,7 +2631,6 @@ class WorkflowWidget:
 
             variable_count = 3
             for variable_key, variable_value in pattern.variables.items():
-                print('Considering variables %s with value %s for addition to step %s' % (variable_key, variable_value, step_title))
                 # skip result variables
                 if variable_key in DEFAULT_RESULT_NOTEBOOKS:
                     break
@@ -2647,13 +2643,11 @@ class WorkflowWidget:
                             and variable_value.endswith('\''):
                         variable_value = variable_value[1:-1]
                 variable_value = strip_dirs(variable_value)
-                print('Updated value is %s ' % variable_value)
 
                 # If this is an input yaml file
                 if variable_value == pattern.trigger_file \
                         and [e for e in pattern.trigger_paths
                              if '.yaml' in e or '.yml' in e]:
-                    print('%s has been identified as input yaml file' % variable_value)
 
                     arg_key = "%d_%s" % (step_count, variable_key)
 
@@ -2672,13 +2666,11 @@ class WorkflowWidget:
                     variable_count += 1
 
                 else:
-                    # -------------------------------------------------------
                     local_arg_key = "%s_key" % variable_key
                     local_arg_value = "%s_value" % variable_key
                     arg_key = "%d_%s" % (step_count, local_arg_key)
                     arg_value = "%d_%s" % (step_count, local_arg_value)
                     yaml_dict[arg_key] = variable_key
-                    print('~~Looking closely at %s with value %s' % (arg_value, variable_value))
 
                     step_cwl_dict[CWL_INPUTS][local_arg_key] = {
                         CWL_INPUT_TYPE: 'string',
@@ -2691,7 +2683,6 @@ class WorkflowWidget:
                     input_type = 'string'
                     if variable_key in pattern.outputs:
                         variable_value = strip_dirs(pattern.outputs[variable_key])
-                        print('Further updating value to %s ' % variable_value)
                     yaml_dict[arg_value] = variable_value
                     if variable_key == pattern.trigger_file \
                             or ():
@@ -2702,7 +2693,6 @@ class WorkflowWidget:
                         }
                     elif isinstance(variable_value, str) \
                             and os.path.exists(variable_value):
-                        print('%s actually exists' % variable_value)
                         input_type = 'File'
                         yaml_dict[arg_value] = {
                             CWL_YAML_CLASS: 'File',
@@ -2718,13 +2708,9 @@ class WorkflowWidget:
                     step_variable_dict[local_arg_key] = arg_key
                     step_variable_dict[local_arg_value] = arg_value
                     variable_count += 1
-                    # -------------------------------------------------------
 
             output_count = 0
             for output_key, output_value in pattern.outputs.items():
-                print(
-                    'Generating outputs using key: %s , value: %s for step %s' % (
-                    output_key, output_value, step_title))
                 local_output_key = "output_%d" % output_count
 
                 if output_key in DEFAULT_RESULT_NOTEBOOKS:
@@ -2745,7 +2731,6 @@ class WorkflowWidget:
 
                 # If non standard output then also add a variable note
                 if output_key not in DEFAULT_RESULT_NOTEBOOKS:
-                    # -------------------------------------------------------
                     local_arg_key = "%s_key" % output_key
                     local_arg_value = "%s_value" % output_key
                     arg_key = "%d_%s" % (step_count, local_arg_key)
@@ -2779,8 +2764,6 @@ class WorkflowWidget:
                     step_variable_dict[local_arg_key] = arg_key
                     step_variable_dict[local_arg_value] = arg_value
                     variable_count += 1
-                    # -------------------------------------------------------
-
 
             buffer_cwl[STEPS][step_title] = step_cwl_dict
             variable_references[step_title] = step_variable_dict
@@ -2827,19 +2810,13 @@ class WorkflowWidget:
             outline = "    %s: '[%s]'\n" % (CWL_WORKFLOW_OUT, all_outputs)
             outlines.append(outline)
 
-            print('step %s inputs: %s' % (step_name, step[CWL_INPUTS]))
             for input_key, input_value in step[CWL_INPUTS].items():
-                print('Inspecting key: %s, value: %s in step %s' % (input_key, input_value, step_name))
-                print('variable_references: %s' % list(variable_references.keys()))
-                print('step variables: %s' % list(variable_references[step_name].keys()))
-
                 step_dict[CWL_WORKFLOW_IN][input_key] = \
                     variable_references[step_name][input_key]
 
             current = meow_workflow[step_to_pattern[step_name]]
             if current[ANCESTORS]:
                 for ancestor_key, ancestor_value in current[ANCESTORS].items():
-                    print('looking at ancestors with key %s and value %s' % (ancestor_key, ancestor_value))
                     ancestor_step_name = pattern_to_step[ancestor_key]
                     ancestor_outfile_key = ancestor_value['output_file']
                     output_lookup = "%s_%s" % (ancestor_key, ancestor_outfile_key)
@@ -3402,7 +3379,6 @@ class WorkflowWidget:
                     index += 1
 
                     for key, input in step_value['inputs'].items():
-                        print('displaying cwl input key %s, value %s for step %s' % (key, input, step_title))
                         node_data.append(
                             self.__set_phantom_cwl_node_dict(input)
                         )
@@ -3415,7 +3391,6 @@ class WorkflowWidget:
                         index += 1
 
                     for key, output in step_value['outputs'].items():
-                        print('displaying cwl output key %s, value %s for step %s' % (key, output, step_title))
                         if isinstance(output, dict) \
                                 and CWL_OUTPUT_GLOB in output:
                             output = output[CWL_OUTPUT_GLOB]
@@ -3425,7 +3400,6 @@ class WorkflowWidget:
                             workflow,
                             settings
                         )
-                        print('got value %s and status %s' %(value, status))
 
                         node_data.append(
                             self.__set_phantom_cwl_node_dict(value)

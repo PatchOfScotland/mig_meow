@@ -56,8 +56,6 @@ def get_linked_workflow(workflow, steps, settings):
 
         for input_key, input_value in step[CWL_WORKFLOW_IN].items():
             if '/' not in input_value:
-                print("input_value: %s" % input_value)
-                print("workflow[CWL_INPUTS]: %s" % workflow[CWL_INPUTS].keys())
                 if workflow[CWL_INPUTS][input_value] == 'File':
                     workflow_nodes[step_name]['inputs'][input_key] = \
                         settings[input_value][CWL_YAML_PATH]
@@ -188,11 +186,6 @@ def get_glob_value(glob, step_name, workflow_cwl, settings_cwl):
             if '.' in run:
                 run = run[:run.index('.')]
             if step == step_name:
-                print('run: %s' % run)
-                print('step: %s' % step)
-                print('step_name: %s' % step_name)
-                print('inputs[1]: %s' % inputs[1])
-                print('workflow_cwl[CWL_STEPS][step][CWL_WORKFLOW_IN]: %s' % workflow_cwl[CWL_STEPS][step][CWL_WORKFLOW_IN])
                 settings_key = \
                     workflow_cwl[CWL_STEPS][step][CWL_WORKFLOW_IN][inputs[1]]
 
