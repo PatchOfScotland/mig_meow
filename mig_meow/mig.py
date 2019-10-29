@@ -156,7 +156,7 @@ def vgrid_json_call(operation, workflow_type, attributes, print_feedback=True):
         'https://sid.migrid.test/cgi-sid/workflowjsoninterface.py?output_for' \
         'mat=json'
     session_id = \
-        "20fa14e5b13486b81592d1ed950dfcf4e8a581f3d8d0db25b60e850cfd9a1371"
+        "b8b404a58b02b4b1d8460a15228a75b26a01fb468416543ef6ad76743aae95ed"
     # TODO use this during deployment
     # try:
     #     url = os.environ['URL']

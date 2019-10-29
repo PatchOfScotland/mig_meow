@@ -40,10 +40,17 @@ class Pattern:
                 self.persistence_id = parameters[PERSISTENCE_ID]
             self.name = parameters[NAME]
             self.trigger_file = parameters[INPUT_FILE]
-            self.trigger_paths = parameters[TRIGGER_PATHS]
-            self.recipes = parameters[RECIPES]
             self.outputs = parameters[OUTPUT]
             self.variables = parameters[VARIABLES]
+            self.trigger_paths = parameters[TRIGGER_PATHS]
+
+            # TODO update propperly
+            recipes = []
+            for k1, v1 in parameters['trigger_recipes'].items():
+                for k2, v2 in v1.items():
+                    if 'name' in v2:
+                        recipes.append(v2['name'])
+            self.recipes = recipes
             return
         raise Exception('Pattern requires either a str input as a name for a '
                         'new pattern, or a dict defining a complete pattern')

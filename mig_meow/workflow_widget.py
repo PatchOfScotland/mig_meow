@@ -1,7 +1,6 @@
 
 import ast
 import yaml
-import fileinput
 
 from bqplot import *
 from bqplot.marks import Graph
@@ -32,7 +31,8 @@ from .constants import GREEN, RED, \
     CWL_CLASS_COMMAND_LINE_TOOL
 from .cwl import make_step_dict, make_workflow_dict, get_linked_workflow, \
     make_settings_dict, check_workflow_is_valid, check_step_is_valid, \
-    get_glob_value, get_glob_entry_keys
+    get_glob_value, get_glob_entry_keys, get_step_name_from_title, \
+    get_output_lookup
 from .mig import vgrid_workflow_json_call
 from .pattern import Pattern, is_valid_pattern_object
 from .recipe import is_valid_recipe_dict, create_recipe_dict
@@ -57,6 +57,17 @@ CWL_IMPORT_MEOW_BUTTON = 'cwl_import_meow_button'
 CWL_IMPORT_DIR_BUTTON = 'cwl_import_dir_button'
 CWL_EXPORT_DIR_BUTTON = 'cwl_export_dir_button'
 
+DEFAULT_RESULT_NOTEBOOKS = [
+    DEFAULT_JOB_NAME,
+    'Result',
+    'result'
+]
+
+DEFAULT_WORKFLOW_TITLE = 'workflow'
+WORKFLOW_TITLE_ARG = "export_name"
+DEFAULT_CWL_IMPORT_EXPORT_DIR = 'cwl_directory'
+CWL_IMPORT_EXPORT_DIR_ARG = 'cwl_dir'
+
 MODE = 'mode'
 AUTO_IMPORT = 'auto_import'
 SUPPORTED_ARGS = {
@@ -64,13 +75,9 @@ SUPPORTED_ARGS = {
     PATTERNS: dict,
     RECIPES: dict,
     VGRID: str,
-    AUTO_IMPORT: bool
+    AUTO_IMPORT: bool,
+    CWL_IMPORT_EXPORT_DIR_ARG: str
 }
-
-DEFAULT_WORKFLOW_TITLE = 'exported_workflow'
-WORKFLOW_TITLE_ARG = "export_name"
-DEFAULT_CWL_IMPORT_EXPORT_DIR = 'cwl_directory'
-CWL_IMPORT_EXPORT_DIR_ARG = 'cwl_dir'
 
 FORM_RECIPE_SOURCE = 'Source'
 FORM_RECIPE_NAME = 'Name'
@@ -543,6 +550,11 @@ class WorkflowWidget:
             SETTINGS: {}
         }
 
+        self.mig_imports = {
+            PATTERNS: {},
+            RECIPES: {}
+        }
+
         self.button_elements = {}
         self.form_inputs = {}
         self.form_sections = {}
@@ -748,7 +760,7 @@ class WorkflowWidget:
             display(new_buttons)
 
     def __construct_cwl_widget(self):
-        self.__check_state(state=MEOW_MODE)
+        self.__check_state(state=CWL_MODE)
         self.button_elements = {}
         self.__close_form()
 
@@ -779,30 +791,7 @@ class WorkflowWidget:
             if not self.cwl[WORKFLOWS] \
                     and not self.cwl[STEPS] \
                     and not self.cwl[SETTINGS]:
-                status, feedback = self.__import_from_dir()
-
-                if status:
-                    self.cwl[WORKFLOWS] = feedback[WORKFLOWS]
-                    self.cwl[STEPS] = feedback[STEPS]
-                    self.cwl[SETTINGS] = feedback[SETTINGS]
-
-                    self.__set_feedback(
-                        "%s(s) %s, %s(s) %s, and %s(s) %s have been "
-                        "automatically imported from %s. "
-                        % (
-                            WORKFLOW_NAME,
-                            str(list(feedback[WORKFLOWS].keys())),
-                            STEP_NAME,
-                            str(list(feedback[STEPS].keys())),
-                            VARIABLES_NAME,
-                            str(list(feedback[VARIABLES].keys())),
-                            self.cwl_import_export_dir
-                        )
-                    )
-                    self.__update_workflow_visualisation()
-                    self.__enable_top_buttons()
-
-                elif self.meow[PATTERNS] or self.meow[RECIPES]:
+                if self.meow[PATTERNS] or self.meow[RECIPES]:
                     self.__set_feedback(
                         "%s data detected, attempting to convert to %s "
                         "format. " % (MEOW_MODE, CWL_MODE)
@@ -812,13 +801,36 @@ class WorkflowWidget:
                     if status:
                         self.__import_cwl(**result)
                     self.__enable_top_buttons()
-
                 else:
-                    self.__set_feedback(
-                        "No %s data to import from %s and no %s data "
-                        "detected. "
-                        % (CWL_MODE, self.cwl_import_export_dir, MEOW_MODE)
-                    )
+                    status, feedback = self.__import_from_dir()
+
+                    if status:
+                        self.cwl[WORKFLOWS] = feedback[WORKFLOWS]
+                        self.cwl[STEPS] = feedback[STEPS]
+                        self.cwl[SETTINGS] = feedback[SETTINGS]
+
+                        self.__set_feedback(
+                            "%s(s) %s, %s(s) %s, and %s(s) %s have been "
+                            "automatically imported from %s. "
+                            % (
+                                WORKFLOW_NAME,
+                                str(list(feedback[WORKFLOWS].keys())),
+                                STEP_NAME,
+                                str(list(feedback[STEPS].keys())),
+                                VARIABLES_NAME,
+                                str(list(feedback[VARIABLES].keys())),
+                                self.cwl_import_export_dir
+                            )
+                        )
+                        self.__update_workflow_visualisation()
+                        self.__enable_top_buttons()
+
+                    else:
+                        self.__set_feedback(
+                            "No %s data to import from %s and no %s data "
+                            "detected. "
+                            % (CWL_MODE, self.cwl_import_export_dir, MEOW_MODE)
+                        )
             else:
                 self.__set_feedback(
                     "As %s data is already present in the system. No "
@@ -894,7 +906,10 @@ class WorkflowWidget:
         self.__close_form()
         self.__clear_feedback()
 
-        self.__set_feedback("Goes nowhere, does nothing")
+        status, result = self.__cwl_to_meow()
+
+        if status:
+            self.__import_meow_workflow(**result)
 
     def import_from_vgrid_clicked(self, button):
         self.__close_form()
@@ -1103,8 +1118,11 @@ class WorkflowWidget:
             outlines = []
             for step_name, step in workflow[CWL_STEPS].items():
                 for input_name, input_value in step[CWL_WORKFLOW_IN].items():
-                    if input_value in workflow[CWL_INPUTS]\
+                    print('Considering for export file %s with value %s ' % (input_name, input_value))
+                    if '/' not in input_value \
+                            and input_value in workflow[CWL_INPUTS]\
                             and workflow[CWL_INPUTS][input_value] == 'File':
+                        print('%s is a file' % input_value)
                         settings = \
                             self.cwl[SETTINGS][workflow_name][CWL_VARIABLES]
                         file_name = settings[input_value][CWL_YAML_PATH]
@@ -1114,10 +1132,17 @@ class WorkflowWidget:
                             dest_path = os.path.join(workflow_dir, file_name)
                             copyfile(file_name, dest_path)
 
-                for output_name, output_value in \
-                        self.cwl[STEPS][step_name][CWL_OUTPUTS].items():
-                    outline = "    out: '[%s]'\n" % output_name
-                    outlines.append(outline)
+                print('Considering outputs %s for export' % list(self.cwl[STEPS][step_name][CWL_OUTPUTS].keys()))
+                outputs_list = \
+                    list(self.cwl[STEPS][step_name][CWL_OUTPUTS].keys())
+                outputs_string = '['
+                for elem in outputs_list:
+                    if len(outputs_string) > 1:
+                        outputs_string += ', '
+                    outputs_string += elem
+                outputs_string += ']'
+                outline = "    out: '%s'\n" % outputs_string
+                outlines.append(outline)
 
             for step_name, step in self.cwl[STEPS].items():
                 step_filename = '%s.cwl' % step_name
@@ -2321,7 +2346,7 @@ class WorkflowWidget:
             try:
                 self.mig_imports[RECIPES][recipe[PERSISTENCE_ID]] = \
                     deepcopy(recipe)
-            except AttributeError:
+            except KeyError:
                 pass
 
         msg = "Imported %s %s(s) and %s %s(s). " \
@@ -2553,7 +2578,6 @@ class WorkflowWidget:
         self.__close_form()
 
     def __meow_to_cwl(self):
-
         meow_workflow = build_workflow_object(
             self.meow[PATTERNS],
             self.meow[RECIPES]
@@ -2575,22 +2599,6 @@ class WorkflowWidget:
             step_variable_dict = {}
             step_title = "step_%d" % step_count
             step_cwl_dict = make_step_dict(step_title, 'papermill')
-
-            output_count = 0
-            for output_key, output_value in pattern.outputs.items():
-                local_output_key = "output_%d" % output_count
-                output_binding = "%s.%s_value" % (CWL_INPUTS, output_key)
-                step_cwl_dict[CWL_OUTPUTS][local_output_key] = {
-                    CWL_OUTPUT_TYPE: 'File',
-                    CWL_OUTPUT_BINDING: {
-                        CWL_OUTPUT_GLOB: "$(%s)" % output_binding
-                    }
-                }
-
-                lookup_key = "%s_%s" % (pattern.name, output_key)
-                output_lookups[lookup_key] = local_output_key
-
-                output_count += 1
 
             recipe_entry = "%d_notebook" % step_count
             result_entry = "%d_result" % step_count
@@ -2618,11 +2626,18 @@ class WorkflowWidget:
                 }
             }
             yaml_dict[result_entry] = source_filename
+            for result in DEFAULT_RESULT_NOTEBOOKS:
+                if result in pattern.outputs:
+                    yaml_dict[result_entry] = pattern.outputs[result]
             step_variable_dict['notebook'] = recipe_entry
             step_variable_dict['result'] = result_entry
 
             variable_count = 3
             for variable_key, variable_value in pattern.variables.items():
+                print('Considering variables %s with value %s for addition to step %s' % (variable_key, variable_value, step_title))
+                # skip result variables
+                if variable_key in DEFAULT_RESULT_NOTEBOOKS:
+                    break
 
                 if isinstance(variable_value, str):
                     if variable_value.startswith('"') \
@@ -2632,40 +2647,140 @@ class WorkflowWidget:
                             and variable_value.endswith('\''):
                         variable_value = variable_value[1:-1]
                 variable_value = strip_dirs(variable_value)
+                print('Updated value is %s ' % variable_value)
 
-                local_arg_key = "%s_key" % variable_key
-                local_arg_value = "%s_value" % variable_key
-                arg_key = "%d_%s" % (step_count, local_arg_key)
-                arg_value = "%d_%s" % (step_count, local_arg_value)
-                yaml_dict[arg_key] = variable_key
-                step_cwl_dict[CWL_INPUTS][local_arg_key] = {
-                    CWL_INPUT_TYPE: 'string',
-                    CWL_INPUT_BINDING: {
-                        CWL_INPUT_PREFIX: '-p',
-                        CWL_INPUT_POSITION: variable_count
+                # If this is an input yaml file
+                if variable_value == pattern.trigger_file \
+                        and [e for e in pattern.trigger_paths
+                             if '.yaml' in e or '.yml' in e]:
+                    print('%s has been identified as input yaml file' % variable_value)
+
+                    arg_key = "%d_%s" % (step_count, variable_key)
+
+                    step_cwl_dict[CWL_INPUTS][variable_key] = {
+                        CWL_INPUT_TYPE: 'File',
+                        CWL_INPUT_BINDING: {
+                            CWL_INPUT_PREFIX: '-f',
+                            CWL_INPUT_POSITION: variable_count
+                        }
                     }
-                }
-                variable_count += 1
-                input_type = 'string'
-                if variable_key in pattern.outputs:
-                    variable_value = strip_dirs(pattern.outputs[variable_key])
-                yaml_dict[arg_value] = variable_value
-                if variable_key == pattern.trigger_file:
-                    input_type = 'File'
-                    yaml_dict[arg_value] = {
+                    yaml_dict[arg_key] = {
                         CWL_YAML_CLASS: 'File',
                         CWL_YAML_PATH: strip_dirs(pattern.trigger_paths[0])
                     }
+                    step_variable_dict[variable_key] = arg_key
+                    variable_count += 1
 
-                step_cwl_dict[CWL_INPUTS][local_arg_value] = {
-                    CWL_INPUT_TYPE: input_type,
-                    CWL_INPUT_BINDING: {
-                        CWL_INPUT_POSITION: variable_count
+                else:
+                    # -------------------------------------------------------
+                    local_arg_key = "%s_key" % variable_key
+                    local_arg_value = "%s_value" % variable_key
+                    arg_key = "%d_%s" % (step_count, local_arg_key)
+                    arg_value = "%d_%s" % (step_count, local_arg_value)
+                    yaml_dict[arg_key] = variable_key
+                    print('~~Looking closely at %s with value %s' % (arg_value, variable_value))
+
+                    step_cwl_dict[CWL_INPUTS][local_arg_key] = {
+                        CWL_INPUT_TYPE: 'string',
+                        CWL_INPUT_BINDING: {
+                            CWL_INPUT_PREFIX: '-p',
+                            CWL_INPUT_POSITION: variable_count
+                        }
+                    }
+                    variable_count += 1
+                    input_type = 'string'
+                    if variable_key in pattern.outputs:
+                        variable_value = strip_dirs(pattern.outputs[variable_key])
+                        print('Further updating value to %s ' % variable_value)
+                    yaml_dict[arg_value] = variable_value
+                    if variable_key == pattern.trigger_file \
+                            or ():
+                        input_type = 'File'
+                        yaml_dict[arg_value] = {
+                            CWL_YAML_CLASS: 'File',
+                            CWL_YAML_PATH: strip_dirs(pattern.trigger_paths[0])
+                        }
+                    elif isinstance(variable_value, str) \
+                            and os.path.exists(variable_value):
+                        print('%s actually exists' % variable_value)
+                        input_type = 'File'
+                        yaml_dict[arg_value] = {
+                            CWL_YAML_CLASS: 'File',
+                            CWL_YAML_PATH: variable_value
+                        }
+
+                    step_cwl_dict[CWL_INPUTS][local_arg_value] = {
+                        CWL_INPUT_TYPE: input_type,
+                        CWL_INPUT_BINDING: {
+                            CWL_INPUT_POSITION: variable_count
+                        }
+                    }
+                    step_variable_dict[local_arg_key] = arg_key
+                    step_variable_dict[local_arg_value] = arg_value
+                    variable_count += 1
+                    # -------------------------------------------------------
+
+            output_count = 0
+            for output_key, output_value in pattern.outputs.items():
+                print(
+                    'Generating outputs using key: %s , value: %s for step %s' % (
+                    output_key, output_value, step_title))
+                local_output_key = "output_%d" % output_count
+
+                if output_key in DEFAULT_RESULT_NOTEBOOKS:
+                    output_binding = "%s.%s" % (CWL_INPUTS, output_key)
+                else:
+                    output_binding = "%s.%s_value" % (CWL_INPUTS, output_key)
+                step_cwl_dict[CWL_OUTPUTS][local_output_key] = {
+                    CWL_OUTPUT_TYPE: 'File',
+                    CWL_OUTPUT_BINDING: {
+                        CWL_OUTPUT_GLOB: "$(%s)" % output_binding
                     }
                 }
-                step_variable_dict[local_arg_key] = arg_key
-                step_variable_dict[local_arg_value] = arg_value
-                variable_count += 1
+
+                lookup_key = "%s_%s" % (pattern.name, output_key)
+                output_lookups[lookup_key] = local_output_key
+
+                output_count += 1
+
+                # If non standard output then also add a variable note
+                if output_key not in DEFAULT_RESULT_NOTEBOOKS:
+                    # -------------------------------------------------------
+                    local_arg_key = "%s_key" % output_key
+                    local_arg_value = "%s_value" % output_key
+                    arg_key = "%d_%s" % (step_count, local_arg_key)
+                    arg_value = "%d_%s" % (step_count, local_arg_value)
+                    yaml_dict[arg_key] = output_key
+                    step_cwl_dict[CWL_INPUTS][local_arg_key] = {
+                        CWL_INPUT_TYPE: 'string',
+                        CWL_INPUT_BINDING: {
+                            CWL_INPUT_PREFIX: '-p',
+                            CWL_INPUT_POSITION: variable_count
+                        }
+                    }
+                    variable_count += 1
+                    input_type = 'string'
+                    if output_key in pattern.outputs:
+                        output_value = strip_dirs(pattern.outputs[output_key])
+                    yaml_dict[arg_value] = output_value
+                    if output_key == pattern.trigger_file:
+                        input_type = 'File'
+                        yaml_dict[arg_value] = {
+                            CWL_YAML_CLASS: 'File',
+                            CWL_YAML_PATH: strip_dirs(pattern.trigger_paths[0])
+                        }
+
+                    step_cwl_dict[CWL_INPUTS][local_arg_value] = {
+                        CWL_INPUT_TYPE: input_type,
+                        CWL_INPUT_BINDING: {
+                            CWL_INPUT_POSITION: variable_count
+                        }
+                    }
+                    step_variable_dict[local_arg_key] = arg_key
+                    step_variable_dict[local_arg_value] = arg_value
+                    variable_count += 1
+                    # -------------------------------------------------------
+
 
             buffer_cwl[STEPS][step_title] = step_cwl_dict
             variable_references[step_title] = step_variable_dict
@@ -2712,23 +2827,30 @@ class WorkflowWidget:
             outline = "    %s: '[%s]'\n" % (CWL_WORKFLOW_OUT, all_outputs)
             outlines.append(outline)
 
+            print('step %s inputs: %s' % (step_name, step[CWL_INPUTS]))
             for input_key, input_value in step[CWL_INPUTS].items():
+                print('Inspecting key: %s, value: %s in step %s' % (input_key, input_value, step_name))
+                print('variable_references: %s' % list(variable_references.keys()))
+                print('step variables: %s' % list(variable_references[step_name].keys()))
+
                 step_dict[CWL_WORKFLOW_IN][input_key] = \
                     variable_references[step_name][input_key]
 
             current = meow_workflow[step_to_pattern[step_name]]
             if current[ANCESTORS]:
                 for ancestor_key, ancestor_value in current[ANCESTORS].items():
+                    print('looking at ancestors with key %s and value %s' % (ancestor_key, ancestor_value))
                     ancestor_step_name = pattern_to_step[ancestor_key]
                     ancestor_outfile_key = ancestor_value['output_file']
-                    output_lookup = \
-                        "%s_%s" % (ancestor_key, ancestor_outfile_key)
+                    output_lookup = "%s_%s" % (ancestor_key, ancestor_outfile_key)
                     ancestor_out = output_lookups[output_lookup]
-                    current_key = \
-                        "%s_value" \
-                        % self.meow[PATTERNS][ancestor_key].trigger_file
-                    step_dict[CWL_WORKFLOW_IN][current_key] = \
-                        "%s/%s" % (ancestor_step_name, ancestor_out)
+                    current_key = "%s_value" % self.meow[PATTERNS][ancestor_key].trigger_file
+                    if current_key in step_dict[CWL_WORKFLOW_IN]:
+                        step_dict[CWL_WORKFLOW_IN][current_key] = \
+                            "%s/%s" % (ancestor_step_name, ancestor_out)
+                    else:
+                        step_dict[CWL_WORKFLOW_IN][self.meow[PATTERNS][ancestor_key].trigger_file] = \
+                            "%s/%s" % (ancestor_step_name, ancestor_out)
 
             workflow_cwl_dict[CWL_STEPS][step_name] = step_dict
 
@@ -2738,7 +2860,6 @@ class WorkflowWidget:
 
         return True, buffer_cwl
 
-    # TODO implement
     def __cwl_to_meow(self):
         buffer_meow = {
             PATTERNS: {},
@@ -2756,15 +2877,18 @@ class WorkflowWidget:
             for argument_key, argument_value in settings.items():
                 if isinstance(argument_value, dict) \
                         and CWL_YAML_CLASS in argument_value\
-                        and CWL_YAML_CLASS == 'File'\
+                        and argument_value[CWL_YAML_CLASS] == 'File'\
                         and CWL_YAML_PATH in argument_value\
                         and '.' in argument_value[CWL_YAML_PATH]:
                     input_file = argument_value[CWL_YAML_PATH]
                     extension = input_file[input_file.rfind('.'):]
 
                     if extension in NOTEBOOK_EXTENSIONS:
-
-                        source = input_file
+                        source = os.path.join(
+                            self.cwl_import_export_dir,
+                            workflow_name,
+                            input_file
+                        )
                         name = input_file[:input_file.rfind('.')]
 
                         # try:
@@ -2790,7 +2914,8 @@ class WorkflowWidget:
 
             key_text = '_key'
             value_text = '_value'
-            for step_name, workflow_step in workflow[CWL_STEPS].items():
+            for step_title, workflow_step in workflow[CWL_STEPS].items():
+                step_name = get_step_name_from_title(step_title, workflow)
                 status, msg = check_step_is_valid(step_name, self.cwl)
                 if not status:
                     break
@@ -2798,7 +2923,7 @@ class WorkflowWidget:
                 step = self.cwl[STEPS][step_name]
                 try:
                     pattern = Pattern(step_name)
-                except Exception:
+                except Exception as ex:
                     break
 
                 entries = {}
@@ -2808,23 +2933,16 @@ class WorkflowWidget:
                     settings_key = workflow_step[CWL_WORKFLOW_IN][input_key]
                     if '/' in settings_key:
                         target_step_key, target_value = settings_key.split('/')
-                        if target_step_key not in self.cwl[STEPS]:
-                            break
-                        target_step = self.cwl[STEPS][target_step_key]
-                        if target_value not in target_step[CWL_OUTPUTS]:
-                            break
-                        target_output = target_step[CWL_OUTPUTS][target_value]
 
-                        if CWL_OUTPUT_TYPE not in target_output \
-                                or target_output[CWL_OUTPUT_TYPE] != 'File' \
-                                or CWL_OUTPUT_BINDING not in target_output \
-                                or not isinstance(
-                                    target_output[CWL_OUTPUT_BINDING], dict
-                                ) \
-                                or 'glob' not in \
-                                target_output[CWL_OUTPUT_BINDING]:
+                        status, glob = get_output_lookup(
+                            target_step_key,
+                            target_value,
+                            workflow,
+                            self.cwl[STEPS]
+                        )
+                        if not status:
                             break
-                        glob = target_output[CWL_OUTPUT_BINDING]['glob']
+
                         status, result = get_glob_value(
                             glob,
                             target_step_key,
@@ -2852,6 +2970,7 @@ class WorkflowWidget:
                     else:
                         entry = input_key
                         unlinked[input_key] = [input_value]
+
                     if isinstance(input_value, dict) and \
                             CWL_INPUT_TYPE in input_value and \
                             input_value[CWL_INPUT_TYPE] == 'File':
@@ -2910,6 +3029,41 @@ class WorkflowWidget:
                                 path
                             )
                             input_files = []
+                            entries.pop(input_files[0])
+                    elif input_files[0] in unlinked:
+                        key = input_files[0]
+                        lookup_key = workflow_step[CWL_WORKFLOW_IN][key]
+                        if '/' in lookup_key:
+
+                            target_step_key, target_value = lookup_key.split(
+                                '/')
+
+                            status, glob = get_output_lookup(
+                                target_step_key,
+                                target_value,
+                                workflow,
+                                self.cwl[STEPS]
+                            )
+                            if not status:
+                                break
+
+                            status, result = get_glob_value(
+                                glob,
+                                target_step_key,
+                                workflow,
+                                settings
+                            )
+                            if not status:
+                                break
+
+                            pattern.add_single_input(key, result)
+                            input_files = []
+                            unlinked.pop(key)
+                        else:
+                            setting = settings[lookup_key]
+                            pattern.add_single_input(key, setting)
+                            input_files = []
+                            unlinked.pop(key)
 
                 # output
                 for output_name, output in step[CWL_OUTPUTS].items():
@@ -2937,13 +3091,23 @@ class WorkflowWidget:
                             )
                             break
 
-                    status, result = \
-                        get_glob_value(glob, step_name, workflow, settings)
+                    status, glob_value = \
+                        get_glob_value(glob, step_title, workflow, settings)
 
                     if not status:
                         break
 
-                    pattern.add_output(PLACEHOLDER, result)
+                    if glob.startswith('$(') and glob.endswith(')'):
+                        glob = glob[2:-1]
+                        if '.' in glob:
+                            glob = glob.split('.')[1]
+
+                    pattern.add_output(glob, glob_value)
+
+                    if glob in unlinked:
+                        unlinked.pop(glob)
+                    if glob in entries:
+                        unlinked.pop(glob)
 
                 for key, entry in entries.items():
                     try:
@@ -2955,6 +3119,11 @@ class WorkflowWidget:
                     try:
                         settings_key = workflow_step[CWL_WORKFLOW_IN][key]
                         setting = settings[settings_key]
+                        if isinstance(setting, dict) \
+                                and CWL_YAML_CLASS in setting \
+                                and CWL_YAML_PATH in setting \
+                                and setting[CWL_YAML_CLASS] == 'File':
+                            setting = setting[CWL_YAML_PATH]
                         pattern.add_variable(key, setting)
                     except Exception:
                         pass
@@ -3221,15 +3390,19 @@ class WorkflowWidget:
             if status:
                 linked_workflows[workflow_key] = feedback
 
-                for step_name, step_value in feedback.items():
-                    step = steps[step_name]
+                for step_title, step_value in feedback.items():
+                    if step_title not in steps:
+                        break
+
+                    step = steps[step_title]
                     node_data.append(self.__set_cwl_step_dict(step))
                     colour_data.append(GREEN)
-                    name = "%s_%s" % (workflow_key, step_name)
+                    name = "%s_%s" % (workflow_key, step_title)
                     node_indexes[name] = index
                     index += 1
 
                     for key, input in step_value['inputs'].items():
+                        print('displaying cwl input key %s, value %s for step %s' % (key, input, step_title))
                         node_data.append(
                             self.__set_phantom_cwl_node_dict(input)
                         )
@@ -3242,8 +3415,20 @@ class WorkflowWidget:
                         index += 1
 
                     for key, output in step_value['outputs'].items():
+                        print('displaying cwl output key %s, value %s for step %s' % (key, output, step_title))
+                        if isinstance(output, dict) \
+                                and CWL_OUTPUT_GLOB in output:
+                            output = output[CWL_OUTPUT_GLOB]
+                        status, value = get_glob_value(
+                            output,
+                            step_title,
+                            workflow,
+                            settings
+                        )
+                        print('got value %s and status %s' %(value, status))
+
                         node_data.append(
-                            self.__set_phantom_cwl_node_dict(output)
+                            self.__set_phantom_cwl_node_dict(value)
                         )
                         output_node_name = "%s_%s" % (name, key)
                         node_indexes[output_node_name] = index
@@ -3255,18 +3440,31 @@ class WorkflowWidget:
                         })
                         index += 1
 
-                    for key, input in workflow[CWL_STEPS][step_name][CWL_WORKFLOW_IN].items():
-                        if input not in settings[workflow_key][CWL_VARIABLES]:
-                            if input not in list(step_value['ancestors'].values()):
+                    for step_key, workflow_step in workflow[CWL_STEPS].items():
+                        for input in workflow_step[CWL_WORKFLOW_IN].values():
+                            if input not in \
+                                    settings[workflow_key][CWL_VARIABLES]:
+                                if input not in \
+                                        list(step_value['ancestors'].values()):
+                                    colour_data[node_indexes[name]] = RED
+                            elif settings[workflow_key][CWL_VARIABLES][input]\
+                                    == PLACEHOLDER:
                                 colour_data[node_indexes[name]] = RED
-                        elif settings[workflow_key][CWL_VARIABLES][input] == PLACEHOLDER:
-                            colour_data[node_indexes[name]] = RED
 
                 # loop through again once we know all steps have been set up
                 # to link steps together
                 for step_name, step_value in feedback.items():
                     name = "%s_%s" % (workflow_key, step_name)
+                    if name not in node_indexes:
+                        break
+
                     for key, ancestor in step_value['ancestors'].items():
+                        key = get_step_name_from_title(key, workflow)
+                        if '/' in ancestor:
+                            first = ancestor[:ancestor.index('/')]
+                            new_first = \
+                                get_step_name_from_title(first, workflow)
+                            ancestor = ancestor.replace(first, new_first)
                         source_name = "%s_%s_%s" \
                                       % (workflow_key, key, ancestor)
 

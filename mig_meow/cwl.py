@@ -5,7 +5,7 @@ from .constants import CWL_NAME, CWL_CWL_VERSION, CWL_CLASS, CWL_BASE_COMMAND,\
     CWL_YAML_PATH, CWL_OUTPUT_BINDING, CWL_OUTPUT_TYPE, CWL_OUTPUT_GLOB, \
     CWL_VARIABLES, PLACEHOLDER, WORKFLOW_NAME, STEP_NAME, VARIABLES_NAME, \
     WORKFLOWS, STEPS, SETTINGS, CWL_CLASS_COMMAND_LINE_TOOL, \
-    CWL_CLASS_WORKFLOW
+    CWL_CLASS_WORKFLOW, CWL_WORKFLOW_RUN
 
 
 def make_step_dict(name, base_command):
@@ -46,7 +46,8 @@ def get_linked_workflow(workflow, steps, settings):
     workflow_nodes = {}
     # settings = combine_settings(settings)
 
-    for step_name, step in workflow[CWL_STEPS].items():
+    for step_title, step in workflow[CWL_STEPS].items():
+        step_name = get_step_name_from_title(step_title, workflow)
         workflow_nodes[step_name] = {
             'inputs': {},
             'outputs': {},
@@ -55,6 +56,8 @@ def get_linked_workflow(workflow, steps, settings):
 
         for input_key, input_value in step[CWL_WORKFLOW_IN].items():
             if '/' not in input_value:
+                print("input_value: %s" % input_value)
+                print("workflow[CWL_INPUTS]: %s" % workflow[CWL_INPUTS].keys())
                 if workflow[CWL_INPUTS][input_value] == 'File':
                     workflow_nodes[step_name]['inputs'][input_key] = \
                         settings[input_value][CWL_YAML_PATH]
@@ -63,23 +66,25 @@ def get_linked_workflow(workflow, steps, settings):
                 workflow_nodes[step_name]['ancestors'][ancestor] = input_value
 
         # TODO clean this up. I hate it and its ugly
-        output = step[CWL_WORKFLOW_OUT]
-        if isinstance(output, list):
-            if output:
-                output = '[%s]' % output[0]
-                if '\'' in output:
-                    output = output.replace('\'', '')
-                if '"' in output:
-                    output = output.replace('"', '')
+        outputs_string = step[CWL_WORKFLOW_OUT]
 
-        if output[0] == '[' and output[-1] == ']' and output != '[]':
-            output = output[1:-1]
+        outputs_list = []
+        if isinstance(outputs_string, list):
+            outputs_list = outputs_string
+        elif isinstance(outputs_string, str):
+            if outputs_string.startswith('[') and outputs_string.endswith(']'):
+                outputs_string = outputs_string[1:-1]
 
+                outputs_list = outputs_string.split(',')
+                for i in range(len(outputs_list)):
+                    outputs_list[i] = outputs_list[i].replace(' ', '')
+
+        for output in outputs_list:
             full_output = '%s/%s' % (step_name, output)
-            if steps[step_name][CWL_OUTPUTS][output][CWL_OUTPUT_TYPE]\
-                    == 'File':
-                output_value = \
-                    steps[step_name][CWL_OUTPUTS][output][CWL_OUTPUT_BINDING]
+            if step_name not in steps:
+                break
+            if steps[step_name][CWL_OUTPUTS][output][CWL_OUTPUT_TYPE] == 'File':
+                output_value = steps[step_name][CWL_OUTPUTS][output][CWL_OUTPUT_BINDING]
                 if isinstance(output_value, dict):
                     glob = output_value[CWL_OUTPUT_GLOB]
                     if glob.startswith('$(inputs'):
@@ -93,8 +98,9 @@ def get_linked_workflow(workflow, steps, settings):
                             glob = glob[1:-1]
                         if glob.startswith('"') and glob.endswith('"'):
                             glob = glob[1:-1]
-                        output_key = step[CWL_WORKFLOW_IN][glob]
-                        output_value = settings[output_key]
+                        if glob in step[CWL_WORKFLOW_IN]:
+                            output_key = step[CWL_WORKFLOW_IN][glob]
+                            output_value = settings[output_key]
                     else:
                         msg = 'Unsupported format. Glob command "%s" does ' \
                               'not take parameters from inputs. ' % glob
@@ -103,6 +109,13 @@ def get_linked_workflow(workflow, steps, settings):
                     output_value
 
     return True, workflow_nodes
+
+
+def get_step_name_from_title(title, workflow):
+    name = workflow[CWL_STEPS][title][CWL_WORKFLOW_RUN]
+    if '.' in name:
+        name = name[:name.index('.')]
+    return name
 
 
 def check_workflow_is_valid(workflow_name, cwl):
@@ -160,20 +173,38 @@ def check_step_is_valid(step_name, cwl):
 
 def get_glob_value(glob, step_name, workflow_cwl, settings_cwl):
     if '$' in glob:
-        try:
-            glob = glob[glob.index('(') + 1:glob.index(')')]
-            inputs = glob.split('.')
-            if inputs[0] != CWL_INPUTS:
-                msg = "Unexpected path. %s did not equal expected path " \
-                      "%s" % (inputs[0], CWL_INPUTS)
-                return False, msg
-            settings_key = \
-                workflow_cwl[CWL_STEPS][step_name][CWL_WORKFLOW_IN][inputs[1]]
-            setting = settings_cwl[settings_key]
+        # try:
+        glob = glob[glob.index('(') + 1:glob.index(')')]
+        inputs = glob.split('.')
+        if inputs[0] != CWL_INPUTS:
+            msg = "Unexpected path. %s did not equal expected path " \
+                  "%s" % (inputs[0], CWL_INPUTS)
+            return False, msg
 
-            return True, setting
-        except Exception as exception:
-            return False, str(exception)
+        settings_key = ''
+        workflow_steps = list(workflow_cwl[CWL_STEPS].keys())
+        for step in workflow_steps:
+            run = workflow_cwl[CWL_STEPS][step][CWL_WORKFLOW_RUN]
+            if '.' in run:
+                run = run[:run.index('.')]
+            if step == step_name:
+                print('run: %s' % run)
+                print('step: %s' % step)
+                print('step_name: %s' % step_name)
+                print('inputs[1]: %s' % inputs[1])
+                print('workflow_cwl[CWL_STEPS][step][CWL_WORKFLOW_IN]: %s' % workflow_cwl[CWL_STEPS][step][CWL_WORKFLOW_IN])
+                settings_key = \
+                    workflow_cwl[CWL_STEPS][step][CWL_WORKFLOW_IN][inputs[1]]
+
+        if not settings_key:
+            msg = "Could not find step %s in %s" \
+                  % (step_name, list(workflow_cwl[CWL_STEPS]))
+            return False, msg
+        setting = settings_cwl[settings_key]
+
+        return True, setting
+        # except Exception as exception:
+        #     return False, str(exception)
     else:
         return True, glob
 
@@ -206,3 +237,29 @@ def get_glob_entry_keys(glob, step_name, workflow_cwl):
     msg = 'Could not identify matching key pairs for glob %s. ' % glob
     return False, msg
 
+
+def get_output_lookup(target_step_key, target_value, workflow, steps):
+    if target_step_key in workflow[CWL_STEPS]:
+        target_step_key = get_step_name_from_title(
+            target_step_key,
+            workflow
+        )
+    if target_step_key not in steps:
+        msg = "%s isn't in steps" % target_step_key
+        return False, msg
+    target_step = steps[target_step_key]
+    if target_value not in target_step[CWL_OUTPUTS]:
+        msg = '%s not in outputs' % target_value
+        return False, msg
+    target_output = target_step[CWL_OUTPUTS][target_value]
+
+    if CWL_OUTPUT_TYPE not in target_output \
+            or target_output[CWL_OUTPUT_TYPE] != 'File' \
+            or CWL_OUTPUT_BINDING not in target_output \
+            or not isinstance(target_output[CWL_OUTPUT_BINDING], dict) \
+            or 'glob' not in \
+            target_output[CWL_OUTPUT_BINDING]:
+        msg = 'Output type is not a correctly formatted file entry'
+        return False, msg
+    glob = target_output[CWL_OUTPUT_BINDING]['glob']
+    return True, glob
