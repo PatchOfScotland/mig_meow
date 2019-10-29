@@ -5,7 +5,7 @@ with open('README.md', 'r') as readme:
 
 module_name = 'mig_meow'
 module_fullname = 'Managing Event-Oriented_workflows'
-module_version = '0.2'
+module_version = '0.2.1'
 
 setup(name=module_name,
       version=module_version,

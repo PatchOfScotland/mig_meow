@@ -3416,14 +3416,17 @@ class WorkflowWidget:
 
                     for step_key, workflow_step in workflow[CWL_STEPS].items():
                         for input in workflow_step[CWL_WORKFLOW_IN].values():
-                            if input not in \
-                                    settings[workflow_key][CWL_VARIABLES]:
-                                if input not in \
-                                        list(step_value['ancestors'].values()):
-                                    colour_data[node_indexes[name]] = RED
-                            elif settings[workflow_key][CWL_VARIABLES][input]\
-                                    == PLACEHOLDER:
+                            if '/'  in input:
+                                break
+                            setting = settings[workflow_key][CWL_VARIABLES][input]
+                            if setting == PLACEHOLDER:
                                 colour_data[node_indexes[name]] = RED
+                            if isinstance(setting, dict) \
+                                    and CWL_YAML_CLASS in setting \
+                                    and CWL_YAML_PATH in setting \
+                                    and CWL_YAML_CLASS == 'File':
+                                if not os.path.exists(setting[CWL_YAML_PATH]):
+                                    colour_data[node_indexes[name]] = RED
 
                 # loop through again once we know all steps have been set up
                 # to link steps together
