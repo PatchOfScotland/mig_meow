@@ -62,6 +62,7 @@ DEFAULT_RESULT_NOTEBOOKS = [
     'Result',
     'result'
 ]
+CWL_WORK_DIR_REQ = 'InitialWorkDirRequirement'
 
 DEFAULT_WORKFLOW_TITLE = 'workflow'
 WORKFLOW_TITLE_ARG = "export_name"
@@ -111,6 +112,14 @@ FORM_SELECTOR_KEY = 'selector'
 BUTTON_ON_CLICK = 'on_click'
 BUTTON_DESC = 'description'
 BUTTON_TOOLTIP = 'tooltip'
+
+MULTILINE_HELP_TEXT = \
+    "<br/>" \
+    "If additional lines are required for further inputs, click the '+' " \
+    "button above to add new lines. The '-' button may be used to remove " \
+    "unneeded lines, with the bottom line being removed first. Any data in " \
+    "that line will be lost."
+
 
 RECIPE_FORM_INPUTS = {
     FORM_RECIPE_SOURCE: {
@@ -188,16 +197,16 @@ PATTERN_FORM_INPUTS = {
         INPUT_TYPE: FORM_MULTI_INPUT,
         INPUT_NAME: FORM_PATTERN_RECIPES,
         INPUT_HELP:
-            "Recipe(s) to be used for job definition. These should be recipe "
-            "names and may be recipes already defined in the system or "
-            "additional ones yet to be added. Each recipe should be defined "
-            "in its own text box, and the 'Add recipe' button can be used to "
-            "create additional text boxes as needed."
+            "%s(s) to be used for job definition. These should be %s "
+            "names and may be %s(s) already defined in the system or "
+            "additional ones yet to be added. "
             "<br/>"
-            "Example: <b>recipe_1</b>"
+            "Example: <b>%s_1</b>"
             "<br/>"
-            "In this example, the recipe 'recipe_1' is used as the definition "
-            "of any job processing.",
+            "In this example, the %s '%s' is used as the definition "
+            "of any job processing."
+            % (RECIPE_NAME, RECIPE_NAME, RECIPE_NAME, RECIPE_NAME,
+               RECIPE_NAME, RECIPE_NAME),
         INPUT_OPTIONAL: False
     },
     FORM_PATTERN_TRIGGER_FILE: {
@@ -256,7 +265,24 @@ PATTERN_FORM_INPUTS = {
         INPUT_TYPE: FORM_DICT_INPUT,
         INPUT_NAME: FORM_PATTERN_OUTPUT,
         INPUT_HELP:
-            "TODO",
+            "Output(s) are an optional parameter used to define if the "
+            "%s job returns any output files. These are defined in two parts, "
+            "shown by the two input boxes per line. Firstly is the name of "
+            "the output, which is the variable name used within the %s code "
+            "to refer to this specific output. Secondly is the value, which "
+            "is the path to which this output will be copied at job "
+            "completion. "
+            "<br/>"
+            "Example: "
+            "<br/>"
+            "Name: <b>result</b>"
+            "<br/>"
+            "Value: <b>dir/analysis.hdf5</b>"
+            "<br/>"
+            "In this example the %s would produce an output called "
+            "'analysis.hdf5' within the 'dir' directory. This path is "
+            "refered to within the %s code using the variable 'result'. "
+            % (PATTERN_NAME, RECIPE_NAME, PATTERN_NAME, RECIPE_NAME),
         INPUT_OPTIONAL: True
     },
     FORM_PATTERN_VARIABLES: {
@@ -264,7 +290,22 @@ PATTERN_FORM_INPUTS = {
         INPUT_TYPE: FORM_DICT_INPUT,
         INPUT_NAME: FORM_PATTERN_VARIABLES,
         INPUT_HELP:
-            "TODO",
+            "Variables(s) are an optional parameter used to define any "
+            "variables to be overwritten within the %s code. These are "
+            "defined in two parts, shown by the two input boxes per line. "
+            "Firstly is the name of the variable, which is the variable "
+            "name used within the %s code to refer to this specific output. "
+            "Secondly is the value of this variable. "
+            "<br/>"
+            "Example: "
+            "<br/>"
+            "Name: <b>count</b>"
+            "<br/>"
+            "Value: <b>10</b>"
+            "<br/>"
+            "In this example the %s would use a variable called "
+            "'count' which when run from this %s would have the value 10. "
+            % (RECIPE_NAME, RECIPE_NAME, RECIPE_NAME, PATTERN_NAME),
         INPUT_OPTIONAL: True
     },
 }
@@ -281,7 +322,10 @@ WORKFLOW_FORM_INPUTS = {
         INPUT_TYPE: FORM_SINGLE_INPUT,
         INPUT_NAME: FORM_WORKFLOW_NAME,
         INPUT_HELP:
-            "TODO",
+            "The identifying name of the %s. This should be unique. When "
+            "exported to a directory, a %s will generate a .cwl file "
+            "containing this definition, under this name. "
+            % (WORKFLOW_NAME, WORKFLOW_NAME),
         INPUT_OPTIONAL: False
     },
     FORM_WORKFLOW_INPUTS: {
@@ -289,7 +333,11 @@ WORKFLOW_FORM_INPUTS = {
         INPUT_TYPE: FORM_DICT_INPUT,
         INPUT_NAME: FORM_WORKFLOW_INPUTS,
         INPUT_HELP:
-            "TODO",
+            "All inputs for the %s."
+            "<br/>"
+            "For additional help and definitions please consult: "
+            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            % WORKFLOW_NAME,
         INPUT_OPTIONAL: False
     },
     FORM_WORKFLOW_OUTPUTS: {
@@ -297,7 +345,11 @@ WORKFLOW_FORM_INPUTS = {
         INPUT_TYPE: FORM_DICT_INPUT,
         INPUT_NAME: FORM_WORKFLOW_OUTPUTS,
         INPUT_HELP:
-            "TODO",
+            "All %s outputs. "
+            "<br/>"
+            "For additional help and definitions please consult: "
+            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            % WORKFLOW_NAME,
         INPUT_OPTIONAL: True
     },
     FORM_WORKFLOW_STEPS: {
@@ -305,7 +357,11 @@ WORKFLOW_FORM_INPUTS = {
         INPUT_TYPE: FORM_DICT_INPUT,
         INPUT_NAME: FORM_WORKFLOW_STEPS,
         INPUT_HELP:
-            "TODO",
+            "All %s steps. "
+            "<br/>"
+            "For additional help and definitions please consult: "
+            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            % WORKFLOW_NAME,
         INPUT_OPTIONAL: False
     },
     FORM_WORKFLOW_REQUIREMENTS: {
@@ -313,7 +369,11 @@ WORKFLOW_FORM_INPUTS = {
         INPUT_TYPE: FORM_DICT_INPUT,
         INPUT_NAME: FORM_WORKFLOW_REQUIREMENTS,
         INPUT_HELP:
-            "TODO",
+            "All %s requirements. "
+            "<br/>"
+            "For additional help and definitions please consult: "
+            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            % WORKFLOW_NAME,
         INPUT_OPTIONAL: True
     }
 }
@@ -333,7 +393,10 @@ STEP_FORM_INPUTS = {
         INPUT_TYPE: FORM_SINGLE_INPUT,
         INPUT_NAME: FORM_STEP_NAME,
         INPUT_HELP:
-            "TODO",
+            "The identifying name of the %s. This should be unique. When "
+            "exported to a directory, a %s will generate a .cwl file "
+            "containing this definition, under this name. "
+            % (STEP_NAME, STEP_NAME),
         INPUT_OPTIONAL: False
     },
     FORM_STEP_BASE_COMMAND: {
@@ -341,7 +404,13 @@ STEP_FORM_INPUTS = {
         INPUT_TYPE: FORM_SINGLE_INPUT,
         INPUT_NAME: FORM_STEP_BASE_COMMAND,
         INPUT_HELP:
-            "TODO",
+            "The base command to be run by the %s. This is run on the "
+            "command line. In exported MEOW workflows this is always "
+            "papermill by default. "
+            "<br/>"
+            "For additional help and definitions please consult: "
+            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            % STEP_NAME,
         INPUT_OPTIONAL: False
     },
     FORM_STEP_STDOUT: {
@@ -349,7 +418,10 @@ STEP_FORM_INPUTS = {
         INPUT_TYPE: FORM_SINGLE_INPUT,
         INPUT_NAME: FORM_STEP_STDOUT,
         INPUT_HELP:
-            "TODO",
+            "A capturing location for the running command lines output stream."
+            "<br/>"
+            "For additional help and definitions please consult: "
+            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>",
         INPUT_OPTIONAL: True
     },
     FORM_STEP_INPUTS: {
@@ -357,7 +429,11 @@ STEP_FORM_INPUTS = {
         INPUT_TYPE: FORM_DICT_INPUT,
         INPUT_NAME: FORM_STEP_INPUTS,
         INPUT_HELP:
-            "TODO",
+            "All inputs for a %s."
+            "<br/>"
+            "For additional help and definitions please consult: "
+            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            % STEP_NAME,
         INPUT_OPTIONAL: False
     },
     FORM_STEP_OUTPUTS: {
@@ -365,7 +441,11 @@ STEP_FORM_INPUTS = {
         INPUT_TYPE: FORM_DICT_INPUT,
         INPUT_NAME: FORM_STEP_OUTPUTS,
         INPUT_HELP:
-            "TODO",
+            "All outputs for a %s."
+            "<br/>"
+            "For additional help and definitions please consult: "
+            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            % STEP_NAME,
         INPUT_OPTIONAL: True
     },
     FORM_STEP_REQUIREMENTS: {
@@ -373,7 +453,11 @@ STEP_FORM_INPUTS = {
         INPUT_TYPE: FORM_DICT_INPUT,
         INPUT_NAME: FORM_STEP_REQUIREMENTS,
         INPUT_HELP:
-            "TODO",
+            "Any %s requirements."
+            "<br/>"
+            "For additional help and definitions please consult: "
+            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            % STEP_NAME,
         INPUT_OPTIONAL: True
     },
     FORM_STEP_ARGUMENTS: {
@@ -381,7 +465,11 @@ STEP_FORM_INPUTS = {
         INPUT_TYPE: FORM_MULTI_INPUT,
         INPUT_NAME: FORM_STEP_ARGUMENTS,
         INPUT_HELP:
-            "TODO",
+            "Any %s arguments."
+            "<br/>"
+            "For additional help and definitions please consult: "
+            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            % STEP_NAME,
         INPUT_OPTIONAL: True
     },
     FORM_STEP_HINTS: {
@@ -389,7 +477,11 @@ STEP_FORM_INPUTS = {
         INPUT_TYPE: FORM_DICT_INPUT,
         INPUT_NAME: FORM_STEP_HINTS,
         INPUT_HELP:
-            "TODO",
+            "Any %s hints. "
+            "<br/>"
+            "For additional help and definitions please consult: "
+            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            % STEP_NAME,
         INPUT_OPTIONAL: True
     }
 }
@@ -403,7 +495,11 @@ VARIABLES_FORM_INPUTS = {
         INPUT_TYPE: FORM_SINGLE_INPUT,
         INPUT_NAME: FORM_VARIABLES_NAME,
         INPUT_HELP:
-            "TODO",
+            "The identifying name of the %s. This should match the "
+            "corresponding %s to which it should be used as input variables. "
+            "When exported to a directory, a %s will generate a .yml file "
+            "containing these definitions, under this name. "
+            % (VARIABLES_NAME, WORKFLOW_NAME, VARIABLES_NAME),
         INPUT_OPTIONAL: False
     },
     FORM_VARIABLES_VARIABLES: {
@@ -411,7 +507,11 @@ VARIABLES_FORM_INPUTS = {
         INPUT_TYPE: FORM_DICT_INPUT,
         INPUT_NAME: FORM_VARIABLES_VARIABLES,
         INPUT_HELP:
-            "TODO",
+            "Any %s variables. "
+            "<br/>"
+            "For additional help and definitions please consult: "
+            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            % VARIABLES_NAME,
         INPUT_OPTIONAL: False
     }
 }
@@ -901,7 +1001,6 @@ class WorkflowWidget:
             selector_dict=self.meow[RECIPES]
         )
 
-    # TODO implement
     def import_from_cwl_clicked(self, button):
         self.__close_form()
         self.__clear_feedback()
@@ -1515,8 +1614,6 @@ class WorkflowWidget:
         # TODO update this description
 
         self.form_inputs = {}
-        # self.current_form_rows = {}
-        # self.current_form_line_counts = {}
 
     def __make_help_button(self, help_text):
         # TODO update this description
@@ -1610,7 +1707,7 @@ class WorkflowWidget:
 
         self.form_inputs[key] = input
 
-        help_button, help_text = self.__make_help_button(help_text)
+        help_button, help_html = self.__make_help_button(help_text)
 
         top_row_items = [
             label,
@@ -1622,7 +1719,7 @@ class WorkflowWidget:
 
         items = [
             top_row,
-            help_text
+            help_html
         ]
 
         input_widget = widgets.VBox(
@@ -1701,7 +1798,9 @@ class WorkflowWidget:
         remove_button.on_click(remove_button_click)
         activate_remove_button()
 
-        help_button, help_text = self.__make_help_button(help_text)
+        help_text += MULTILINE_HELP_TEXT
+
+        help_button, help_html = self.__make_help_button(help_text)
 
         top_row_items = [
             label,
@@ -1715,7 +1814,7 @@ class WorkflowWidget:
 
         output_items = [
             top_row,
-            help_text
+            help_html
         ]
 
         if additional_inputs:
@@ -1802,6 +1901,8 @@ class WorkflowWidget:
         )
         remove_button.on_click(remove_button_click)
         activate_remove_button()
+
+        help_text += MULTILINE_HELP_TEXT
 
         help_button, help_text = self.__make_help_button(help_text)
 
@@ -2672,7 +2773,6 @@ class WorkflowWidget:
                     arg_value = "%d_%s" % (step_count, local_arg_value)
                     yaml_dict[arg_key] = variable_key
 
-                    print('firstly considering %s' % local_arg_key)
                     step_cwl_dict[CWL_INPUTS][local_arg_key] = {
                         CWL_INPUT_TYPE: 'string',
                         CWL_INPUT_BINDING: {
@@ -2683,7 +2783,8 @@ class WorkflowWidget:
                     variable_count += 1
                     input_type = 'string'
                     if variable_key in pattern.outputs:
-                        variable_value = strip_dirs(pattern.outputs[variable_key])
+                        variable_value = \
+                            strip_dirs(pattern.outputs[variable_key])
                     yaml_dict[arg_value] = variable_value
                     if variable_key == pattern.trigger_file \
                             or ():
@@ -2699,10 +2800,15 @@ class WorkflowWidget:
                             CWL_YAML_CLASS: 'File',
                             CWL_YAML_PATH: variable_value
                         }
-                        if 'InitialWorkDirRequirement' not in step_cwl_dict[CWL_REQUIREMENTS]:
-                            step_cwl_dict[CWL_REQUIREMENTS]['InitialWorkDirRequirement'] = {'listing': ['$(inputs.%s)' % local_arg_value]}
+                        if CWL_WORK_DIR_REQ\
+                                not in step_cwl_dict[CWL_REQUIREMENTS]:
+                            step_cwl_dict[CWL_REQUIREMENTS][CWL_WORK_DIR_REQ] \
+                                = {'listing': ['$(inputs.%s)'
+                                               % local_arg_value]}
                         else:
-                            step_cwl_dict[CWL_REQUIREMENTS]['InitialWorkDirRequirement']['listing'].append('$(inputs.%s)' % local_arg_value)
+                            step_cwl_dict[CWL_REQUIREMENTS][CWL_WORK_DIR_REQ
+                            ]['listing'].append('$(inputs.%s)'
+                                                % local_arg_value)
 
                     step_cwl_dict[CWL_INPUTS][local_arg_value] = {
                         CWL_INPUT_TYPE: input_type,
@@ -2741,7 +2847,6 @@ class WorkflowWidget:
                     arg_key = "%d_%s" % (step_count, local_arg_key)
                     arg_value = "%d_%s" % (step_count, local_arg_value)
                     yaml_dict[arg_key] = output_key
-                    print('secondly considering %s' % local_arg_key)
                     step_cwl_dict[CWL_INPUTS][local_arg_key] = {
                         CWL_INPUT_TYPE: 'string',
                         CWL_INPUT_BINDING: {

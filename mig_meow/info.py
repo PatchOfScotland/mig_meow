@@ -1,7 +1,7 @@
 
 module_name = 'mig_meow'
 module_fullname = 'Managing Event-Oriented_workflows'
-module_version = '0.3'
+module_version = '0.4'
 
 
 def info():
