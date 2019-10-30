@@ -2672,6 +2672,7 @@ class WorkflowWidget:
                     arg_value = "%d_%s" % (step_count, local_arg_value)
                     yaml_dict[arg_key] = variable_key
 
+                    print('firstly considering %s' % local_arg_key)
                     step_cwl_dict[CWL_INPUTS][local_arg_key] = {
                         CWL_INPUT_TYPE: 'string',
                         CWL_INPUT_BINDING: {
@@ -2698,6 +2699,10 @@ class WorkflowWidget:
                             CWL_YAML_CLASS: 'File',
                             CWL_YAML_PATH: variable_value
                         }
+                        if 'InitialWorkDirRequirement' not in step_cwl_dict[CWL_REQUIREMENTS]:
+                            step_cwl_dict[CWL_REQUIREMENTS]['InitialWorkDirRequirement'] = {'listing': ['$(inputs.%s)' % local_arg_value]}
+                        else:
+                            step_cwl_dict[CWL_REQUIREMENTS]['InitialWorkDirRequirement']['listing'].append('$(inputs.%s)' % local_arg_value)
 
                     step_cwl_dict[CWL_INPUTS][local_arg_value] = {
                         CWL_INPUT_TYPE: input_type,
@@ -2736,6 +2741,7 @@ class WorkflowWidget:
                     arg_key = "%d_%s" % (step_count, local_arg_key)
                     arg_value = "%d_%s" % (step_count, local_arg_value)
                     yaml_dict[arg_key] = output_key
+                    print('secondly considering %s' % local_arg_key)
                     step_cwl_dict[CWL_INPUTS][local_arg_key] = {
                         CWL_INPUT_TYPE: 'string',
                         CWL_INPUT_BINDING: {
