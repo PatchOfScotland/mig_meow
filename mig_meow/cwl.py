@@ -8,6 +8,7 @@ from .constants import CWL_NAME, CWL_CWL_VERSION, CWL_CLASS, CWL_BASE_COMMAND,\
     CWL_CLASS_WORKFLOW, CWL_WORKFLOW_RUN
 
 
+# TODO update description
 def make_step_dict(name, base_command):
     return {
         CWL_NAME: name,
@@ -23,6 +24,7 @@ def make_step_dict(name, base_command):
     }
 
 
+# TODO update description
 def make_workflow_dict(name):
     return {
         CWL_NAME: name,
@@ -35,6 +37,7 @@ def make_workflow_dict(name):
     }
 
 
+# TODO update description
 def make_settings_dict(name, yaml):
     return {
         CWL_NAME: name,
@@ -42,6 +45,7 @@ def make_settings_dict(name, yaml):
     }
 
 
+# TODO update description
 def get_linked_workflow(workflow, steps, settings):
     workflow_nodes = {}
     # settings = combine_settings(settings)
@@ -109,6 +113,7 @@ def get_linked_workflow(workflow, steps, settings):
     return True, workflow_nodes
 
 
+# TODO update description
 def get_step_name_from_title(title, workflow):
     name = workflow[CWL_STEPS][title][CWL_WORKFLOW_RUN]
     if '.' in name:
@@ -116,6 +121,7 @@ def get_step_name_from_title(title, workflow):
     return name
 
 
+# TODO update description
 def check_workflow_is_valid(workflow_name, cwl):
     if workflow_name not in cwl[WORKFLOWS]:
         msg = "%s \'%s\' does not exist within the current CWL definitions. " \
@@ -159,6 +165,7 @@ def check_workflow_is_valid(workflow_name, cwl):
     return True, ''
 
 
+# TODO update description
 def check_step_is_valid(step_name, cwl):
     if step_name not in cwl[STEPS]:
         msg = "%s \'%s\' does not exist within the current CWL definitions. " \
@@ -169,6 +176,7 @@ def check_step_is_valid(step_name, cwl):
     return True, ''
 
 
+# TODO update description
 def get_glob_value(glob, step_name, workflow_cwl, settings_cwl):
     if '$' in glob:
         # try:
@@ -202,6 +210,7 @@ def get_glob_value(glob, step_name, workflow_cwl, settings_cwl):
         return True, glob
 
 
+# TODO update description
 def get_glob_entry_keys(glob, step_name, workflow_cwl):
     if '$' in glob:
         try:
@@ -231,6 +240,7 @@ def get_glob_entry_keys(glob, step_name, workflow_cwl):
     return False, msg
 
 
+# TODO update description
 def get_output_lookup(target_step_key, target_value, workflow, steps):
     if target_step_key in workflow[CWL_STEPS]:
         target_step_key = get_step_name_from_title(

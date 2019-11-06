@@ -5,7 +5,7 @@ with open('README.md', 'r') as readme:
 
 module_name = 'mig_meow'
 module_fullname = 'Managing Event-Oriented_workflows'
-module_version = '0.4'
+module_version = '0.5'
 
 setup(name=module_name,
       version=module_version,
@@ -23,7 +23,8 @@ setup(name=module_name,
             'IPython',
             'requests',
             'ipywidgets',
-            'PyYAML'
+            'PyYAML',
+            'nbformat'
       ],
       classifiers=[
             'Programming Language :: Python :: 3',

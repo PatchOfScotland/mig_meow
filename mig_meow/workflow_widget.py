@@ -9,35 +9,31 @@ from shutil import copyfile
 
 from IPython.display import display
 
-from .input import valid_path, valid_string
-from .constants import GREEN, RED, \
-    NOTEBOOK_EXTENSIONS, NAME, DEFAULT_JOB_NAME, \
-    SOURCE, PATTERN_NAME, RECIPE_NAME, OBJECT_TYPE, \
+from .inputs import valid_path, valid_string
+from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
+    DEFAULT_JOB_NAME, SOURCE, PATTERN_NAME, RECIPE_NAME, OBJECT_TYPE, \
     VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
-    VGRID_WORKFLOWS_OBJECT, INPUT_FILE, TRIGGER_PATHS, OUTPUT, RECIPES, \
-    VARIABLES, CHAR_UPPERCASE, CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, \
+    VGRID_WORKFLOWS_OBJECT, INPUT_FILE, OUTPUT, RECIPES, VARIABLES, \
+    CHAR_UPPERCASE, CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, \
     VGRID_ERROR_TYPE, VGRID_TEXT_TYPE, PERSISTENCE_ID, VGRID_CREATE, \
     VGRID_UPDATE, PATTERNS, RECIPE, VGRID_DELETE, WIDGET_MODES, MEOW_MODE, \
-    VGRID, MOUNT_USER_DIR, VGRID_READ, DESCENDANTS, BLUE, \
-    WORKFLOW_INPUTS, WORKFLOW_OUTPUTS, WHITE, ANCESTORS, CWL_MODE, \
-    TRIGGER_OUTPUT, NOTEBOOK_OUTPUT, TRIGGER_PATHS, CWL_INPUTS, \
+    VGRID, VGRID_READ, WORKFLOW_INPUTS, WORKFLOW_OUTPUTS, WHITE, ANCESTORS, \
+    CWL_MODE, TRIGGER_OUTPUT, NOTEBOOK_OUTPUT, TRIGGER_PATHS, CWL_INPUTS, \
     CWL_NAME, CWL_OUTPUTS, CWL_BASE_COMMAND, CWL_ARGUMENTS, CWL_REQUIREMENTS, \
     CWL_STDOUT, CWL_HINTS, CWL_STEPS, CWL_INPUT_TYPE, CWL_INPUT_BINDING, \
-    CWL_INPUT_POSITION, CWL_INPUT_PREFIX, CWL_OUTPUT_TYPE, CWL_OUTPUT_BINDING,\
-    CWL_OUTPUT_SOURCE, CWL_OUTPUT_GLOB, CWL_YAML_CLASS, CWL_YAML_PATH, \
-    CWL_WORKFLOW_RUN, CWL_WORKFLOW_IN, CWL_WORKFLOW_OUT, CWL_VARIABLES, \
-    PLACEHOLDER, WORKFLOW_NAME, STEP_NAME, VARIABLES_NAME, WORKFLOWS, STEPS, \
-    SETTINGS, YAML_EXTENSIONS, CWL_EXTENSIONS, CWL_CLASS, CWL_CLASS_WORKFLOW, \
-    CWL_CLASS_COMMAND_LINE_TOOL
+    CWL_INPUT_POSITION, CWL_INPUT_PREFIX, CWL_OUTPUT_TYPE, \
+    CWL_OUTPUT_BINDING, CWL_OUTPUT_SOURCE, CWL_OUTPUT_GLOB, CWL_YAML_CLASS, \
+    CWL_YAML_PATH, CWL_WORKFLOW_RUN, CWL_WORKFLOW_IN, CWL_WORKFLOW_OUT, \
+    CWL_VARIABLES, PLACEHOLDER, WORKFLOW_NAME, STEP_NAME, VARIABLES_NAME, \
+    WORKFLOWS, STEPS, SETTINGS, YAML_EXTENSIONS, CWL_EXTENSIONS, CWL_CLASS, \
+    CWL_CLASS_WORKFLOW, CWL_CLASS_COMMAND_LINE_TOOL, VGRID_ANY_OBJECT_TYPE
 from .cwl import make_step_dict, make_workflow_dict, get_linked_workflow, \
     make_settings_dict, check_workflow_is_valid, check_step_is_valid, \
     get_glob_value, get_glob_entry_keys, get_step_name_from_title, \
     get_output_lookup
 from .mig import vgrid_workflow_json_call
-from .pattern import Pattern, is_valid_pattern_object
-from .recipe import is_valid_recipe_dict, create_recipe_dict
-from .meow import build_workflow_object, pattern_has_recipes, \
-    get_workflow_tops, get_linear_workflow
+from .meow import build_workflow_object, pattern_has_recipes, Pattern, \
+    create_recipe_dict
 
 MEOW_NEW_PATTERN_BUTTON = 'meow_new_pattern_button'
 MEOW_EDIT_PATTERN_BUTTON = 'meow_edit_pattern_button'
@@ -65,19 +61,21 @@ DEFAULT_RESULT_NOTEBOOKS = [
 CWL_WORK_DIR_REQ = 'InitialWorkDirRequirement'
 
 DEFAULT_WORKFLOW_TITLE = 'workflow'
-WORKFLOW_TITLE_ARG = "export_name"
 DEFAULT_CWL_IMPORT_EXPORT_DIR = 'cwl_directory'
-CWL_IMPORT_EXPORT_DIR_ARG = 'cwl_dir'
 
 MODE = 'mode'
 AUTO_IMPORT = 'auto_import'
+WORKFLOW_TITLE_ARG = "export_name"
+CWL_IMPORT_EXPORT_DIR_ARG = 'cwl_dir'
+
 SUPPORTED_ARGS = {
     MODE: str,
     PATTERNS: dict,
     RECIPES: dict,
     VGRID: str,
     AUTO_IMPORT: bool,
-    CWL_IMPORT_EXPORT_DIR_ARG: str
+    CWL_IMPORT_EXPORT_DIR_ARG: str,
+    WORKFLOW_TITLE_ARG: str
 }
 
 FORM_RECIPE_SOURCE = 'Source'
@@ -336,7 +334,8 @@ WORKFLOW_FORM_INPUTS = {
             "All inputs for the %s."
             "<br/>"
             "For additional help and definitions please consult: "
-            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            "<a target='_blank' rel=noopener noreferrer' "
+            "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % WORKFLOW_NAME,
         INPUT_OPTIONAL: False
     },
@@ -348,7 +347,8 @@ WORKFLOW_FORM_INPUTS = {
             "All %s outputs. "
             "<br/>"
             "For additional help and definitions please consult: "
-            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            "<a target='_blank' rel=noopener noreferrer' "
+            "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % WORKFLOW_NAME,
         INPUT_OPTIONAL: True
     },
@@ -360,7 +360,8 @@ WORKFLOW_FORM_INPUTS = {
             "All %s steps. "
             "<br/>"
             "For additional help and definitions please consult: "
-            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            "<a target='_blank' rel=noopener noreferrer' "
+            "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % WORKFLOW_NAME,
         INPUT_OPTIONAL: False
     },
@@ -372,7 +373,8 @@ WORKFLOW_FORM_INPUTS = {
             "All %s requirements. "
             "<br/>"
             "For additional help and definitions please consult: "
-            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            "<a target='_blank' rel=noopener noreferrer' "
+            "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % WORKFLOW_NAME,
         INPUT_OPTIONAL: True
     }
@@ -409,7 +411,8 @@ STEP_FORM_INPUTS = {
             "papermill by default. "
             "<br/>"
             "For additional help and definitions please consult: "
-            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            "<a target='_blank' rel=noopener noreferrer' "
+            "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % STEP_NAME,
         INPUT_OPTIONAL: False
     },
@@ -421,7 +424,8 @@ STEP_FORM_INPUTS = {
             "A capturing location for the running command lines output stream."
             "<br/>"
             "For additional help and definitions please consult: "
-            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>",
+            "<a target='_blank' rel=noopener noreferrer' "
+            "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>",
         INPUT_OPTIONAL: True
     },
     FORM_STEP_INPUTS: {
@@ -432,7 +436,8 @@ STEP_FORM_INPUTS = {
             "All inputs for a %s."
             "<br/>"
             "For additional help and definitions please consult: "
-            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            "<a target='_blank' rel=noopener noreferrer' "
+            "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % STEP_NAME,
         INPUT_OPTIONAL: False
     },
@@ -444,7 +449,8 @@ STEP_FORM_INPUTS = {
             "All outputs for a %s."
             "<br/>"
             "For additional help and definitions please consult: "
-            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            "<a target='_blank' rel=noopener noreferrer' "
+            "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % STEP_NAME,
         INPUT_OPTIONAL: True
     },
@@ -456,7 +462,8 @@ STEP_FORM_INPUTS = {
             "Any %s requirements."
             "<br/>"
             "For additional help and definitions please consult: "
-            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            "<a target='_blank' rel=noopener noreferrer' "
+            "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % STEP_NAME,
         INPUT_OPTIONAL: True
     },
@@ -468,7 +475,8 @@ STEP_FORM_INPUTS = {
             "Any %s arguments."
             "<br/>"
             "For additional help and definitions please consult: "
-            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            "<a target='_blank' rel=noopener noreferrer' "
+            "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % STEP_NAME,
         INPUT_OPTIONAL: True
     },
@@ -480,7 +488,8 @@ STEP_FORM_INPUTS = {
             "Any %s hints. "
             "<br/>"
             "For additional help and definitions please consult: "
-            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            "<a target='_blank' rel=noopener noreferrer' "
+            "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % STEP_NAME,
         INPUT_OPTIONAL: True
     }
@@ -510,7 +519,8 @@ VARIABLES_FORM_INPUTS = {
             "Any %s variables. "
             "<br/>"
             "For additional help and definitions please consult: "
-            "<a target='_blank' rel=noopener noreferrer' href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
+            "<a target='_blank' rel=noopener noreferrer' "
+            "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % VARIABLES_NAME,
         INPUT_OPTIONAL: False
     }
@@ -547,9 +557,8 @@ NO_VGRID_MSG = "No VGrid has been specified so MEOW importing/exporting " \
                "'create_workflow_widget(vgrid='name_of_vgrid')'. "
 
 
-
-
 # Move this to input file
+# TODO update description
 def check_input_args(args):
     if not isinstance(args, dict):
         raise Exception("Arguments provided in invalid format")
@@ -560,18 +569,21 @@ def check_input_args(args):
                             % (arg, list(SUPPORTED_ARGS.keys())))
 
 
+# TODO update description
 def strip_dirs(path):
     if os.path.sep in path:
         path = path[path.rfind(os.path.sep) + 1:]
     return path
 
 
-def count_calls(calls, operation, type):
+# TODO update description
+def count_calls(calls, operation, operation_type):
     count = [i[2][NAME] for i in calls
-             if i[0] == operation and i[1] == type]
+             if i[0] == operation and i[1] == operation_type]
     return count
 
 
+# TODO update description
 def list_to_dict(to_convert):
     variables_dict = {}
     for variables in to_convert:
@@ -585,6 +597,7 @@ def list_to_dict(to_convert):
     return variables_dict
 
 
+# TODO update description
 def prepare_to_dump(to_export):
     new_dict = {}
     for key, value in to_export.items():
@@ -594,7 +607,10 @@ def prepare_to_dump(to_export):
     return new_dict
 
 
+# TODO update description
 class WorkflowWidget:
+    # TODO update description
+    # TODO allow for imports of patterns and recipes defined in code.
     def __init__(self, **kwargs):
 
         check_input_args(kwargs)
@@ -749,6 +765,7 @@ class WorkflowWidget:
             }
         }
 
+    # TODO update description
     def display_widget(self):
         widget = widgets.VBox(
             [
@@ -766,6 +783,7 @@ class WorkflowWidget:
 
         return widget
 
+    # TODO update description
     def __on_mode_selection_changed(self, change):
         new_mode = change['new']
         if change['type'] == 'change' \
@@ -780,6 +798,7 @@ class WorkflowWidget:
                 self.__construct_widget()
                 self.__update_workflow_visualisation()
 
+    # TODO update description
     def __check_state(self, state=None):
         if self.mode not in WIDGET_MODES:
             raise Exception("Internal state corrupted. Invalid mode %s. Only "
@@ -792,6 +811,7 @@ class WorkflowWidget:
                         "state %s. Should be only accessible to %s. "
                         % (state, self.mode))
 
+    # TODO update description
     def __construct_widget(self):
         self.__check_state()
 
@@ -801,6 +821,7 @@ class WorkflowWidget:
         elif self.mode == CWL_MODE:
             self.__construct_cwl_widget()
 
+    # TODO update description
     def __construct_meow_widget(self):
         self.__check_state(state=MEOW_MODE)
         self.button_elements = {}
@@ -859,6 +880,7 @@ class WorkflowWidget:
         with self.button_area:
             display(new_buttons)
 
+    # TODO update description
     def __construct_cwl_widget(self):
         self.__check_state(state=CWL_MODE)
         self.button_elements = {}
@@ -941,6 +963,7 @@ class WorkflowWidget:
         with self.button_area:
             display(new_buttons)
 
+    # TODO update description
     def new_pattern_clicked(self, button):
         self.__clear_feedback()
         self.__create_new_form(
@@ -958,6 +981,7 @@ class WorkflowWidget:
             PATTERN_NAME
         )
 
+    # TODO update description
     def edit_pattern_clicked(self, button):
         self.__clear_feedback()
         self.__create_new_form(
@@ -977,6 +1001,7 @@ class WorkflowWidget:
             selector_dict=self.meow[PATTERNS]
         )
 
+    # TODO update description
     def new_recipe_clicked(self, button):
         self.__clear_feedback()
         self.__create_new_form(
@@ -988,6 +1013,7 @@ class WorkflowWidget:
             RECIPE_NAME
         )
 
+    # TODO update description
     def edit_recipe_clicked(self, button):
         self.__clear_feedback()
         self.__create_new_form(
@@ -1001,6 +1027,7 @@ class WorkflowWidget:
             selector_dict=self.meow[RECIPES]
         )
 
+    # TODO update description
     def import_from_cwl_clicked(self, button):
         self.__close_form()
         self.__clear_feedback()
@@ -1010,16 +1037,19 @@ class WorkflowWidget:
         if status:
             self.__import_meow_workflow(**result)
 
+    # TODO update description
     def import_from_vgrid_clicked(self, button):
         self.__close_form()
         self.__clear_feedback()
         self.__import_from_vgrid()
 
+    # TODO update description
     def export_to_vgrid_clicked(self, button):
         self.__close_form()
         self.__clear_feedback()
         self.__export_to_vgrid()
 
+    # TODO update description
     def new_workflow_clicked(self, button):
         self.__clear_feedback()
         self.__create_new_form(
@@ -1034,6 +1064,7 @@ class WorkflowWidget:
             WORKFLOW_NAME
         )
 
+    # TODO update description
     def edit_workflow_clicked(self, button):
         self.__clear_feedback()
         self.__create_new_form(
@@ -1050,6 +1081,7 @@ class WorkflowWidget:
             selector_dict=self.cwl[WORKFLOWS]
         )
 
+    # TODO update description
     def new_step_clicked(self, button):
         self.__clear_feedback()
         self.__create_new_form(
@@ -1067,6 +1099,7 @@ class WorkflowWidget:
             STEP_NAME
         )
 
+    # TODO update description
     def edit_step_clicked(self, button):
         self.__clear_feedback()
         self.__create_new_form(
@@ -1086,6 +1119,7 @@ class WorkflowWidget:
             selector_dict=self.cwl[STEPS]
         )
 
+    # TODO update description
     def new_variables_clicked(self, button):
         self.__clear_feedback()
         self.__create_new_form(
@@ -1097,6 +1131,7 @@ class WorkflowWidget:
             VARIABLES_NAME
         )
 
+    # TODO update description
     def edit_variables_clicked(self, button):
         self.__clear_feedback()
         self.__create_new_form(
@@ -1110,6 +1145,7 @@ class WorkflowWidget:
             selector_dict=self.cwl[VARIABLES],
         )
 
+    # TODO update description
     def import_from_meow_clicked(self, button):
         self.__close_form()
         self.__clear_feedback()
@@ -1143,6 +1179,7 @@ class WorkflowWidget:
             )
         self.__enable_top_buttons()
 
+    # TODO update description
     def import_from_dir_clicked(self, button):
         self.__close_form()
         self.__clear_feedback()
@@ -1183,6 +1220,7 @@ class WorkflowWidget:
             self.__add_to_feedback("No CWL inputs were found")
         self.__enable_top_buttons()
 
+    # TODO update description
     def export_to_dir_clicked(self, button):
         # TODO update this description
         self.__close_form()
@@ -1309,6 +1347,7 @@ class WorkflowWidget:
             self.__add_to_feedback(
                 "toil-cwl-runner %s %s" % (cwl_filename, yaml_filename))
 
+    # TODO update description
     def __enable_top_buttons(self):
 
         if self.button_elements:
@@ -1389,6 +1428,7 @@ class WorkflowWidget:
                 self.button_elements[CWL_IMPORT_DIR_BUTTON].disabled = False
                 self.button_elements[CWL_EXPORT_DIR_BUTTON].disabled = False
 
+    # TODO update description
     def __create_new_form(
             self, form_parts, done_function, label_text, selector_key=None,
             selector_dict=None, delete_func=None
@@ -1590,6 +1630,7 @@ class WorkflowWidget:
         with self.form_area:
             display(form)
 
+    # TODO update description
     def __refresh_current_form_layout(self):
 
         rows = []
@@ -1604,17 +1645,20 @@ class WorkflowWidget:
         with self.form_area:
             display(form)
 
+    # TODO update description
     def __close_form(self):
         # self.displayed_form = None
         self.form_area.clear_output()
         self.__enable_top_buttons()
         self.__clear_current_form()
 
+    # TODO update description
     def __clear_current_form(self):
         # TODO update this description
 
         self.form_inputs = {}
 
+    # TODO update description
     def __make_help_button(self, help_text):
         # TODO update this description
 
@@ -1645,6 +1689,7 @@ class WorkflowWidget:
 
         return help_button, help_html
 
+    # TODO update description
     def __make_additional_input_row(self, key):
         hidden_label = widgets.Label(
             value="",
@@ -1662,6 +1707,7 @@ class WorkflowWidget:
             additional_input
         ])
 
+    # TODO update description
     def __make_dict_input_row(self, key, output_items):
 
         hidden_label = widgets.Label(
@@ -1690,6 +1736,7 @@ class WorkflowWidget:
 
         output_items.insert(-1, row)
 
+    # TODO update description
     def __form_single_text_input(
             self, key, display_text, help_text, optional=False
     ):
@@ -1727,6 +1774,7 @@ class WorkflowWidget:
             layout=widgets.Layout(width='100%'))
         return input_widget
 
+    # TODO update description
     def __form_multi_text_input(
             self, key, display_text, help_text, optional=False,
             additional_inputs=None,
@@ -1828,6 +1876,7 @@ class WorkflowWidget:
         )
         return section
 
+    # TODO update description
     def __form_multi_dict_input(
             self, key, display_text, help_text,
             optional=False, additional_inputs=None,
@@ -1936,6 +1985,7 @@ class WorkflowWidget:
         )
         return section
 
+    # TODO update description
     def __create_confirmation_buttons(
             self, confirmation_function, confirmation_args, confirm_text,
             cancel_text, cancel_feedback
@@ -1977,6 +2027,7 @@ class WorkflowWidget:
         with self.form_area:
             display(confirmation_buttons)
 
+    # TODO update description
     def __process_new_pattern(self, values, editing=False):
         # TODO update this description
 
@@ -2051,6 +2102,7 @@ class WorkflowWidget:
             self.__set_feedback(msg)
             return False
 
+    # TODO update description
     def __process_new_recipe(self, values, ignore_conflicts=False):
         # TODO update this description
 
@@ -2115,6 +2167,7 @@ class WorkflowWidget:
             )
             return False
 
+    # TODO update description
     def __process_new_workflow(self, values, editing=False):
         try:
             name = values[CWL_NAME]
@@ -2170,6 +2223,7 @@ class WorkflowWidget:
             )
             return False
 
+    # TODO update description
     def __process_new_step(self, values, editing=False):
         try:
             name = values[CWL_NAME]
@@ -2236,6 +2290,7 @@ class WorkflowWidget:
             )
             return False
 
+    # TODO update description
     def __process_new_variables(self, values, editing=False):
         try:
             name = values[CWL_NAME]
@@ -2279,6 +2334,7 @@ class WorkflowWidget:
             )
             return False
 
+    # TODO update description
     def __process_editing_pattern(self, values):
         # TODO update this description
 
@@ -2286,6 +2342,7 @@ class WorkflowWidget:
             self.__update_workflow_visualisation()
             self.__close_form()
 
+    # TODO update description
     def __process_editing_recipe(self, values):
         # TODO update this description
 
@@ -2293,21 +2350,25 @@ class WorkflowWidget:
             self.__update_workflow_visualisation()
             self.__close_form()
 
+    # TODO update description
     def __process_editing_workflow(self, values):
         if self.__process_new_workflow(values, editing=True):
             self.__update_workflow_visualisation()
             self.__close_form()
 
+    # TODO update description
     def __process_editing_step(self, values):
         if self.__process_new_step(values, editing=True):
             self.__update_workflow_visualisation()
             self.__close_form()
 
+    # TODO update description
     def __process_editing_variables(self, values):
         if self.__process_new_variables(values, editing=True):
             self.__update_workflow_visualisation()
             self.__close_form()
 
+    # TODO update description
     def __process_delete_pattern(self, to_delete):
         if to_delete in self.meow[PATTERNS]:
             self.meow[PATTERNS].pop(to_delete)
@@ -2315,6 +2376,7 @@ class WorkflowWidget:
         self.__update_workflow_visualisation()
         self.__close_form()
 
+    # TODO update description
     def __process_delete_recipe(self, to_delete):
         if to_delete in self.meow[RECIPES]:
             self.meow[RECIPES].pop(to_delete)
@@ -2322,6 +2384,7 @@ class WorkflowWidget:
         self.__update_workflow_visualisation()
         self.__close_form()
 
+    # TODO update description
     def __process_delete_workflow(self, to_delete):
         if to_delete in self.cwl[WORKFLOWS]:
             self.cwl[WORKFLOWS].pop(to_delete)
@@ -2329,6 +2392,7 @@ class WorkflowWidget:
         self.__update_workflow_visualisation()
         self.__close_form()
 
+    # TODO update description
     def __process_delete_step(self, to_delete):
         if to_delete in self.cwl[STEPS]:
             self.cwl[STEPS].pop(to_delete)
@@ -2336,6 +2400,7 @@ class WorkflowWidget:
         self.__update_workflow_visualisation()
         self.__close_form()
 
+    # TODO update description
     def __process_delete_variables(self, to_delete):
         if to_delete in self.cwl[SETTINGS]:
             self.cwl[SETTINGS].pop(to_delete)
@@ -2343,6 +2408,7 @@ class WorkflowWidget:
         self.__update_workflow_visualisation()
         self.__close_form()
 
+    # TODO update description
     def __import_from_vgrid(self, confirm=True):
         if not self.vgrid:
             self.__add_to_feedback(NO_VGRID_MSG)
@@ -2355,7 +2421,7 @@ class WorkflowWidget:
             _, response, _ = vgrid_workflow_json_call(
                 self.vgrid,
                 VGRID_READ,
-                'any',
+                VGRID_ANY_OBJECT_TYPE,
                 {},
                 print_feedback=False
             )
@@ -2416,6 +2482,7 @@ class WorkflowWidget:
             self.__add_to_feedback("Unexpected response: {}".format(response))
         self.__enable_top_buttons()
 
+    # TODO update description
     def __import_meow_workflow(self, **kwargs):
         response_patterns = kwargs.get(PATTERNS, None)
         response_recipes = kwargs.get(RECIPES, None)
@@ -2460,6 +2527,7 @@ class WorkflowWidget:
         self.__update_workflow_visualisation()
         self.__close_form()
 
+    # TODO update description
     def __export_to_vgrid(self):
         if not self.vgrid:
             self.__set_feedback(NO_VGRID_MSG)
@@ -2609,6 +2677,7 @@ class WorkflowWidget:
             "Export canceled. No VGrid data has been changed. "
         )
 
+    # TODO update description
     def __export_workflow(self, **kwargs):
         self.__clear_feedback()
         calls = kwargs.get('calls', None)
@@ -2675,11 +2744,14 @@ class WorkflowWidget:
                 self.__set_feedback(err)
         self.__close_form()
 
+    # TODO update description
     def __meow_to_cwl(self):
-        meow_workflow = build_workflow_object(
-            self.meow[PATTERNS],
-            self.meow[RECIPES]
-        )
+        valid, meow_workflow = build_workflow_object(self.meow[PATTERNS])
+
+        if not valid:
+            self.__set_feedback(
+                'Could not build workflow object. %s' % meow_workflow
+            )
 
         buffer_cwl = {
             WORKFLOWS: {},
@@ -2948,6 +3020,7 @@ class WorkflowWidget:
 
         return True, buffer_cwl
 
+    # TODO update description
     def __cwl_to_meow(self):
         buffer_meow = {
             PATTERNS: {},
@@ -3227,6 +3300,7 @@ class WorkflowWidget:
 
         return True, buffer_meow
 
+    # TODO update description
     def __import_from_dir(self):
         buffer_cwl = {
             WORKFLOWS: {},
@@ -3303,6 +3377,7 @@ class WorkflowWidget:
                             buffer_cwl[STEPS][filename] = step
         return True, buffer_cwl
 
+    # TODO update description
     def __import_cwl(self, **kwargs):
         workflows = kwargs.get(WORKFLOWS, None)
         steps = kwargs.get(STEPS, None)
@@ -3344,19 +3419,19 @@ class WorkflowWidget:
         self.__update_workflow_visualisation()
         self.__close_form()
 
+    # TODO update description
     def __update_workflow_visualisation(self):
         # TODO update this description
 
         self.__check_state()
 
         if self.mode == MEOW_MODE:
-            # try:
-            meow_workflow = build_workflow_object(
-                self.meow[PATTERNS],
-                self.meow[RECIPES]
-            )
-            # except:
-            #     meow_workflow = {}
+            valid, meow_workflow = build_workflow_object(self.meow[PATTERNS])
+
+            if not valid:
+                self.__set_feedback(
+                    'Could not build workflow object. %s' % meow_workflow
+                )
 
             visualisation = self.__get_meow_workflow_visualisation(
                 self.meow[PATTERNS],
@@ -3379,6 +3454,7 @@ class WorkflowWidget:
             with self.visualisation_area:
                 display(visualisation)
 
+    # TODO update description
     def __get_meow_workflow_visualisation(self, patterns, recipes, workflow):
         # TODO update this description
 
@@ -3396,7 +3472,7 @@ class WorkflowWidget:
 
         for pattern, pattern_dict in workflow.items():
             pattern_index = self.__get_node_index(pattern, pattern_display)
-            if pattern_has_recipes(patterns[pattern], recipes):
+            if pattern_has_recipes(patterns[pattern], recipes)[0]:
                 colour_display[pattern_index] = GREEN
             else:
                 colour_display[pattern_index] = RED
@@ -3458,6 +3534,7 @@ class WorkflowWidget:
 
         return Figure(marks=[graph], layout=fig_layout)
 
+    # TODO update description
     def __get_cwl_workflow_visualisation(self, workflows, steps, settings):
         # TODO update this description
 
@@ -3577,6 +3654,7 @@ class WorkflowWidget:
         return Figure(marks=[graph], layout=fig_layout)
 
     # TODO improve this to remove occasional flickering
+    # TODO update description
     def __toggle_tooltips(self, graph, node):
         if node['data']['tooltip']:
             if not graph.tooltip:
@@ -3590,6 +3668,7 @@ class WorkflowWidget:
                 graph.tooltip_style = {'opacity': 0.0}
                 graph.tooltip = None
 
+    # TODO update description
     def __set_meow_node_dict(self, pattern):
         # TODO update this description
 
@@ -3607,6 +3686,7 @@ class WorkflowWidget:
         }
         return node_dict
 
+    # TODO update description
     def __set_phantom_meow_node_dict(self, label):
         # TODO update this description
         node_dict = {
@@ -3617,6 +3697,7 @@ class WorkflowWidget:
         }
         return node_dict
 
+    # TODO update description
     def __set_cwl_step_dict(self, step):
         # TODO update this description
 
@@ -3636,6 +3717,7 @@ class WorkflowWidget:
         }
         return node_dict
 
+    # TODO update description
     def __set_phantom_cwl_node_dict(self, label):
         # TODO update this description
 
@@ -3647,6 +3729,7 @@ class WorkflowWidget:
         }
         return node_dict
 
+    # TODO update description
     def __get_node_index(self, pattern, nodes):
         # TODO update this description
 
@@ -3655,6 +3738,7 @@ class WorkflowWidget:
                 return index
         return -1
 
+    # TODO update description
     def __meow_visualisation_element_click(self, graph, element):
         # TODO update this description
 
@@ -3662,10 +3746,12 @@ class WorkflowWidget:
         # self.construct_new_edit_form(default=pattern)
         pass
 
+    # TODO update description
     def __cwl_visualisation_element_click(self, graph, element):
         # TODO update this description
         pass
 
+    # TODO update description
     def __add_to_feedback(self, to_add):
         # TODO update this description
 
@@ -3673,11 +3759,13 @@ class WorkflowWidget:
             self.feedback_area.value += "<br/>"
         self.feedback_area.value += to_add
 
+    # TODO update description
     def __set_feedback(self, to_set):
         # TODO update this description
 
         self.feedback_area.value = to_set
 
+    # TODO update description
     def __clear_feedback(self):
         # TODO update this description
 

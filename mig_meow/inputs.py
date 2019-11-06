@@ -1,9 +1,11 @@
 
 import os
 
-from .constants import CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_UPPERCASE
+from .constants import CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_UPPERCASE, \
+    VALID_PATTERN
 
 
+# TODO update description
 def check_input(variable, expected_type, name, or_none=False):
     """
     Checks if a given variable is of the expected type. May also be
@@ -19,22 +21,23 @@ def check_input(variable, expected_type, name, or_none=False):
     """
 
     if not variable and expected_type is not bool and or_none is False:
-        raise Exception('variable %s was not given' % name)
+        raise ValueError('variable %s was not given' % name)
 
     if not expected_type:
-        raise Exception('\'expected_type\' %s was not given' % expected_type)
+        raise ValueError('\'expected_type\' %s was not given' % expected_type)
 
     if not or_none:
         if not isinstance(variable, expected_type):
-            raise Exception('Expected %s type was %s, got %s'
+            raise TypeError('Expected %s type was %s, got %s'
                             % (name, expected_type, type(variable)))
     else:
         if not isinstance(variable, expected_type) \
                 and not isinstance(variable, type(None)):
-            raise Exception('Expected %s type was %s or None, got %s'
+            raise TypeError('Expected %s type was %s or None, got %s'
                             % (name, expected_type, type(variable)))
 
 
+# TODO update description
 def valid_string(variable, name, valid_chars):
     """
     Checks that all characters in a given string are present in a provided
@@ -59,6 +62,7 @@ def valid_string(variable, name, valid_chars):
                             % (char, name, variable, valid_chars))
 
 
+# TODO update description
 def valid_path(path, name, extensions=None):
     """
     Checks that a given string is a valid path Will raise an exception if it
@@ -96,3 +100,31 @@ def valid_path(path, name, extensions=None):
             raise Exception('Invalid character %s in string %s for variable '
                             '%s. Only valid characters are %s'
                             % (char, path, name, valid_chars))
+
+
+# TODO update description
+def is_valid_pattern_dict(to_test):
+    """Validates that the passed dictionary can be used to create a new
+    Pattern object.
+
+    :param: to_test: object to be tested. Must be dict.
+    :return: returns tuple. First value is boolean. True = to_test is Pattern,
+    False = to_test is not Pattern. Second value is feedback string.
+    """
+
+    if not to_test:
+        return False, 'A workflow pattern was not provided'
+
+    if not isinstance(to_test, dict):
+        return False, 'The workflow pattern was incorrectly formatted'
+
+    message = 'The workflow pattern had an incorrect structure'
+    for key, value in to_test.items():
+        if key not in VALID_PATTERN:
+            message += ' Is missing key %s' % key
+            return False, message
+        if not isinstance(value, VALID_PATTERN[key]):
+            message += ' %s is expected to have type %s but actually has %s' \
+                       % (value, VALID_PATTERN[key], type(value))
+            return False, message
+    return True, ''

@@ -5,7 +5,7 @@ import time
 
 from IPython.display import display
 
-from .input import check_input
+from .inputs import check_input
 from .constants import VGRID, MRSL_VGRID, VGRID_READ, VGRID_QUEUE_OBJECT_TYPE,\
     CANCEL_JOB, RESUBMIT_JOB, VGRID_CREATE
 from .mig import vgrid_job_json_call
@@ -69,20 +69,25 @@ UPPER = 'upper'
 TOP_BAR = 'top_bar'
 
 
+# TODO update description
 class PollingThread(threading.Thread):
+    # TODO update description
     def __init__(self, monitor_widget, stop_flag, timer):
         threading.Thread.__init__(self)
         self.monitor_widget = monitor_widget
         self.stop_flag = stop_flag
         self.timer = timer
 
+    # TODO update description
     def run(self):
         while not self.stop_flag.wait(self.timer):
             self.monitor_widget.update_queue_display()
 
 
+# TODO update description
 class MonitorWidget:
     # TODO extend this timer before deployment
+    # TODO update description
     def __init__(self, vgrid, timer=60, displayed_jobs=30):
 
         check_input(vgrid, str, 'vgrid')
@@ -100,19 +105,23 @@ class MonitorWidget:
         self.timer = timer
         self.__start_queue_display()
 
+    # TODO update description
     def __start_queue_display(self, *args):
         self.update_queue_display()
         polling_thread = PollingThread(self, self.__stop_polling, self.timer)
         polling_thread.daemon = True
         polling_thread.start()
 
+    # TODO update description
     def __stop_queue_display(self):
         self.__stop_polling.set()
 
+    # TODO update description
     def update_queue_display(self):
         self.jobs = self.get_vgrid_queue()
         self.__display_job_queue()
 
+    # TODO update description
     def get_vgrid_queue(self):
         attributes = {}
         _, response, _ = vgrid_job_json_call(
@@ -130,6 +139,7 @@ class MonitorWidget:
         else:
             raise Exception('something went wrong with retrieving the queue')
 
+    # TODO update description
     def __display_job_queue(self, *args):
 
         # first time run through
@@ -240,6 +250,7 @@ class MonitorWidget:
             display(queue_display)
         self.job_count = len(self.jobs)
 
+    # TODO update description
     def __get_job_display_row(self, job):
         row_items = []
         job_id = job[MRSL_JOB_ID]
@@ -270,6 +281,7 @@ class MonitorWidget:
         row_items.append(buttons)
         return row_items
 
+    # TODO update description
     def __get_job_interaction_buttons(self, job):
 
         disable_cancel = False
@@ -315,6 +327,7 @@ class MonitorWidget:
             },
         ]
 
+    # TODO update description
     def __display_func(self, button, job_id):
         self.__stop_queue_display()
 
@@ -342,6 +355,7 @@ class MonitorWidget:
             display(job_details)
         self.job_count = len(self.jobs)
 
+    # TODO update description
     def __back_to_queue_button(self):
         button = widgets.Button(
             value=False,
@@ -353,10 +367,12 @@ class MonitorWidget:
         button.on_click(self.__start_queue_display)
         return button
 
+    # TODO update description
     def __resubmit_func(self, button, job_id):
         # TODO implement
         print('resubmit func for %s' % job_id)
 
+    # TODO update description
     def __cancel_func(self, button, job_id):
         attributes = {
             MRSL_JOB_ID: job_id,
@@ -372,6 +388,7 @@ class MonitorWidget:
 
         print(response)
 
+    # TODO update description
     def display_widget(self):
         # TODO update this
         """"""

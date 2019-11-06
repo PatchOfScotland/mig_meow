@@ -86,8 +86,25 @@ RECIPE_LIST = 'recipe_list'
 VGRID_WORKFLOWS_OBJECT = 'workflows'
 VGRID_PATTERN_OBJECT_TYPE = 'workflowpattern'
 VGRID_RECIPE_OBJECT_TYPE = 'workflowrecipe'
+VGRID_ANY_OBJECT_TYPE = 'any'
 VGRID_QUEUE_OBJECT_TYPE = 'queue'
 VGRID_JOB_OBJECT_TYPE = 'job'
+CANCEL_JOB = 'cancel_job'
+RESUBMIT_JOB = 'resubmit_job'
+
+VALID_WORKFLOW_TYPES = [
+    VGRID_WORKFLOWS_OBJECT,
+    VGRID_PATTERN_OBJECT_TYPE,
+    VGRID_RECIPE_OBJECT_TYPE,
+    VGRID_ANY_OBJECT_TYPE
+]
+
+VALID_JOB_TYPES = [
+    VGRID_QUEUE_OBJECT_TYPE,
+    VGRID_JOB_OBJECT_TYPE,
+    CANCEL_JOB,
+    RESUBMIT_JOB
+]
 
 MRSL_VGRID = 'VGRID'
 
@@ -97,6 +114,13 @@ VGRID_CREATE = 'create'
 VGRID_READ = 'read'
 VGRID_UPDATE = 'update'
 VGRID_DELETE = 'delete'
+
+VALID_OPERATIONS = [
+    VGRID_CREATE,
+    VGRID_READ,
+    VGRID_UPDATE,
+    VGRID_DELETE
+]
 
 PATTERNS_DIR = '.workflow_patterns_home'
 RECIPES_DIR = '.workflow_recipes_home'
@@ -119,10 +143,7 @@ VGRID = 'vgrid'
 SOURCE = 'source'
 MOUNT_USER_DIR = 'mount_user_dir'
 PATTERNS = 'patterns'
-
-TRIGGER_ACTION = 'manual_trigger'
-CANCEL_JOB = 'cancel_job'
-RESUBMIT_JOB = 'resubmit_job'
+TRIGGER_RECIPES = 'trigger_recipes'
 
 TRIGGER_PATH = "trigger_path"
 TRIGGER_OUTPUT = "trigger_output"
@@ -162,8 +183,8 @@ VALID_PATTERN = {
     NAME: str,
     INPUT_FILE: str,
     TRIGGER_PATHS: list,
+    TRIGGER_RECIPES: dict,
     OUTPUT: dict,
-    RECIPES: list,
     VARIABLES: dict,
     VGRID: str
 }

@@ -2,7 +2,7 @@ import unittest
 
 from mig_meow.pattern import Pattern
 from mig_meow.constants import NAME, INPUT_FILE, TRIGGER_PATHS, RECIPES, \
-    OUTPUT, INPUT, VARIABLES
+    OUTPUT, VARIABLES, TRIGGER_RECIPES
 
 class WorkflowTest(unittest.TestCase):
     def setUp(self):
@@ -82,15 +82,13 @@ class WorkflowTest(unittest.TestCase):
             NAME: "standard_pattern",
             INPUT_FILE: "input_file",
             TRIGGER_PATHS: ['dir/regex.path'],
-            RECIPES: ['recipe', 'recipe'],
+            # TODO improve
+            TRIGGER_RECIPES: [],
+            # RECIPES: ['recipe', 'recipe'],
             OUTPUT: {
                 'output_file': 'dir/regex.path',
                 'another_output': 'dir/regex.path',
                 'wf_job': 'dir/notebook.path'
-            },
-            INPUT: {
-                'static_input': 'dir/regex.path',
-                'another_static_input': 'dir/regex.path'
             },
             VARIABLES: {
                 'input_file': 'input_file',

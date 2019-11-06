@@ -4,86 +4,37 @@ import os
 
 from .constants import VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
     NAME, INPUT_FILE, TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, \
-    TRIGGER_ACTION, VGRID_CREATE, OBJECT_TYPE, PERSISTENCE_ID, VGRID, \
-    MRSL_VGRID
-# from .notebook import get_containing_vgrid
-from .pattern import Pattern
-from .recipe import is_valid_recipe_dict
-
-
-def trigger(triggerable, print_feedback=True):
-    if isinstance(triggerable, Pattern):
-        return trigger_pattern(triggerable, print_feedback=print_feedback)
-    return trigger_recipe(triggerable, print_feedback=print_feedback)
-
-
-def trigger_pattern(vgrid, pattern, print_feedback=True):
-    if not isinstance(pattern, Pattern):
-        raise TypeError("The provided object '%s' is a %s, not a Pattern "
-                        "as expected" % (pattern, type(pattern)))
-    # TODO include some check on if this has been modified at all since last
-    #  import
-
-    try:
-        persistence_id = pattern.persistence_id
-    except AttributeError:
-        raise Exception("The provided pattern has not been registered with "
-                        "the VGrid already, so cannot be manually triggered. ")
-
-    attributes = {
-        OBJECT_TYPE: VGRID_PATTERN_OBJECT_TYPE,
-        PERSISTENCE_ID: persistence_id
-    }
-    return vgrid_workflow_json_call(vgrid,
-                                    VGRID_CREATE,
-                                    TRIGGER_ACTION,
-                                    attributes,
-                                    print_feedback=print_feedback)
-
-
-def trigger_recipe(vgrid, recipe, print_feedback=True):
-    if not isinstance(recipe, dict):
-        raise TypeError("The provided object '%s' is a %s, not a dict "
-                        "as expected" % (recipe, type(recipe)))
-
-    # TODO include some check on if this has been modified at all since last
-    #  import
-
-    try:
-        persistence_id = recipe[PERSISTENCE_ID]
-    except KeyError:
-        raise Exception("The provided recipe has not been registered with "
-                        "the VGrid already, so cannot be manually triggered. ")
-
-    attributes = {
-        OBJECT_TYPE: VGRID_RECIPE_OBJECT_TYPE,
-        PERSISTENCE_ID: persistence_id
-    }
-    return vgrid_workflow_json_call(vgrid,
-                                    VGRID_CREATE,
-                                    TRIGGER_ACTION,
-                                    attributes,
-                                    print_feedback=print_feedback)
+    VGRID_CREATE, OBJECT_TYPE, PERSISTENCE_ID, VGRID, \
+    MRSL_VGRID, VALID_OPERATIONS, VALID_WORKFLOW_TYPES, VALID_JOB_TYPES
+from .inputs import check_input
+from .meow import Pattern, is_valid_recipe_dict
 
 
 def export_pattern_to_vgrid(vgrid, pattern, print_feedback=True):
     """
-    Exports a given pattern to a MiG based Vgrid. Raises an exception if
-    the pattern object does not pass an integrity check before export.
-
-    :param pattern: Pattern object to export. Must a Pattern
-    :param print_feedback: (optional) In the event of feedback sets if it is
-    printed
-    to console or not. Default value is True.
-    :return: returns output from _vgrid_json_call function
+    Exports a given pattern to a MiG based Vgrid. Raises a TypeError or
+    ValueError if the pattern is not valid. Note this function is not used
+    within mig_meow and is intended for users who want to programmatically
+    alter vgrid workflows.
+    :param vgrid: (str) Vgrid to which pattern will be exported.
+    :param pattern: (Pattern) Pattern object to export.
+    :param print_feedback: (bool)[optional] In the event of feedback sets if
+    it is to be printed to console or not. Default is True.
+    :return: (function call to vgrid_workflow_json_call) if pattern is valid,
+    will call function 'vgrid_workflow_json_call'.
     """
+    check_input(vgrid, str, 'vgrid')
+
     if not isinstance(pattern, Pattern):
-        raise TypeError("The provided object '%s' is a %s, not a Pattern "
-                        "as expected" % (pattern, type(pattern)))
+        raise TypeError(
+            "The provided object '%s' is a %s, not a Pattern as expected"
+            % (pattern, type(pattern))
+        )
     status, msg = pattern.integrity_check()
     if not status:
-        raise Exception('The provided pattern is not a valid Pattern. '
-                        '%s' % msg)
+        raise ValueError(
+            'The provided pattern is not a valid Pattern. %s' % msg
+        )
 
     attributes = {
         NAME: pattern.name,
@@ -102,21 +53,25 @@ def export_pattern_to_vgrid(vgrid, pattern, print_feedback=True):
 
 def export_recipe_to_vgrid(vgrid, recipe, print_feedback=True):
     """
-    Exports a given recipe to a MiG based Vgrid. Raises an exception if
-    the recipe object does not a valid recipe.
-
-    :param recipe: Recipe object to export. Must a dict
-    :param print_feedback: (optional) In the event of feedback sets if it is
-    printed
-    to console or not. Default value is True.
-    :return: returns output from _vgrid_json_call function
+    Exports a given recipe to a MiG based Vgrid. Raises a TypeError or
+    ValueError if the recipe is not valid. Note this function is not used
+    within mig_meow and is intended for users who want to programmatically
+    alter vgrid workflows.
+    :param vgrid: (str) Vgrid to which recipe will be exported.
+    :param recipe: (dict) Recipe object to export.
+    :param print_feedback: (bool)[optional] In the event of feedback sets if
+    it is to be printed to console or not. Default value is True.
+    :return: (function call to vgrid_workflow_json_call) if recipe is valid,
+    will call function 'vgrid_workflow_json_call'.
     """
+    check_input(vgrid, str, 'vgrid')
+
     if not isinstance(recipe, dict):
         raise TypeError("The provided object '%s' is a %s, not a dict "
                         "as expected" % (recipe, type(recipe)))
     status, msg = is_valid_recipe_dict(recipe)
     if not status:
-        raise Exception('The provided recipe is not valid. '
+        raise ValueError('The provided recipe is not valid. '
                         '%s' % msg)
 
     return vgrid_workflow_json_call(vgrid,
@@ -129,11 +84,41 @@ def export_recipe_to_vgrid(vgrid, recipe, print_feedback=True):
 def vgrid_workflow_json_call(
         vgrid, operation, workflow_type, attributes, print_feedback=True):
     """
+    Validates input for a JSON workflow call to VGRID. Raises a TypeError or
+    ValueError if an invalid value is found. If no problems are found then a
+    JSON message is setup.
+    :param vgrid: (str) Vgrid to which workflow will be exported.
+    :param operation: (str) The operation type to be performed by the MiG based
+    JSON API. Valid operations are 'create', 'read', 'update' and 'delete'.
+    :param workflow_type: (str) MiG workflow object type. Valid are
+    'workflows', 'workflowpattern', 'workflowrecipe', and 'any',
+    :param attributes: (dict) A dictionary of arguments defining the specifics
+    of the requested operation.
+    :param print_feedback: (bool)[optional] In the event of feedback sets if
+    it is to be printed to console or not. Default value is True.
+    :return: (function call to __vgrid_json_call) If all inputs are valid,
+    will call function '__vgrid_json_call'.
     """
+    check_input(vgrid, str, 'vgrid')
+    check_input(operation, str, 'operation')
+    check_input(workflow_type, str, 'workflow_type')
+    check_input(attributes, dict, 'attributes', or_none=True)
+
+    if operation not in VALID_OPERATIONS:
+        raise ValueError(
+            'Requested operation %s is not a valid operation. Valid '
+            'operations are: %s' % (operation, VALID_OPERATIONS)
+        )
+
+    if workflow_type not in VALID_WORKFLOW_TYPES:
+        raise ValueError(
+            'Requested workflow type %s is not a valid workflow type. Valid '
+            'workflow types are: %s' % (workflow_type, VALID_WORKFLOW_TYPES)
+        )
 
     attributes[VGRID] = vgrid
 
-    return vgrid_json_call(
+    return __vgrid_json_call(
         operation, workflow_type, attributes, print_feedback=print_feedback
     )
 
@@ -141,39 +126,89 @@ def vgrid_workflow_json_call(
 def vgrid_job_json_call(vgrid, operation, workflow_type, attributes,
                         print_feedback=True):
     """
+    Validates input for a JSON job call to VGRID. Raises a TypeError or
+    ValueError if an invalid value is found. If no problems are found then a
+    JSON message is setup.
+    :param vgrid: (str) Vgrid to which recipe will be exported.
+    :param operation: (str) The operation type to be performed by the MiG based
+    JSON API. Valid operations are 'create', 'read', 'update' and 'delete'.
+    :param workflow_type: (str) MiG workflow action type. Valid are
+    'queue', 'job', 'cancel_job', and 'resubmit_job',
+    :param attributes: (dict) A dictionary of arguments defining the specifics
+    of the requested operation.
+    :param print_feedback: (bool)[optional] In the event of feedback sets if
+    it is to be printed to console or not. Default value is True.
+    :return: (function call to __vgrid_json_call) If all inputs are valid,
+    will call function '__vgrid_json_call'.
     """
+    check_input(vgrid, str, 'vgrid')
+    check_input(operation, str, 'operation')
+    check_input(workflow_type, str, 'workflow_type')
+    check_input(attributes, dict, 'attributes', or_none=True)
+
+    if operation not in VALID_OPERATIONS:
+        raise ValueError(
+            'Requested operation %s is not a valid operation. Valid '
+            'operations are: %s' % (operation, VALID_OPERATIONS)
+        )
+
+    if workflow_type not in VALID_JOB_TYPES:
+        raise ValueError(
+            'Requested workflow type %s is not a valid workflow type. Valid '
+            'workflow types are: %s' % (workflow_type, VALID_JOB_TYPES)
+        )
 
     attributes[MRSL_VGRID] = [vgrid]
 
-    return vgrid_json_call(
+    return __vgrid_json_call(
         operation, workflow_type, attributes, print_feedback=print_feedback
     )
 
 
-def vgrid_json_call(operation, workflow_type, attributes, print_feedback=True):
+# TODO update description
+def __vgrid_json_call(operation, workflow_type, attributes, print_feedback=True):
+    """
+    Makes JSON call to MiG. Will pull url and session_id from local
+    environment variables, as setup by MiG notebook spawner. Will raise
+    EnviromentError if these are not present.
+    :param operation: (str) The operation type to be performed by the MiG based
+    JSON API. Valid operations are 'create', 'read', 'update' and 'delete'.
+    :param workflow_type: (str) MiG workflow action type. Valid are
+    'workflows', 'workflowpattern', 'workflowrecipe', 'any', 'queue', 'job',
+    'cancel_job', and 'resubmit_job'
+    :param attributes: (dict) A dictionary of arguments defining the specifics
+    of the requested operation.
+    :param print_feedback: (bool)[optional] In the event of feedback sets if
+    it is to be printed to console or not. Default value is True.
+    :return: (Tuple (dict, dict, dict) Returns JSON call results as three
+    dicts. First is the header, then the body then the footer. Header contains
+    keys 'headers' and 'object_type', Body contains 'workflows' and
+    'object_type' and footer contains 'text' and 'object_type'.
+    """
 
     url = \
-        'https://sid.migrid.test/cgi-sid/workflowjsoninterface.py?output_for' \
-        'mat=json'
+        'https://sid.migrid.test/cgi-sid/workflowsjsoninterface.py?output_' \
+        'format=json'
     session_id = \
         "b8b404a58b02b4b1d8460a15228a75b26a01fb468416543ef6ad76743aae95ed"
     # TODO use this during deployment
     # try:
     #     url = os.environ['URL']
     # except KeyError:
-    #     raise EnvironmentError('Migrid URL was not specified in the local '
-    #                            'environment. This should be created '
-    #                            'automatically as part of the Notebook '
-    #                            'creation if the Notebook was created on '
-    #                            'IDMC. ')
+    #     raise EnvironmentError(
+    #         'Migrid URL was not specified in the local environment. This '
+    #         'should be created automatically as part of the Notebook creation '
+    #         'if the Notebook was created on IDMC. '
+    #     )
     # try:
     #     session_id = os.environ['SESSION_ID']
     # except KeyError:
-    #     raise EnvironmentError('Migrid SESSION_ID was not specified in '
-    #                            'the local environment. This should be '
-    #                            'created automatically as part of the '
-    #                            'Notebook creation if the Notebook was '
-    #                            'created on IDMC. ')
+    #     raise EnvironmentError(
+    #         'Migrid SESSION_ID was not specified in the local environment. '
+    #         'This should be created automatically as part of the Notebook '
+    #         'creation if the Notebook was created on IDMC. Currently this is '
+    #         'the only supported way to interact with a VGrid. '
+    #     )
 
     data = {
         'workflowsessionid': session_id,
@@ -187,6 +222,9 @@ def vgrid_json_call(operation, workflow_type, attributes, print_feedback=True):
         json_response = response.json()
     except json.JSONDecodeError as err:
         raise Exception('No feedback from MiG. %s' % err)
+
+    print(json_response)
+
     header = json_response[0]
     body = json_response[1]
     footer = json_response[2]
@@ -204,4 +242,3 @@ def vgrid_json_call(operation, workflow_type, attributes, print_feedback=True):
             print('footer: %s' % footer)
 
     return header, body, footer
-
