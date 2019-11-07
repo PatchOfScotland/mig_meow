@@ -9,7 +9,7 @@ from shutil import copyfile
 
 from IPython.display import display
 
-from .inputs import valid_path, valid_string
+from .inputs import valid_path, valid_string, check_input_args, check_input
 from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
     DEFAULT_JOB_NAME, SOURCE, PATTERN_NAME, RECIPE_NAME, OBJECT_TYPE, \
     VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
@@ -557,34 +557,50 @@ NO_VGRID_MSG = "No VGrid has been specified so MEOW importing/exporting " \
                "'create_workflow_widget(vgrid='name_of_vgrid')'. "
 
 
-# Move this to input file
-# TODO update description
-def check_input_args(args):
-    if not isinstance(args, dict):
-        raise Exception("Arguments provided in invalid format")
-
-    for arg in args.keys():
-        if arg not in SUPPORTED_ARGS:
-            raise Exception("Unsupported argument %s. Valid are: %s. "
-                            % (arg, list(SUPPORTED_ARGS.keys())))
-
-
-# TODO update description
 def strip_dirs(path):
+    """
+    Removes all directories from a path, leaving only the file name and
+    extension.
+
+    :param path: (str) The path to be stripped.
+
+    :return: (str) The last entry in the path. Will be a filename and
+    extension, or the lowest level directory.
+    """
     if os.path.sep in path:
         path = path[path.rfind(os.path.sep) + 1:]
     return path
 
 
-# TODO update description
 def count_calls(calls, operation, operation_type):
+    """
+    Gets the appropriate calls from a list of calls with the appropriate
+    operation and type.
+
+    :param calls: (list) A list of MiG JSON calls.
+
+    :param operation: (str) The JSON operation type.
+
+    :param operation_type: (str) The object type the operation will be
+    performed on.
+
+    :return: (list) a subset list of 'calls', where the call has the same
+    'operation' and 'operation_type' as those specified.
+    """
     count = [i[2][NAME] for i in calls
              if i[0] == operation and i[1] == operation_type]
     return count
 
 
-# TODO update description
 def list_to_dict(to_convert):
+    """
+    Converts a list of dictionaries to a dictionary.
+
+    :param to_convert: (list) List of dictionary elements with keys 'Name'
+    and 'Value' which will become the dictionary key and value respectively.
+
+    :return: (dict) Converted dictionary.
+    """
     variables_dict = {}
     for variables in to_convert:
         try:
@@ -597,8 +613,17 @@ def list_to_dict(to_convert):
     return variables_dict
 
 
-# TODO update description
 def prepare_to_dump(to_export):
+    """
+    Prepares a CWL definition dictionary for writing to file by creating a new
+    dictionary without the 'name' key as this is not a part of CWL and is only
+    used for internal working.
+
+    :param to_export: (dict) CWL dict to export.
+
+    :return: (dict) A new dictionary without internal data structures
+    attached.
+    """
     new_dict = {}
     for key, value in to_export.items():
         if key != CWL_NAME:
@@ -607,35 +632,73 @@ def prepare_to_dump(to_export):
     return new_dict
 
 
-# TODO update description
 class WorkflowWidget:
-    # TODO update description
     # TODO allow for imports of patterns and recipes defined in code.
     def __init__(self, **kwargs):
+        """
+        Constructor for a new WorkflowWidget. Takes optional keyword arguments.
 
-        check_input_args(kwargs)
+        :param mode: (str)[optional] The initial mode the widget will be
+        created in. Valid options are 'MEOW' and 'CWL'. Default is 'MEOW'.
+
+        :param patterns: (dict)[optional] An already defined dictionary of
+        meow pattern objects. If this is provided no automatic import will
+        occur at widget creation. Default is None.
+
+        :param recipes: (dict)[optional] An already defined dictionary of
+        meow recipe dictionaries. If this is provided no automatic import will
+        occur at widget creation. Default is None.
+
+        :param vgrid: (str)[optional] The name of a VGrid to connect to.
+        Required for import/export to/from VGrid. Default is None.
+
+        :param auto_import: (bool)[optional] True/False used to set if
+        automatic importing will occur if no MEOW of CWL data is present. On
+        entering a new mode, and if auto_import is True. Will attempt to
+        convert local data first. If none is present and in MEOW mode, will
+        attempt to connect to a VGrid and import data. If in CWL mode will
+        attempt to read 'cwl_dir' location. Default is False.
+
+        :param cwl_dir: (str)[optional] Directory path where CWL data will be
+        exported or imported to/from. Default value 'cwl_directory'.
+
+        :param export_name: (str)[optional] Workflow name used for CWL
+        workflows created by converting MEOW defintions. Default is 'workflow'.
+        """
+        check_input_args(kwargs, SUPPORTED_ARGS)
 
         self.mode = kwargs.get(MODE, None)
         if not self.mode:
             self.mode = MEOW_MODE
         if self.mode not in WIDGET_MODES:
-            raise Exception("Unsupported mode %s specified. Valid are %s. "
-                            % (self.mode, WIDGET_MODES))
+            raise AttributeError(
+                "Unsupported mode %s specified. Valid are %s. "
+                % (self.mode, WIDGET_MODES)
+            )
 
         cwl_dir = kwargs.get(CWL_IMPORT_EXPORT_DIR_ARG, None)
         if cwl_dir:
+            check_input(cwl_dir, str, CWL_IMPORT_EXPORT_DIR_ARG)
+            valid_path(cwl_dir, CWL_IMPORT_EXPORT_DIR_ARG)
             self.cwl_import_export_dir = cwl_dir
         else:
             self.cwl_import_export_dir = DEFAULT_CWL_IMPORT_EXPORT_DIR
 
         workflow_title = kwargs.get(WORKFLOW_TITLE_ARG, None)
         if workflow_title:
+            check_input(workflow_title, str, WORKFLOW_TITLE_ARG)
             self.workflow_title = workflow_title
         else:
             self.workflow_title = DEFAULT_WORKFLOW_TITLE
 
-        self.vgrid = kwargs.get(VGRID, None)
-        self.auto_import = kwargs.get(AUTO_IMPORT, False)
+        vgrid = kwargs.get(VGRID, None)
+        if vgrid:
+            check_input(vgrid, str, VGRID)
+            self.vgrid = vgrid
+
+        auto_import = kwargs.get(AUTO_IMPORT, False)
+        check_input(auto_import, bool, AUTO_IMPORT)
+        self.auto_import = auto_import
 
         self.mode_toggle = widgets.ToggleButtons(
             options=[i for i in WIDGET_MODES if isinstance(i, str)],
@@ -765,8 +828,12 @@ class WorkflowWidget:
             }
         }
 
-    # TODO update description
     def display_widget(self):
+        """
+        Ensures the WorkflowWidget is ready to be displayed before doing so.
+
+        :return: (WorkflowWidget) The current, display ready WorkflowWidget.
+        """
         widget = widgets.VBox(
             [
                 self.mode_toggle,
@@ -3542,101 +3609,97 @@ class WorkflowWidget:
         link_data = []
         colour_data = []
 
-        linked_workflows = {}
         node_indexes = {}
         index = 0
 
         for workflow_key, workflow in workflows.items():
-            status, feedback = get_linked_workflow(
+            linked_workflow = get_linked_workflow(
                 workflow,
                 steps,
                 settings[workflow_key][CWL_VARIABLES]
             )
-            if status:
-                linked_workflows[workflow_key] = feedback
+            for step_title, step_value in linked_workflow.items():
+                if step_title not in steps:
+                    break
 
-                for step_title, step_value in feedback.items():
-                    if step_title not in steps:
-                        break
+                step = steps[step_title]
+                node_data.append(self.__set_cwl_step_dict(step))
+                colour_data.append(GREEN)
+                name = "%s_%s" % (workflow_key, step_title)
+                node_indexes[name] = index
+                index += 1
 
-                    step = steps[step_title]
-                    node_data.append(self.__set_cwl_step_dict(step))
-                    colour_data.append(GREEN)
-                    name = "%s_%s" % (workflow_key, step_title)
-                    node_indexes[name] = index
+                for key, input in step_value['inputs'].items():
+                    node_data.append(
+                        self.__set_phantom_cwl_node_dict(input)
+                    )
+                    colour_data.append(WHITE)
+                    descendant_index = index
+                    link_data.append({
+                        'source': descendant_index,
+                        'target': node_indexes[name]
+                    })
                     index += 1
 
-                    for key, input in step_value['inputs'].items():
-                        node_data.append(
-                            self.__set_phantom_cwl_node_dict(input)
-                        )
-                        colour_data.append(WHITE)
-                        descendant_index = index
-                        link_data.append({
-                            'source': descendant_index,
-                            'target': node_indexes[name]
-                        })
-                        index += 1
+                for key, output in step_value['outputs'].items():
+                    if isinstance(output, dict) \
+                            and CWL_OUTPUT_GLOB in output:
+                        output = output[CWL_OUTPUT_GLOB]
+                    status, value = get_glob_value(
+                        output,
+                        step_title,
+                        workflow,
+                        settings
+                    )
 
-                    for key, output in step_value['outputs'].items():
-                        if isinstance(output, dict) \
-                                and CWL_OUTPUT_GLOB in output:
-                            output = output[CWL_OUTPUT_GLOB]
-                        status, value = get_glob_value(
-                            output,
-                            step_title,
-                            workflow,
-                            settings
-                        )
+                    node_data.append(
+                        self.__set_phantom_cwl_node_dict(value)
+                    )
+                    output_node_name = "%s_%s" % (name, key)
+                    node_indexes[output_node_name] = index
+                    colour_data.append(WHITE)
+                    descendant_index = index
+                    link_data.append({
+                        'source': node_indexes[name],
+                        'target': descendant_index
+                    })
+                    index += 1
 
-                        node_data.append(
-                            self.__set_phantom_cwl_node_dict(value)
-                        )
-                        output_node_name = "%s_%s" % (name, key)
-                        node_indexes[output_node_name] = index
-                        colour_data.append(WHITE)
-                        descendant_index = index
-                        link_data.append({
-                            'source': node_indexes[name],
-                            'target': descendant_index
-                        })
-                        index += 1
-
-                    for step_key, workflow_step in workflow[CWL_STEPS].items():
-                        for input in workflow_step[CWL_WORKFLOW_IN].values():
-                            if '/'  in input:
-                                break
-                            setting = settings[workflow_key][CWL_VARIABLES][input]
-                            if setting == PLACEHOLDER:
+                for step_key, workflow_step in workflow[CWL_STEPS].items():
+                    for input in workflow_step[CWL_WORKFLOW_IN].values():
+                        if '/'  in input:
+                            break
+                        setting = settings[workflow_key][CWL_VARIABLES][input]
+                        if setting == PLACEHOLDER:
+                            colour_data[node_indexes[name]] = RED
+                        if isinstance(setting, dict) \
+                                and CWL_YAML_CLASS in setting \
+                                and CWL_YAML_PATH in setting \
+                                and CWL_YAML_CLASS == 'File':
+                            if not os.path.exists(setting[CWL_YAML_PATH]):
                                 colour_data[node_indexes[name]] = RED
-                            if isinstance(setting, dict) \
-                                    and CWL_YAML_CLASS in setting \
-                                    and CWL_YAML_PATH in setting \
-                                    and CWL_YAML_CLASS == 'File':
-                                if not os.path.exists(setting[CWL_YAML_PATH]):
-                                    colour_data[node_indexes[name]] = RED
 
-                # loop through again once we know all steps have been set up
-                # to link steps together
-                for step_name, step_value in feedback.items():
-                    name = "%s_%s" % (workflow_key, step_name)
-                    if name not in node_indexes:
-                        break
+            # loop through again once we know all steps have been set up
+            # to link steps together
+            for step_name, step_value in linked_workflow.items():
+                name = "%s_%s" % (workflow_key, step_name)
+                if name not in node_indexes:
+                    break
 
-                    for key, ancestor in step_value['ancestors'].items():
-                        key = get_step_name_from_title(key, workflow)
-                        if '/' in ancestor:
-                            first = ancestor[:ancestor.index('/')]
-                            new_first = \
-                                get_step_name_from_title(first, workflow)
-                            ancestor = ancestor.replace(first, new_first)
-                        source_name = "%s_%s_%s" \
-                                      % (workflow_key, key, ancestor)
+                for key, ancestor in step_value['ancestors'].items():
+                    key = get_step_name_from_title(key, workflow)
+                    if '/' in ancestor:
+                        first = ancestor[:ancestor.index('/')]
+                        new_first = \
+                            get_step_name_from_title(first, workflow)
+                        ancestor = ancestor.replace(first, new_first)
+                    source_name = "%s_%s_%s" \
+                                  % (workflow_key, key, ancestor)
 
-                        link_data.append({
-                            'source': node_indexes[source_name],
-                            'target': node_indexes[name]
-                        })
+                    link_data.append({
+                        'source': node_indexes[source_name],
+                        'target': node_indexes[name]
+                    })
 
         graph = Graph(
             node_data=node_data,

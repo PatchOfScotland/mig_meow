@@ -6,10 +6,34 @@ from .constants import CWL_NAME, CWL_CWL_VERSION, CWL_CLASS, CWL_BASE_COMMAND,\
     CWL_VARIABLES, PLACEHOLDER, WORKFLOW_NAME, STEP_NAME, VARIABLES_NAME, \
     WORKFLOWS, STEPS, SETTINGS, CWL_CLASS_COMMAND_LINE_TOOL, \
     CWL_CLASS_WORKFLOW, CWL_WORKFLOW_RUN
+from .inputs import check_input
 
 
-# TODO update description
 def make_step_dict(name, base_command):
+    """
+    Creates a new dict defining a base CWL step.
+
+    :param name: (str) Name of CWL step.
+
+    :param base_command: (str) Base command for CWL step.
+
+    :return: (dict) Dictionary defining CWL step. Format is:
+    {
+        'name': str,
+        'cwlVersion': str,
+        'class': str,
+        'baseCommand': str,
+        'stdout': str,
+        'inputs': dict,
+        'outputs': dict,
+        'arguments': list,
+        'requirements': dict,
+        'hints': dict
+    }
+    """
+    check_input(name, str, 'name')
+    check_input(base_command, str, 'baseCommand')
+
     return {
         CWL_NAME: name,
         CWL_CWL_VERSION: 'v1.0',
@@ -24,8 +48,26 @@ def make_step_dict(name, base_command):
     }
 
 
-# TODO update description
 def make_workflow_dict(name):
+    """
+    Creates a new dict defining a base CWL workflow.
+
+    :param name: (str) Name of CWL workflow.
+
+    :return: (dict) Dictionary defining CWL workflow. Format is:
+    {
+        'name': str,
+        'cwlVersion': str,
+        'class': str,
+        'inputs': dict,
+        'outputs': dict,
+        'requirements': dict,
+        'steps': dict
+    }
+    """
+
+    check_input(name, str, 'name')
+
     return {
         CWL_NAME: name,
         CWL_CWL_VERSION: 'v1.0',
@@ -37,18 +79,52 @@ def make_workflow_dict(name):
     }
 
 
-# TODO update description
 def make_settings_dict(name, yaml):
+    """
+    Creates a new dict defining CWL input variables to be saved as a yaml file.
+
+    :param name: (str) Name of settings dict. This is used to match the dict
+    to a workflow or step file.
+
+    :param yaml: (dict) Variables to be saved.
+
+    :return: (dict) Dictionary input arguments. Format is:
+    {
+        'name': str,
+        'arguments': dict
+    }
+    """
+
+    check_input(name, str, 'name')
+    check_input(yaml, dict, 'settings', or_none=True)
+
     return {
         CWL_NAME: name,
         CWL_VARIABLES: yaml
     }
 
 
-# TODO update description
 def get_linked_workflow(workflow, steps, settings):
+    """
+    Determines static workflow using CWL definitions. This will attempt to get
+    all steps defined in the 'workflow' and construct a dict of nodes to be
+    displayed.
+
+    :param workflow: (dict) A CWL workflow dictionary.
+
+    :param steps: (dict) A dict of CWL step dictionaries.
+
+    :param settings: (dict) A CWL arguments dictionary.
+
+    :return: Tuple (dict) Returns a dict of workflow nodes. Format is:
+    {
+        'inputs': dict,
+        'outputs': dict,
+        'ancestors': dict
+    }
+    """
+
     workflow_nodes = {}
-    # settings = combine_settings(settings)
 
     for step_title, step in workflow[CWL_STEPS].items():
         step_name = get_step_name_from_title(step_title, workflow)
@@ -85,8 +161,10 @@ def get_linked_workflow(workflow, steps, settings):
             full_output = '%s/%s' % (step_name, output)
             if step_name not in steps:
                 break
-            if steps[step_name][CWL_OUTPUTS][output][CWL_OUTPUT_TYPE] == 'File':
-                output_value = steps[step_name][CWL_OUTPUTS][output][CWL_OUTPUT_BINDING]
+            if steps[step_name][CWL_OUTPUTS][output][CWL_OUTPUT_TYPE] \
+                    == 'File':
+                output_value = \
+                    steps[step_name][CWL_OUTPUTS][output][CWL_OUTPUT_BINDING]
                 if isinstance(output_value, dict):
                     glob = output_value[CWL_OUTPUT_GLOB]
                     if glob.startswith('$(inputs'):
@@ -104,25 +182,46 @@ def get_linked_workflow(workflow, steps, settings):
                             output_key = step[CWL_WORKFLOW_IN][glob]
                             output_value = settings[output_key]
                     else:
-                        msg = 'Unsupported format. Glob command "%s" does ' \
-                              'not take parameters from inputs. ' % glob
-                        return False, msg
+                        break
                 workflow_nodes[step_name]['outputs'][full_output] = \
                     output_value
 
-    return True, workflow_nodes
+    return workflow_nodes
 
 
-# TODO update description
 def get_step_name_from_title(title, workflow):
+    """
+    Gets the specific name of a step according to the longer auto-generated
+    but definately unique title.
+
+    :param title: (str)
+
+    :param workflow: (dict) A CWL workflow dict.
+
+    :return: (str) Name derived from title, according to workflow definition.
+    """
     name = workflow[CWL_STEPS][title][CWL_WORKFLOW_RUN]
     if '.' in name:
         name = name[:name.index('.')]
     return name
 
 
-# TODO update description
 def check_workflow_is_valid(workflow_name, cwl):
+    """
+    Checks that a given workflow is valid, with a corresponding arguments
+    definiton and that no placeholder values are present.
+
+    :param workflow_name: (str)
+
+    :param cwl: (dict) A dict of CWL defitions, including workflows, steps and
+    arguments.
+
+    :return: (Tuple (bool, str) If workflow is valid returns a tuple of first
+    value True and second value an empty string. Else, returns a tuple of
+    first value False, with the second value being an explanatory error
+    message.
+    """
+
     if workflow_name not in cwl[WORKFLOWS]:
         msg = "%s \'%s\' does not exist within the current CWL definitions. " \
               % (WORKFLOW_NAME, workflow_name)
@@ -165,21 +264,50 @@ def check_workflow_is_valid(workflow_name, cwl):
     return True, ''
 
 
-# TODO update description
 def check_step_is_valid(step_name, cwl):
+    """
+    Checks that a given step is valid.
+
+    :param step_name: (str) Name of step to check.
+
+    :param cwl: (dict) Dictionary of CWL steps dictionaries.
+
+    :return: (Tuple (bool, str) If step is valid returns a tuple of first
+    value True and second value an empty string. Else, returns a tuple of
+    first value False, with the second value being an explanatory error
+    message.
+    """
+
     if step_name not in cwl[STEPS]:
         msg = "%s \'%s\' does not exist within the current CWL definitions. " \
               % (STEP_NAME, step_name)
         return False, msg
-    step = cwl[STEPS][step_name]
 
     return True, ''
 
 
-# TODO update description
 def get_glob_value(glob, step_name, workflow_cwl, settings_cwl):
+    """
+    Attempts to get the value associated with a glob gathering operation given
+    the currently defined workflow, steps and arguments.
+
+    :param glob: (str) The glob definition string.
+
+    :param step_name: (str) The name of the step the glob variable is derived
+    from.
+
+    :param workflow_cwl: (dict) A CWL workflow dictionary.
+
+    :param settings_cwl: (dict) A CWL arguments dictionary.
+
+    :return: (Tuple(bool, string)) If 'glob' input was not formatted
+    correctly or could not be found then a tuple will be returned with the
+    first value being False, and the second being an appropriate error
+    message. If no problems are encountered then a tuple is returned with the
+    first value being True and the appropriate argument in the second value.
+    """
+
     if '$' in glob:
-        # try:
         glob = glob[glob.index('(') + 1:glob.index(')')]
         inputs = glob.split('.')
         if inputs[0] != CWL_INPUTS:
@@ -190,9 +318,6 @@ def get_glob_value(glob, step_name, workflow_cwl, settings_cwl):
         settings_key = ''
         workflow_steps = list(workflow_cwl[CWL_STEPS].keys())
         for step in workflow_steps:
-            run = workflow_cwl[CWL_STEPS][step][CWL_WORKFLOW_RUN]
-            if '.' in run:
-                run = run[:run.index('.')]
             if step == step_name:
                 settings_key = \
                     workflow_cwl[CWL_STEPS][step][CWL_WORKFLOW_IN][inputs[1]]
@@ -204,14 +329,30 @@ def get_glob_value(glob, step_name, workflow_cwl, settings_cwl):
         setting = settings_cwl[settings_key]
 
         return True, setting
-        # except Exception as exception:
-        #     return False, str(exception)
     else:
         return True, glob
 
 
-# TODO update description
 def get_glob_entry_keys(glob, step_name, workflow_cwl):
+    """
+    Attempts to get a key/value pair from a glob definition. This is the pair
+    of lookups within the appropriate arguments dictionary when the CWL is
+    imported from MEOW definitions.
+
+    :param glob: (str) The glob definition string.
+
+    :param step_name: (str) The name of the step the glob variable is derived
+    from.
+
+    :param workflow_cwl: (dict) A CWL workflow dictionary.
+
+    :return: (Tuple(bool, string or Tuple(string, string)) If 'glob'
+    input was not formatted correctly or could not be found then a tuple will
+    be returned with the first value being False, and the second being an
+    appropriate error message. If no problems are encountered then a tuple is
+    returned with the first value being True and a tuple of the key/value
+    pairs being the the second value.
+    """
     if '$' in glob:
         try:
             glob = glob[glob.index('(') + 1:glob.index(')')]
@@ -226,7 +367,6 @@ def get_glob_entry_keys(glob, step_name, workflow_cwl):
             if settings_key.endswith('_key'):
                 entry = settings_key[:settings_key.rfind('_')]
                 value_key = "%s_value" % entry
-
                 return True, (settings_key, value_key)
 
             elif settings_key.endswith('_value'):
@@ -240,8 +380,24 @@ def get_glob_entry_keys(glob, step_name, workflow_cwl):
     return False, msg
 
 
-# TODO update description
 def get_output_lookup(target_step_key, target_value, workflow, steps):
+    """
+    Retrieves the output value for a given step with a given value.
+
+    :param target_step_key: (str) Name of the CWL step.
+
+    :param target_value: (str) Name of the CWL step output.
+
+    :param workflow: (dict) CWL Workflow dict containing the step.
+
+    :param steps: (dict) CWL steps dict.
+
+    :return: (Tuple(bool, string)) If output was not found then a tuple will
+    be returned with the first value being False, and the second being an
+    appropriate error message. If no problems are encountered then a tuple is
+    returned with the first value being True and the output argument in the
+    second value.
+    """
     if target_step_key in workflow[CWL_STEPS]:
         target_step_key = get_step_name_from_title(
             target_step_key,

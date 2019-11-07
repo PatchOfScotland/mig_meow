@@ -12,14 +12,17 @@ from .constants import OUTPUT_MAGIC_CHAR, DESCENDANTS, WORKFLOW_INPUTS, \
     VALID_RECIPE, SOURCE, RECIPE
 
 
-# TODO update description
 def is_valid_recipe_dict(to_test):
     """
     Validates that the passed dictionary expresses a recipe.
 
-    :param to_test:
-    :return: returns tuple. First value is boolean. True = to_test is recipe,
-    False = to_test is not recipe. Second value is feedback string.
+    :param to_test: (dict) A dictionary, hopefully expressing a meow recipe
+
+    :return: (Tuple (bool, string). Returns a tuple where if the provided
+    dictionary does not express a meow recipe the first value will be False.
+    Otherwise it will be True. If the first value is False then an explanatory
+    error message is provided in the second value which will otherwise be an
+    empty string.
     """
 
     if not to_test:
@@ -42,13 +45,16 @@ def is_valid_recipe_dict(to_test):
     return True, ''
 
 
-# TODO update description
 def is_valid_pattern_object(to_test):
-    """Validates that the passed object is a Pattern
+    """
+    Validates that the passed object is a meow Pattern
 
-    :param: to_test: object to be tested.
-    :return: returns tuple. First value is boolean. True = to_test is Pattern,
-    False = to_test is not Pattern. Second value is feedback string.
+    :param: to_test: (dict) object, hopefully is a Pattern class object..
+
+    :return: (Tuple (bool, string) Returns a tuple where if the provided
+    object is not a Pattern the first value will be False. Otherwise it will
+    be True. If the first value is False then an explanatory error message is
+    provided in the second value which will otherwise be an empty string.
     """
 
     if not to_test:
@@ -60,26 +66,48 @@ def is_valid_pattern_object(to_test):
     return True, ''
 
 
-# TODO update description
 def check_patterns_dict(patterns):
+    """
+    Validates that the given object is a dictionary of valid patterns.
+
+    :param patterns: (dict) A dictionary of Pattern class objects.
+
+    :return: (Tuple (bool, string) Returns a tuple where if the provided
+    object is not a dict of valid Pattern objects the first value will be
+    False. Otherwise it will be True. If the first value is False then an
+    explanatory error message is provided in the second value which will
+    otherwise be an empty string.
+    """
     if not isinstance(patterns, dict):
         return False, 'The provided patterns were not in a dict'
     for pattern in patterns.values():
+        if not isinstance(pattern, Pattern):
+            return False, \
+                   'Object %s is a  %s, not the expected Pattern. '\
+                   % (pattern, type(pattern))
+
         valid, feedback = is_valid_pattern_object(pattern)
         if not valid:
             return False, 'Pattern %s was not valid. %s' % (pattern, feedback)
     return True, ''
 
 
-# TODO update description
 def check_recipes_dict(recipes):
+    """
+    Validate that the given object is a dictionary of meow recipes.
+
+    :param recipes: (dict) A dictionary of meow recipe dictionaries.
+
+    :return: (Tuple (bool, string) Returns a tuple where if the provided
+    object is not a dict of meow recipe dictionaries the first value will be
+    False. Otherwise it will be True. If the first value is False then an
+    explanatory error message is provided in the second value which will
+    otherwise be an empty string.
+    """
     if not isinstance(recipes, dict):
         return False, 'The provided recipes were not in a dict'
     else:
         for recipe in recipes.values():
-            # TODO remove this placeholder
-            recipe['mount_user_dir'] = True
-
             valid, feedback = is_valid_recipe_dict(recipe)
             if not valid:
                 return False, \
@@ -87,28 +115,31 @@ def check_recipes_dict(recipes):
     return True, ''
 
 
-# TODO update description
 class Pattern:
-    # TODO update description
     def __init__(self, parameters):
-        """Constructor for new pattern object. Used within MEOW as a more
-        user friendly and controllable way of creating and manipulating
-        patterns, as opposed to a raw dict
+        """
+        Constructor for new pattern object. Used within MEOW as a more user
+        friendly and controllable way of creating and manipulating meow
+        patterns, as opposed to a raw dict. Will raise a TypeError if
+        incorrect parameters given.
 
-        Takes a single input. This can be either a string, which is used as
-        the patterns name when defining a new pattern, or can be a dict which
-        already expresses a complete pattern. The dict option is used during
-        the importing of data from the mig and should only be used by expert
-        users."""
+        :param parameters: (string or dict) Takes a single input. This can be
+        either a string, which is used as the patterns name when defining a
+        new pattern, or can be a dict which already expresses a complete
+        pattern. The dict option is used during the importing of data from
+        the mig and should only be used by expert users.
+        """
         # if given only a string use this as a name, it is the basis of a
         # completely new pattern
         if isinstance(parameters, str):
-            valid_string(parameters,
-                         'pattern_name',
-                         CHAR_UPPERCASE
-                         + CHAR_LOWERCASE
-                         + CHAR_NUMERIC
-                         + CHAR_LINES)
+            valid_string(
+                parameters,
+                'pattern_name',
+                CHAR_UPPERCASE
+                + CHAR_LOWERCASE
+                + CHAR_NUMERIC
+                + CHAR_LINES
+            )
             self.name = parameters
             self.trigger_file = None
             self.trigger_paths = []
@@ -133,11 +164,20 @@ class Pattern:
                         recipes.append(v2['name'])
             self.recipes = recipes
             return
-        raise Exception('Pattern requires either a str input as a name for a '
-                        'new pattern, or a dict defining a complete pattern')
+        raise TypeError(
+            'Pattern requires either a str input as a name for a new pattern, '
+            'or a dict defining a complete pattern. Was instead given a %s. '
+            % type(parameters)
+        )
 
-    # TODO update description
     def __str__(self):
+        """
+        Creates a string that expressed the current state of the Pattern
+        object. Only displays parameters that should be directly editable by
+        users.
+
+        :return: (str) String expressing current Pattern object state.
+        """
         string = 'Name: %s, ' \
                  'Input(s): %s, ' \
                  'Trigger(s): %s, ' \
@@ -152,8 +192,17 @@ class Pattern:
                     self.variables)
         return string
 
-    # TODO update description
     def __eq__(self, other):
+        """
+        Tests if a given object is equal to this Pattern object.
+
+        :param other: (Object) Object to test for equality.
+
+        :return: (bool) True/False, with True denoting that the two Pattern
+        objects are equal.
+        """
+        if not other:
+            return False
         if not isinstance(other, Pattern):
             return False
         if self.name != other.name:
@@ -186,13 +235,14 @@ class Pattern:
                 return False
         return True
 
-    # TODO update description
-    def display_str(self):
+    def display_dag_str(self):
         """
-        Creates and display ready string, expressing the current Pattern state.
-        Only diplays the Pattern name, trigger file, trigger paths, outputs
-        and recipes as any other characteristics are internal system parameters
-        :return: str
+        Creates and display ready string, expressing the current Pattern
+        state for a dag graph. Only displays the Pattern name, trigger file,
+        trigger paths, outputs and recipes as any other characteristics are
+        internal system parameters, or unnecessary for the dag.
+
+        :return: (str) String expressing current Pattern object state.
         """
         string = 'Name: %s\n' \
                  'Input(s): %s\n' \
@@ -206,14 +256,13 @@ class Pattern:
                     self.recipes)
         return string
 
-    # TODO update description
     def integrity_check(self):
         """
         Performs some basic checks on the data within a pattern to check
         that all required fields have been filled out as it is currently very
         possible to create incomplete patterns.
 
-        :return: (bool, str) tuple. Bool is a marker of if the pattern has
+        :return: (Tuple (bool, str)). Bool is a marker of if the pattern has
         passed the integrity check whilst str is a reason for a fail, or
         warnings of possible issues in the event of a pass.
         """
@@ -257,21 +306,23 @@ class Pattern:
                                "also add it to the variables dict" % output)
         return True, warning
 
-    # TODO update description
     def add_single_input(self, input_file, regex_path, output_path=None):
         """
         Defines a single input for a pattern. That is, a path that when a
         single file is either created or modified and matches said path, the
-        recipe will be triggered taking that file as input.
+        recipe will be triggered taking that file as input. Raises
+        AttributeError if an input is already defined.
 
-        Takes 2 mandatory inputs. 'input_file' is the variable name used to
-        refer to the triggering file within the recipe. 'regex_path' is path
-        within the mig against which any file creation or modification events
-        are compared. The path should be given relative to the vgrid home
-        directory so the path 'dir/file.txt' would match the file 'file.txt'
-        within the directory 'dir' that is contained within the vgrid folder
-        itself. Paths can, and should be expressed using regular expressions
-        in order to match multiple files and so create a dynamic workflow.
+        :param input_file: (str) 'input_file' is the variable name used to
+        refer to the triggering file within the recipe.
+
+        :param regex_path: (str) 'regex_path' is path against which any file
+        creation or modification events are compared. The path should be given
+        relative to the vgrid home directory so the path 'dir/file.txt' would
+        match the file 'file.txt' within the directory 'dir' that is contained
+        within the vgrid folder itself. Paths can, and should be expressed
+        using regular expressions in order to match multiple files and so
+        create a dynamic workflow.
         For example:
 
         initial_data/.*\\.hdf5
@@ -280,19 +331,22 @@ class Pattern:
         data. Note that as string expression of regular expression normal use
         of escape characters and the like apply.
 
-        'output_path' may also be defined. If done so, this will be the path
-        where the input file will be copied. This is useful if some data
-        processing is taking place on the input and you require that data, as
-        the triggering file itself will remain unchanged. Note that this is a
-        regular string path and can be hard coded such as 'dir/file.txt'
-        which will always write to the same location. Alternatively the '*'
-        character can be used to take the name of the triggering file.
+        :param output_path: (str)[optional] 'output_path' may also be defined.
+        If done so, this will be the path where the input file will be copied
+        after job completion. This is useful if some data processing is taking
+        place on the input and you require that data, as the triggering file
+        itself will remain unchanged. Note that this is a regular string path
+        and can be hard coded such as 'dir/file.txt' which will always write
+        to the same location. Alternatively the '*' character can be used to
+        take the name of the triggering file.
         For example:
 
         'output_dir/*.hdf5'
 
         When triggered by a file called 'filename.txt' this would copy the
-        output to output_dir/filename.hdf5
+        output to output_dir/filename.hdf5. Default is None.
+
+        :return: No return.
         """
 
         check_input(input_file, str, 'input_file')
@@ -307,37 +361,44 @@ class Pattern:
             else:
                 self.add_variable(input_file, input_file)
         else:
-            raise Exception('Could not create single input %s, as input '
-                            'already defined' % input_file)
+            raise AttributeError(
+                'Could not create single input %s, as input already defined'
+                % input_file
+            )
 
-    # TODO update description
     def add_gathering_input(self, input_file, path_list, output_path=None):
         """
-        Defines a gathering input for a pattern. That is, a collection of
+         Defines a gathering input for a pattern. That is, a collection of
         paths that when each individual path is either created or modified,
         a buffer file containing all the specified paths is updated. Once all
         files are present in the buffer then the recipe is triggered by it
         according to the single input trigger, with the buffer as the trigger.
+        Raises AttributeError if an input is already defined.
 
-        Takes 2 mandatory inputs. 'input_file' is the variable name used to
-        refer to the triggering file within the recipe. 'path_list' is a list
+        :param input_file: (str) 'input_file' is the variable name used to
+        refer to the triggering file within the recipe.
+
+        :param path_list: (list) 'path_list' is a list
         of paths which will be combined into a single buffer file as so used
         to trigger a job. Note that these paths are hard coded as paths and
-        are not evaluated as regular expressions
+        are not evaluated as regular expressions.
 
-        'output_path' may also be defined. If done so, this will be the path
-        where the input file will be copied. This is useful if some data
-        processing is taking place on the input and you require that data, as
-        the triggering file itself will remain unchanged. Note that this is a
-        regular string path and can be hard coded such as 'dir/file.txt'
-        which will always write to the same location. Alternatively the '*'
-        character can be used to take the name of the triggering file.
+        :param output_path: (str)[optional] 'output_path' may also be defined.
+        If done so, this will be the path where the input file will be copied.
+        This is useful if some data processing is taking place on the input
+        and you require that data, as the triggering file itself will remain
+        unchanged. Note that this is a regular string path and can be hard
+        coded such as 'dir/file.txt' which will always write to the same
+        location. Alternatively the '*' character can be used to take the name
+        of the triggering file.
         For example:
 
         'output_dir/*.hdf5'
 
         When triggered by a file called 'filename.txt' this would copy the
-        output to output_dir/filename.hdf5
+        output to output_dir/filename.hdf5. Default is None.
+
+        :return: No return.
         """
         check_input(input_file, str, 'input_file')
         check_input(path_list, list, 'path_list')
@@ -353,10 +414,11 @@ class Pattern:
             for path in path_list:
                 self.trigger_paths.append(path)
         else:
-            raise Exception('Could not create gathering input %s, as input '
-                            'already defined' % input_file)
+            raise AttributeError(
+                'Could not create gathering input %s, as input already '
+                'defined' % input_file
+            )
 
-    # TODO update description
     def add_output(self, output_name, output_location):
         """
         Adds output to the pattern. That is, defines some file that is copied
@@ -364,18 +426,22 @@ class Pattern:
         recipe at runtime is should be added as output using this method or
         else it may be lost.
 
-        Takes two inputs, 'output_name' is the variable name used within the
-        recipe to refer to the output file, whilst 'output_location' is the
-        path where the file will be copied on job completion. Note that this
-        is a string path and can be hard coded such as 'dir/file.txt'
-        which will always write to the same location. Alternatively the '*'
-        character can be used to take the name of the triggering file.
+        :param output_name: (str) variable name used within the recipe to
+        refer to the output file.
+
+        :param output_location: (str) path where the file will be copied on
+        job completion. Note that this is a string path and can be hard coded
+        such as 'dir/file.txt' which will always write to the same location.
+        Alternatively the '*' character can be used to take the name of the
+        triggering file.
         For example:
 
         'output_dir/*.hdf5'
 
         When triggered by a file called 'filename.txt' this would copy the
-        output to output_dir/filename.hdf5
+        output to output_dir/filename.hdf5.
+
+        :return: No return.
         """
         check_input(output_name, str, 'output_name')
         check_input(output_location, str, 'output_location')
@@ -387,41 +453,50 @@ class Pattern:
             raise Exception('Could not create output %s as already defined'
                             % output_name)
 
-    # TODO update description
     def return_notebook(self, output_location):
         """
-        Adds the notebook used to run the job as output. 'output_location' is
-        the path where the file will be copied on job completion. Note that
-        this is a string path and can be hard coded such as 'dir/file.txt'
-        which will always write to the same location. Alternatively the '*'
-        character can be used to take the name of the triggering file.
+        Adds the notebook used to run the job as output.
+
+        :param output_location: (str) The path where the file will be copied
+        on job completion. Note that this is a string path and can be hard
+        coded such as 'dir/file.txt' which will always write to the same
+        location. Alternatively the '*' character can be used to take the name
+        of the triggering file.
         For example:
 
         'output_dir/*.hdf5'
 
         When triggered by a file called 'filename.txt' this would copy the
-        output to output_dir/filename.hdf5
+        output to output_dir/filename.hdf5.
+
+        :return: No return.
         """
         check_input(output_location, str, 'output_location')
         self.add_output(DEFAULT_JOB_NAME, output_location)
 
-    # TODO update description
     def add_recipe(self, recipe):
         """
         Adds a recipe to the pattern. This is the code that runs as part of a
         workflow job, and is triggered by the patterns specified trigger.
+
+        :param recipe: (str) Name of recipe to be added.
+
+        :return: No return.
         """
         check_input(recipe, str, 'recipe')
         self.recipes.append(recipe)
 
-    # TODO update description
     def add_variable(self, variable_name, variable_value):
         """
         Adds a variable to the pattern, which will be passed to the recipe
-        notebook using papermill as parameters.
+        notebook using papermill as parameters. Raises ValueError if variable
+        name is already in use.
 
-        Takes two arguments. 'variable_name' is the name of the variable and
-        must be a string, 'variable_value' can be any valid python variable
+        :param variable_name: (str) name of the variable.
+
+        :param variable_value: (any) any valid base python variable value.
+
+        :return: No return.
         """
         valid_string(variable_name,
                      'variable name',
@@ -433,21 +508,23 @@ class Pattern:
             self.variables[variable_name] = variable_value
         else:
             if variable_name == self.trigger_file:
-                raise Exception('Could not create variable %s as this name '
-                                'is already used by the input file. '
-                                % variable_name)
+                raise ValueError(
+                    'Could not create variable %s as this name is already '
+                    'used by the input file. ' % variable_name
+                )
             else:
-                raise Exception('Could not create variable %s as a variable '
-                                'with this name is already defined. '
-                                % variable_name)
+                raise ValueError(
+                    'Could not create variable %s as a variable with this '
+                    'name is already defined. ' % variable_name
+                )
 
-    # TODO update description
     def to_display_dict(self):
         """
         Creates a dictionary of the current pattern state to be displayed as
         part of the WorkflowWidget visualisation.
 
-        :return dict:
+        :return: (dict) Dictionary expressing curent state of the Pattern
+        object.
         """
         display_dict = {
             NAME: self.name,
@@ -476,15 +553,18 @@ class Pattern:
         return display_dict
 
 
-# TODO update description
 def create_recipe_dict(notebook, name, source):
     """
     Creates a recipe dictionary from the given parameters.
 
-    :param notebook: Recipe code. Must be complete notebook.
-    :param name: Name of recipe, Must be str
-    :param source: Name of source notebook. Must be str
-    :return: recipe dict
+    :param notebook: (dict) notebook source code.
+
+    :param name: (str) name of recipe.
+
+    :param source: (str) original notebook source code was extracted from.
+
+    :return: (dict) Meow recipe dictionary. Format is {'name': str,
+    'source': str, 'recipe': dict}
     """
 
     valid_string(name,
@@ -508,7 +588,9 @@ def create_recipe_dict(notebook, name, source):
 def build_workflow_object(patterns):
     """
     Builds the emergent workflow from defined patterns.
+
     :param patterns: (dict) A dictionary of valid Pattern objects.
+
     :return: (Tuple (bool, string or dict) Returns a tuple with the first value
     being a boolean, with True showing that a workflow was built without
     errors, and False showing that a problem was encountered. If False the
@@ -583,8 +665,11 @@ def pattern_has_recipes(pattern, recipes):
     """
     Checks that a pattern has all required recipes in the workflow for it
     to be triggerable
+
     :param pattern: (Pattern) A pattern object.
+
     :param recipes: (dict) A dictionary of recipes.
+
     :return: (Tuple (bool, string) Returns a tuple with the first value
     being a boolean, with True showing that all pattern recipes are already
     registered, and False showing that a problem was encountered. If False the

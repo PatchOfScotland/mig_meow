@@ -4,10 +4,13 @@ module_fullname = 'Managing Event-Oriented_workflows'
 module_version = '0.5'
 
 
-# TODO update description
 def info():
-    """Debug function to check that mig_meow has been imported correctly.
-    Prints message about the current build"""
+    """
+    Debug function to check that mig_meow has been imported correctly.
+    Prints message about the current build.
+    
+    :return: (str) debug message.  
+    """
     message = 'ver: %s\n' \
               '%s has been imported correctly. \n' \
               '%s is a paradigm used for defining event based ' \
@@ -15,3 +18,5 @@ def info():
               'implementation available at the University of Copenhagen. ' \
               % (module_version, module_name, module_fullname)
     print(message)
+
+    return message

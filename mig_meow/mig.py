@@ -16,10 +16,14 @@ def export_pattern_to_vgrid(vgrid, pattern, print_feedback=True):
     ValueError if the pattern is not valid. Note this function is not used
     within mig_meow and is intended for users who want to programmatically
     alter vgrid workflows.
+
     :param vgrid: (str) Vgrid to which pattern will be exported.
+
     :param pattern: (Pattern) Pattern object to export.
+
     :param print_feedback: (bool)[optional] In the event of feedback sets if
     it is to be printed to console or not. Default is True.
+
     :return: (function call to vgrid_workflow_json_call) if pattern is valid,
     will call function 'vgrid_workflow_json_call'.
     """
@@ -57,10 +61,14 @@ def export_recipe_to_vgrid(vgrid, recipe, print_feedback=True):
     ValueError if the recipe is not valid. Note this function is not used
     within mig_meow and is intended for users who want to programmatically
     alter vgrid workflows.
+
     :param vgrid: (str) Vgrid to which recipe will be exported.
+
     :param recipe: (dict) Recipe object to export.
+
     :param print_feedback: (bool)[optional] In the event of feedback sets if
     it is to be printed to console or not. Default value is True.
+
     :return: (function call to vgrid_workflow_json_call) if recipe is valid,
     will call function 'vgrid_workflow_json_call'.
     """
@@ -87,15 +95,21 @@ def vgrid_workflow_json_call(
     Validates input for a JSON workflow call to VGRID. Raises a TypeError or
     ValueError if an invalid value is found. If no problems are found then a
     JSON message is setup.
+
     :param vgrid: (str) Vgrid to which workflow will be exported.
+
     :param operation: (str) The operation type to be performed by the MiG based
     JSON API. Valid operations are 'create', 'read', 'update' and 'delete'.
+
     :param workflow_type: (str) MiG workflow object type. Valid are
     'workflows', 'workflowpattern', 'workflowrecipe', and 'any',
+
     :param attributes: (dict) A dictionary of arguments defining the specifics
     of the requested operation.
+
     :param print_feedback: (bool)[optional] In the event of feedback sets if
     it is to be printed to console or not. Default value is True.
+
     :return: (function call to __vgrid_json_call) If all inputs are valid,
     will call function '__vgrid_json_call'.
     """
@@ -129,15 +143,21 @@ def vgrid_job_json_call(vgrid, operation, workflow_type, attributes,
     Validates input for a JSON job call to VGRID. Raises a TypeError or
     ValueError if an invalid value is found. If no problems are found then a
     JSON message is setup.
+
     :param vgrid: (str) Vgrid to which recipe will be exported.
+
     :param operation: (str) The operation type to be performed by the MiG based
     JSON API. Valid operations are 'create', 'read', 'update' and 'delete'.
+
     :param workflow_type: (str) MiG workflow action type. Valid are
     'queue', 'job', 'cancel_job', and 'resubmit_job',
+
     :param attributes: (dict) A dictionary of arguments defining the specifics
     of the requested operation.
+
     :param print_feedback: (bool)[optional] In the event of feedback sets if
     it is to be printed to console or not. Default value is True.
+
     :return: (function call to __vgrid_json_call) If all inputs are valid,
     will call function '__vgrid_json_call'.
     """
@@ -165,21 +185,25 @@ def vgrid_job_json_call(vgrid, operation, workflow_type, attributes,
     )
 
 
-# TODO update description
 def __vgrid_json_call(operation, workflow_type, attributes, print_feedback=True):
     """
     Makes JSON call to MiG. Will pull url and session_id from local
     environment variables, as setup by MiG notebook spawner. Will raise
     EnviromentError if these are not present.
+
     :param operation: (str) The operation type to be performed by the MiG based
     JSON API. Valid operations are 'create', 'read', 'update' and 'delete'.
+
     :param workflow_type: (str) MiG workflow action type. Valid are
     'workflows', 'workflowpattern', 'workflowrecipe', 'any', 'queue', 'job',
     'cancel_job', and 'resubmit_job'
+
     :param attributes: (dict) A dictionary of arguments defining the specifics
     of the requested operation.
+
     :param print_feedback: (bool)[optional] In the event of feedback sets if
     it is to be printed to console or not. Default value is True.
+
     :return: (Tuple (dict, dict, dict) Returns JSON call results as three
     dicts. First is the header, then the body then the footer. Header contains
     keys 'headers' and 'object_type', Body contains 'workflows' and
@@ -222,8 +246,6 @@ def __vgrid_json_call(operation, workflow_type, attributes, print_feedback=True)
         json_response = response.json()
     except json.JSONDecodeError as err:
         raise Exception('No feedback from MiG. %s' % err)
-
-    print(json_response)
 
     header = json_response[0]
     body = json_response[1]

@@ -141,7 +141,6 @@ RECIPES = 'recipes'
 VARIABLES = 'variables'
 VGRID = 'vgrid'
 SOURCE = 'source'
-MOUNT_USER_DIR = 'mount_user_dir'
 PATTERNS = 'patterns'
 TRIGGER_RECIPES = 'trigger_recipes'
 
@@ -192,8 +191,7 @@ VALID_PATTERN = {
 VALID_RECIPE = {
     NAME: str,
     RECIPE: dict,
-    SOURCE: str,
-    MOUNT_USER_DIR: bool
+    SOURCE: str
 }
 
 ANCESTORS = 'ancestors'
