@@ -125,6 +125,34 @@ VALID_RECIPE = {
     SOURCE: str
 }
 
+VALID_WORKFLOW = {
+    CWL_NAME: str,
+    CWL_CWL_VERSION: str,
+    CWL_CLASS: str,
+    CWL_INPUTS: dict,
+    CWL_OUTPUTS: dict,
+    CWL_STEPS: dict,
+    CWL_REQUIREMENTS: dict
+}
+
+VALID_STEP = {
+    CWL_NAME: str,
+    CWL_CWL_VERSION: str,
+    CWL_CLASS: str,
+    CWL_BASE_COMMAND: str,
+    CWL_STDOUT: str,
+    CWL_INPUTS: dict,
+    CWL_OUTPUTS: dict,
+    CWL_ARGUMENTS: list,
+    CWL_REQUIREMENTS: dict,
+    CWL_HINTS: dict
+}
+
+VALID_SETTING = {
+    CWL_NAME: str,
+    CWL_VARIABLES: dict
+}
+
 ANCESTORS = 'ancestors'
 DESCENDANTS = 'descendants'
 WORKFLOW_INPUTS = 'workflow inputs'

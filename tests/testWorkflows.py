@@ -2,7 +2,8 @@ import unittest
 
 from mig_meow.meow import Pattern, check_patterns_dict, build_workflow_object
 from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
-    DEFAULT_WORKFLOW_TITLE, DEFAULT_CWL_IMPORT_EXPORT_DIR, PATTERNS, RECIPES
+    DEFAULT_WORKFLOW_TITLE, DEFAULT_CWL_IMPORT_EXPORT_DIR, PATTERNS, RECIPES, \
+    WORKFLOWS, STEPS, SETTINGS
 from mig_meow.workflow_widget import WorkflowWidget
 
 
@@ -471,6 +472,9 @@ class WorkflowTest(unittest.TestCase):
         )
         self.assertEqual(workflow_widget.meow[PATTERNS], {})
         self.assertEqual(workflow_widget.meow[RECIPES], {})
+        self.assertEqual(workflow_widget.cwl[WORKFLOWS], {})
+        self.assertEqual(workflow_widget.cwl[STEPS], {})
+        self.assertEqual(workflow_widget.cwl[SETTINGS], {})
         self.assertIsNone(workflow_widget.vgrid)
 
         pattern_dict = {
@@ -506,20 +510,59 @@ class WorkflowTest(unittest.TestCase):
         self.assertTrue(valid)
         self.assertEqual(msg, '')
 
+        recipe_dict = {
+            'name': 'recipe_name',
+            'source': 'recipe_source',
+            'recipe': {}
+        }
+
+        workflow_dict = {
+            'name': 'workflow_name',
+            'cwlVersion': 'v1.0',
+            'class': 'workflow',
+            'inputs': {},
+            'outputs': {},
+            'steps': {},
+            'requirements': {}
+        }
+
+        step_dict = {
+            'name': 'step_name',
+            'cwlVersion': 'v1.0',
+            'class': 'commandLineTool',
+            'baseCommand': '',
+            'stdout': '',
+            'inputs': {},
+            'outputs': {},
+            'arguments': [],
+            'requirements': {},
+            'hints': {}
+        }
+
+        variable_dict = {
+            'name': 'variables_name',
+            'arguments': {}
+        }
+
         args = {
             'mode': 'CWL',
             'auto_import': True,
             'export_name': 'example_name',
             'cwl_dir': 'test_dir',
-            'patterns': {
+            PATTERNS: {
                 pattern.name: pattern
             },
-            'recipes': {
-                'recipe_name': {
-                    'name': 'recipe_name',
-                    'source': 'recipe_source',
-                    'recipe': {}
-                }
+            RECIPES: {
+                'recipe_name': recipe_dict
+            },
+            WORKFLOWS: {
+                'workflow_name': workflow_dict
+            },
+            STEPS: {
+                'step_name': step_dict
+            },
+            SETTINGS: {
+                'variables_name': variable_dict
             },
             'vgrid': 'sample_vgrid'
         }
@@ -534,6 +577,12 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn(pattern.name, workflow_widget.meow[PATTERNS])
         self.assertEqual(len(workflow_widget.meow[RECIPES]), 1)
         self.assertIn('recipe_name', workflow_widget.meow[RECIPES])
+        self.assertEqual(len(workflow_widget.cwl[WORKFLOWS]), 1)
+        self.assertIn('workflow_name', workflow_widget.cwl[WORKFLOWS])
+        self.assertEqual(len(workflow_widget.cwl[STEPS]), 1)
+        self.assertIn('step_name', workflow_widget.cwl[STEPS])
+        self.assertEqual(len(workflow_widget.cwl[SETTINGS]), 1)
+        self.assertIn('variables_name', workflow_widget.cwl[SETTINGS])
         self.assertEqual(workflow_widget.vgrid, 'sample_vgrid')
 
         superfluous_args = {

@@ -6,7 +6,8 @@ from .constants import CWL_NAME, CWL_CWL_VERSION, CWL_CLASS, CWL_BASE_COMMAND,\
     CWL_VARIABLES, PLACEHOLDER, WORKFLOW_NAME, STEP_NAME, VARIABLES_NAME, \
     WORKFLOWS, STEPS, SETTINGS, CWL_CLASS_COMMAND_LINE_TOOL, \
     CWL_CLASS_WORKFLOW, CWL_WORKFLOW_RUN
-from .inputs import check_input
+from .inputs import check_input, is_valid_workflow_dict, is_valid_step_dict, \
+    is_valid_setting_dict
 
 
 def make_step_dict(name, base_command):
@@ -422,3 +423,75 @@ def get_output_lookup(target_step_key, target_value, workflow, steps):
         return False, msg
     glob = target_output[CWL_OUTPUT_BINDING]['glob']
     return True, glob
+
+
+def check_workflows_dict(workflows):
+    """
+    Validate that the given object is a dictionary of cwl workflows.
+
+    :param workflows: (dict) A dictionary of cwl workflow dictionaries.
+
+    :return: (Tuple (bool, string) Returns a tuple where if the provided
+    object is not a dict of cwl workflows dictionaries the first value will be
+    False. Otherwise it will be True. If the first value is False then an
+    explanatory error message is provided in the second value which will
+    otherwise be an empty string.
+    """
+    if not isinstance(workflows, dict):
+        return False, 'The provided %s(s) were not in a dict' % WORKFLOW_NAME
+    else:
+        for workflow in workflows.values():
+            valid, feedback = is_valid_workflow_dict(workflow)
+            if not valid:
+                return False, \
+                       '%s %s was not valid. %s' \
+                       % (WORKFLOW_NAME, workflow, feedback)
+    return True, ''
+
+
+def check_steps_dict(steps):
+    """
+    Validate that the given object is a dictionary of cwl steps.
+
+    :param workflows: (dict) A dictionary of cwl step dictionaries.
+
+    :return: (Tuple (bool, string) Returns a tuple where if the provided
+    object is not a dict of cwl steps dictionaries the first value will be
+    False. Otherwise it will be True. If the first value is False then an
+    explanatory error message is provided in the second value which will
+    otherwise be an empty string.
+    """
+    if not isinstance(steps, dict):
+        return False, 'The provided %s(s) were not in a dict' % STEP_NAME
+    else:
+        for step in steps.values():
+            valid, feedback = is_valid_step_dict(step)
+            if not valid:
+                return False, \
+                       '%s %s was not valid. %s' \
+                       % (STEP_NAME, step, feedback)
+    return True, ''
+
+
+def check_settings_dict(settings):
+    """
+    Validate that the given object is a dictionary of cwl settings.
+
+    :param settings: (dict) A dictionary of cwl argument dictionaries.
+
+    :return: (Tuple (bool, string) Returns a tuple where if the provided
+    object is not a dict of cwl arguments dictionaries the first value will be
+    False. Otherwise it will be True. If the first value is False then an
+    explanatory error message is provided in the second value which will
+    otherwise be an empty string.
+    """
+    if not isinstance(settings, dict):
+        return False, 'The provided %s(s) were not in a dict' % VARIABLES_NAME
+    else:
+        for setting in settings.values():
+            valid, feedback = is_valid_setting_dict(setting)
+            if not valid:
+                return False, \
+                       '%s %s was not valid. %s' \
+                       % (VARIABLES_NAME, setting, feedback)
+    return True, ''

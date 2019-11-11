@@ -32,7 +32,8 @@ from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
 from .cwl import make_step_dict, make_workflow_dict, get_linked_workflow, \
     make_settings_dict, check_workflow_is_valid, check_step_is_valid, \
     get_glob_value, get_glob_entry_keys, get_step_name_from_title, \
-    get_output_lookup
+    get_output_lookup, check_workflows_dict, check_steps_dict, \
+    check_settings_dict
 from .mig import vgrid_workflow_json_call
 from .meow import build_workflow_object, pattern_has_recipes, Pattern, \
     create_recipe_dict, check_patterns_dict, check_recipes_dict
@@ -85,6 +86,9 @@ SUPPORTED_ARGS = {
     MODE: str,
     PATTERNS: dict,
     RECIPES: dict,
+    WORKFLOWS: dict,
+    STEPS: dict,
+    SETTINGS: dict,
     VGRID: str,
     AUTO_IMPORT: bool,
     CWL_IMPORT_EXPORT_DIR_ARG: str,
@@ -646,8 +650,6 @@ def prepare_to_dump(to_export):
 
 
 class WorkflowWidget:
-    # TODO allow importing of cwl dicts at creation too. Also add validation
-    #  for CWL dicts.
     def __init__(self, **kwargs):
         """
         Constructor for a new WorkflowWidget. Takes optional keyword arguments.
@@ -661,6 +663,18 @@ class WorkflowWidget:
 
         :param recipes: (dict)[optional] An already defined dictionary of
         meow recipe dictionaries. If this is provided no automatic import will
+        occur at widget creation. Default is None.
+
+        :param workflows: (dict)[optional] An already defined dictionary of
+        cwl workflow dictionaries. If this is provided no automatic import will
+        occur at widget creation. Default is None.
+
+        :param steps: (dict)[optional] An already defined dictionary of
+        cwl step dictionaries. If this is provided no automatic import will
+        occur at widget creation. Default is None.
+
+        :param variables: (dict)[optional] An already defined dictionary of
+        cwl argument dictionaries. If this is provided no automatic import will
         occur at widget creation. Default is None.
 
         :param vgrid: (str)[optional] The name of a VGrid to connect to.
@@ -680,6 +694,7 @@ class WorkflowWidget:
         workflows created by converting MEOW definitions. Default is
         'workflow'.
         """
+
         check_input_args(kwargs, SUPPORTED_ARGS)
 
         self.mode = kwargs.get(MODE, None)
@@ -718,6 +733,15 @@ class WorkflowWidget:
 
         recipes = kwargs.get(RECIPES, None)
         check_input(recipes, dict, RECIPES, or_none=True)
+
+        workflows = kwargs.get(WORKFLOWS, None)
+        check_input(workflows, dict, WORKFLOWS, or_none=True)
+
+        steps = kwargs.get(STEPS, None)
+        check_input(steps, dict, STEPS, or_none=True)
+
+        settings = kwargs.get(SETTINGS, None)
+        check_input(settings, dict, SETTINGS, or_none=True)
 
         auto_import = kwargs.get(AUTO_IMPORT, False)
         check_input(auto_import, bool, AUTO_IMPORT)
@@ -761,6 +785,19 @@ class WorkflowWidget:
             STEPS: {},
             SETTINGS: {}
         }
+
+        if workflows:
+            valid, feedback = check_workflows_dict(workflows)
+            if valid:
+                self.cwl[WORKFLOWS] = workflows
+        if steps:
+            valid, feedback = check_steps_dict(steps)
+            if valid:
+                self.cwl[STEPS] = steps
+        if settings:
+            valid, feedback = check_settings_dict(settings)
+            if valid:
+                self.cwl[SETTINGS] = settings
 
         self.mig_imports = {
             PATTERNS: {},

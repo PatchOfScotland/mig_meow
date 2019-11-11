@@ -2,7 +2,9 @@
 import os
 
 from .constants import CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_UPPERCASE, \
-    VALID_PATTERN, RECIPE_NAME, VALID_RECIPE
+    VALID_PATTERN, RECIPE_NAME, VALID_RECIPE, PATTERN_NAME, WORKFLOW_NAME, \
+    STEP_NAME, VARIABLES_NAME, MEOW_MODE, CWL_MODE, VALID_WORKFLOW, \
+    VALID_STEP, VALID_SETTING
 
 
 def check_input(variable, expected_type, name, or_none=False):
@@ -162,6 +164,58 @@ def valid_file_path(path, name, extensions=None):
             )
 
 
+def is_valid_dict(
+        to_test, required_args, name, paradigm, strict=False
+):
+    """
+    Validates that a given dict has the expected arguments.
+
+    :param to_test: (dict) the dictionary whose arguments are to be checked.
+
+    :param required_args: (dict) A dictionary of expected arguments and the
+    types of those arguments.
+
+    :param name: (str) The name of this dict type. Used for debugging messages.
+
+    :param paradigm: (str) The paradigm the tested dict is operating within.
+    Only used for debugging messages.
+
+    :param strict: (bool)[optional] Option to be strict about arguments. If
+    True then any extra arguments that have been provided will fail. Default
+    is False
+
+    :return: (Tuple(bool, str)) First value is boolean. True = to_test
+    is valid, False = to_test is not valid. Second value is feedback
+    string and will be empty if first value is True.
+    """
+
+    if not to_test:
+        return False, 'A %s %s was not provided. ' % (paradigm, name)
+
+    if not isinstance(to_test, dict):
+        return False, \
+               'The %s %s was incorrectly formatted. ' % (paradigm, name)
+
+    message = 'The %s %s %s had an incorrect structure, ' \
+              % (paradigm, name, to_test)
+    for key, value in required_args.items():
+        if key not in to_test:
+            message += 'it is missing key %s. ' % key
+            return False, message
+        if not isinstance(to_test[key], value):
+            message += \
+                ' %s is expected to have type %s but actually has %s. ' \
+                % (to_test[key], value, type(to_test[key]))
+            return False, message
+
+    if strict:
+        for key in to_test.keys():
+            if key not in required_args:
+                message += ' contains extra key %s' % key
+                return False, message
+    return True, ''
+
+
 def is_valid_pattern_dict(to_test):
     """
     Validates that the passed dictionary can be used to create a new Pattern
@@ -174,21 +228,11 @@ def is_valid_pattern_dict(to_test):
     string and will be empty if first value is True.
     """
 
-    if not to_test:
-        return False, 'A workflow pattern was not provided'
+    valid, msg = is_valid_dict(to_test, VALID_PATTERN, PATTERN_NAME, MEOW_MODE)
 
-    if not isinstance(to_test, dict):
-        return False, 'The workflow pattern was incorrectly formatted'
+    if not valid:
+        return False, msg
 
-    message = 'The workflow pattern had an incorrect structure'
-    for key, value in to_test.items():
-        if key not in VALID_PATTERN:
-            message += ' Is missing key %s' % key
-            return False, message
-        if not isinstance(value, VALID_PATTERN[key]):
-            message += ' %s is expected to have type %s but actually has %s' \
-                       % (value, VALID_PATTERN[key], type(value))
-            return False, message
     if 'trigger_recipes' not in to_test:
         return False, "'trigger_recipes' key was not in %s. " \
                % str(list(to_test.keys()))
@@ -214,34 +258,47 @@ def is_valid_pattern_dict(to_test):
 
 def is_valid_recipe_dict(to_test):
     """
-    Validates that the passed dictionary expresses a recipe.
+    Validates that the passed dictionary expresses a meow recipe.
 
     :param to_test: (dict) A dictionary, hopefully expressing a meow recipe
 
-    :return: (Tuple (bool, string). Returns a tuple where if the provided
-    dictionary does not express a meow recipe the first value will be False.
-    Otherwise it will be True. If the first value is False then an explanatory
-    error message is provided in the second value which will otherwise be an
-    empty string.
+    :return: (function call to 'is_valid_dict'). Returns a function call to
+    'is_valid_dict'.
     """
+    return is_valid_dict(to_test, VALID_RECIPE, RECIPE_NAME, MEOW_MODE)
 
-    if not to_test:
-        return False, 'A workflow %s was not provided. ' % RECIPE_NAME
 
-    if not isinstance(to_test, dict):
-        return False, \
-               'The workflow %s was incorrectly formatted. ' % RECIPE_NAME
+def is_valid_workflow_dict(to_test):
+    """
+    Validates that the passed dictionary expresses a cwl workflow.
 
-    message = 'The workflow %s %s had an incorrect structure, ' \
-              % (RECIPE_NAME, to_test)
-    for key, value in VALID_RECIPE.items():
-        if key not in to_test:
-            message += ' is missing key %s. ' % key
-            return False, message
-        if not isinstance(to_test[key], value):
-            message += \
-                ' %s is expected to have type %s but actually has %s. ' \
-                % (to_test[key], value, type(to_test[key]))
-            return False, message
+    :param to_test: (dict) A dictionary, hopefully expressing a cwl workflow
 
-    return True, ''
+    :return: (function call to 'is_valid_dict'). Returns a function call to
+    'is_valid_dict'.
+    """
+    return is_valid_dict(to_test, VALID_WORKFLOW, WORKFLOW_NAME, CWL_MODE)
+
+
+def is_valid_step_dict(to_test):
+    """
+    Validates that the passed dictionary expresses a cwl step.
+
+    :param to_test: (dict) A dictionary, hopefully expressing a cwl step
+
+    :return: (function call to 'is_valid_dict'). Returns a function call to
+    'is_valid_dict'.
+    """
+    return is_valid_dict(to_test, VALID_STEP, STEP_NAME, CWL_MODE)
+
+
+def is_valid_setting_dict(to_test):
+    """
+    Validates that the passed dictionary expresses cwl arguments.
+
+    :param to_test: (dict) A dictionary, hopefully expressing cwl arguments
+
+    :return: (function call to 'is_valid_dict'). Returns a function call to
+    'is_valid_dict'.
+    """
+    return is_valid_dict(to_test, VALID_SETTING, VARIABLES_NAME, CWL_MODE)
