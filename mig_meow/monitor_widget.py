@@ -6,11 +6,12 @@ import time
 from IPython.display import display
 
 from .inputs import check_input
-from .constants import VGRID, MRSL_VGRID, VGRID_READ, VGRID_QUEUE_OBJECT_TYPE,\
-    CANCEL_JOB, RESUBMIT_JOB, VGRID_CREATE
+from .constants import VGRID, VGRID_READ, VGRID_QUEUE_OBJECT_TYPE,\
+    CANCEL_JOB, VGRID_CREATE
 from .mig import vgrid_job_json_call
 
 
+MRSL_VGRID = 'VGRID'
 MRSL_JOB_ID = 'JOB_ID'
 MRSL_JOB_STATUS = 'STATUS'
 MRSL_JOB_RECEIVED_TIME = 'RECEIVED_TIMESTAMP'
@@ -60,7 +61,6 @@ JOB_CORE_DISPLAY_KEYS = {
     MRSL_JOB_OUTPUTFILES: 'Output files',
 }
 
-
 SELECTION_START = 'START'
 SELECTION_END = 'END'
 SELECTION_MAX = 'MAX'
@@ -69,30 +69,65 @@ UPPER = 'upper'
 TOP_BAR = 'top_bar'
 
 
-# TODO update description
 class PollingThread(threading.Thread):
-    # TODO update description
+    """
+    Separate thread used to update the monitor widget by polling data from
+    MiG job queue.
+    """
+    # TODO replace this methodology.
     def __init__(self, monitor_widget, stop_flag, timer):
+        """
+        Constructor for PollingThread.
+
+        :param monitor_widget: (MonitorWidget) The widget to poll for.
+
+        :param stop_flag: (Event) A flag denoting if the polling should
+        continue or not.
+
+        :param timer: (int) How often to poll, in seconds.
+        """
         threading.Thread.__init__(self)
         self.monitor_widget = monitor_widget
         self.stop_flag = stop_flag
         self.timer = timer
 
-    # TODO update description
     def run(self):
+        """
+        Run function for PollingThread, which will start the thread. Until it
+        is flagged to stop this will continue forever, and ask the monitor
+        widget to update periodically, according to the timer given.
+
+        :return: No return.
+        """
         while not self.stop_flag.wait(self.timer):
             self.monitor_widget.update_queue_display()
 
 
-# TODO update description
 class MonitorWidget:
-    # TODO extend this timer before deployment
-    # TODO update description
+    """
+    Jupyter widget for displaying a MiG job queue. Some basic interactions
+    such as cancelling or resubmitting can also be performed. Will update
+    periodically.
+    """
     def __init__(self, vgrid, timer=60, displayed_jobs=30):
+        """
+        Constructor for MonitorWidget.
+
+        :param vgrid: (str) The VGrid to connect to.
+
+        :param timer: (int)[optional] How often the widget should update. If
+        lower than 60, will be changed to 60. Default is 60.
+
+        :param displayed_jobs: (int)[optional] How many jobs to display per
+        page. Default is 30.
+        """
 
         check_input(vgrid, str, 'vgrid')
         self.vgrid = vgrid
         check_input(timer, int, 'timer')
+        if timer < 60:
+            timer = 60
+        self.timer = timer
 
         self.monitor_display_area = widgets.Output()
         self.current_queue_selection = {}
@@ -102,27 +137,53 @@ class MonitorWidget:
         self.widgets = {}
 
         self.__stop_polling = threading.Event()
-        self.timer = timer
         self.__start_queue_display()
 
-    # TODO update description
-    def __start_queue_display(self, *args):
+    def __start_queue_display(self):
+        """
+        Starts displaying queue information. Creates and starts a
+        PollingThread to keep the display updating automatically.
+
+        :return: No return.
+        """
         self.update_queue_display()
         polling_thread = PollingThread(self, self.__stop_polling, self.timer)
         polling_thread.daemon = True
         polling_thread.start()
 
-    # TODO update description
     def __stop_queue_display(self):
+        """
+        Sets a flag to stop the PollingThread and prevent an automatic
+        update.
+
+        :return: No return.
+        """
         self.__stop_polling.set()
 
-    # TODO update description
     def update_queue_display(self):
-        self.jobs = self.get_vgrid_queue()
-        self.__display_job_queue()
+        """
+        Sends a request for an up to date job_queue from the vgrid. If a valid
+        response is returned then the job display is updated.
 
-    # TODO update description
+        :return: No return.
+        """
+        #  TODO accomodate this call not working
+        valid, result = self.get_vgrid_queue()
+
+        if valid:
+            self.jobs = result
+            self.__display_job_queue()
+
     def get_vgrid_queue(self):
+        """
+        Retrieves a dictionary of jobs from the MiG Vgrid via JSON request.
+
+        :return: (Tuple (bool, str or dict)) If a invalid JSON response is
+        received then an tuple of first value False, with a explanatory error
+        message as second value is returned. Otherwise, a tuple is returned
+        with a first value of True, and with the dictionary of jobs as the
+        second value.
+        """
         attributes = {}
         _, response, _ = vgrid_job_json_call(
             self.vgrid,
@@ -135,13 +196,18 @@ class MonitorWidget:
         if 'workflows' in response:
             jobs = response['workflows']
 
-            return jobs
+            return True, jobs
         else:
-            raise Exception('something went wrong with retrieving the queue')
+            return False, 'something went wrong with retrieving the queue'
 
-    # TODO update description
     def __display_job_queue(self, *args):
+        """
+        Creates a job queue display within the widget. This will display all
+        jobs in the queue in the defined range. A top bar of buttons is also
+        created.
 
+        :return: No return.
+        """
         # first time run through
         if not self.current_queue_selection:
             self.current_queue_selection[SELECTION_MAX] = len(self.jobs)
@@ -174,7 +240,6 @@ class MonitorWidget:
                 max=self.current_queue_selection[SELECTION_END],
                 step=1,
                 disabled=False,
-                # TODO update this so is not static
                 layout=widgets.Layout(width='60px')
             )
             lower.observe(self.__display_job_queue, names='value')
@@ -184,7 +249,6 @@ class MonitorWidget:
                 max=self.current_queue_selection[SELECTION_MAX],
                 step=1,
                 disabled=False,
-                # TODO update this so is not static
                 layout=widgets.Layout(width='60px')
             )
             upper.observe(self.__display_job_queue, names='value')
@@ -216,7 +280,6 @@ class MonitorWidget:
                 )
             )
         grid_items.append(widgets.Label(''))
-
 
         sorted_jobs = sorted(
             self.jobs.items(),
@@ -250,8 +313,15 @@ class MonitorWidget:
             display(queue_display)
         self.job_count = len(self.jobs)
 
-    # TODO update description
     def __get_job_display_row(self, job):
+        """
+        Creates a table row displaying a job and its most important details,
+        along with buttons to interact with the job directly.
+
+        :param job: (str) The job id for the row.
+
+        :return: (list) A list of all widget elements created for the row.
+        """
         row_items = []
         job_id = job[MRSL_JOB_ID]
         for key in JOB_QUEUE_KEYS.keys():
@@ -281,8 +351,16 @@ class MonitorWidget:
         row_items.append(buttons)
         return row_items
 
-    # TODO update description
     def __get_job_interaction_buttons(self, job):
+        """
+        Creates buttons for interacting with individual jobs. A details,
+        resubmit and cancel button are provided. If the job is already
+        complete the cancel button is disabled.
+
+        :param job: (str) The job id for these buttons.
+
+        :return: (list) A list of dictionaries defining the three buttons.
+        """
 
         disable_cancel = False
         cancel_tooltip = 'Cancel job'
@@ -327,15 +405,25 @@ class MonitorWidget:
             },
         ]
 
-    # TODO update description
     def __display_func(self, button, job_id):
+        """
+        'Display Job' button clicked event handler. Displays the given jobs
+        details in the widget.
+
+        :param button: (widgets.Button) The button object.
+
+        :param job_id: (str) Id of the job to display.
+
+        :return: No return.
+        """
         self.__stop_queue_display()
 
         job = self.jobs[job_id]
 
-        detail_items = []
+        detail_items = [
+            self.__back_to_queue_button()
+        ]
 
-        detail_items.append(self.__back_to_queue_button())
         for key, value in JOB_CORE_DISPLAY_KEYS.items():
             detail_items.append(
                 widgets.Label("-- %s --" % value)
@@ -355,8 +443,12 @@ class MonitorWidget:
             display(job_details)
         self.job_count = len(self.jobs)
 
-    # TODO update description
     def __back_to_queue_button(self):
+        """
+        Creates a button to revert view to job queue.
+
+        :return: (widgets.Button) The cancel button.
+        """
         button = widgets.Button(
             value=False,
             description='',
@@ -367,13 +459,29 @@ class MonitorWidget:
         button.on_click(self.__start_queue_display)
         return button
 
-    # TODO update description
     def __resubmit_func(self, button, job_id):
-        # TODO implement
+        """
+        'Resubmit Job' button clicked event handler. Currently not implemented.
+
+        :param button: (widgets.Button) The button object.
+
+        :param job_id: (str) The resubmitted job id.
+
+        :return: No return.
+        """
         print('resubmit func for %s' % job_id)
 
-    # TODO update description
     def __cancel_func(self, button, job_id):
+        """
+        'Cancel Job' button clicked event handler. Sends a JSON request to
+        the MiG VGrid for the job to be cancelled.
+
+        :param button: (widgets.Button) The button object.
+
+        :param job_id: (str) The cancelled job id.
+
+        :return: No return.
+        """
         attributes = {
             MRSL_JOB_ID: job_id,
             VGRID: self.vgrid
@@ -388,8 +496,10 @@ class MonitorWidget:
 
         print(response)
 
-    # TODO update description
     def display_widget(self):
-        # TODO update this
-        """"""
+        """
+        Returns the widget in a display ready state.
+
+        :return: (widgets.Output) The output are to be displayed ina  notebook.
+        """
         return self.monitor_display_area

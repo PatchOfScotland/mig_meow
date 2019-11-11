@@ -1,19 +1,7 @@
 
-MEOW_MODE = 'MEOW'
-CWL_MODE = 'CWL'
-WIDGET_MODES = [
-    MEOW_MODE,
-    CWL_MODE
-]
-
-YAML_EXTENSIONS = [
-    '.yaml',
-    '.yml'
-]
-
-CWL_EXTENSIONS = [
-    '.cwl'
-]
+# Only constants shared amongst multiple files should be declared here.
+# Variables that are only used in one file should be declared there, unless it
+# is clearer to group them here with appropriate variables.
 
 WORKFLOWS = 'workflows'
 STEPS = 'steps'
@@ -32,34 +20,6 @@ CWL_STDOUT = 'stdout'
 CWL_STEPS = 'steps'
 CWL_VARIABLES = 'arguments'
 
-CWL_WORKFLOWS_REQUIREMENTS = [
-    CWL_CWL_VERSION,
-    CWL_CLASS,
-    CWL_BASE_COMMAND,
-    CWL_INPUTS,
-    CWL_OUTPUTS,
-    CWL_STEPS,
-    CWL_REQUIREMENTS,
-    CWL_ARGUMENTS
-]
-
-CWL_STEP_REQUIREMENTS = [
-    CWL_CWL_VERSION,
-    CWL_CLASS,
-    CWL_BASE_COMMAND,
-    CWL_INPUTS,
-    CWL_OUTPUTS,
-    CWL_ARGUMENTS,
-    CWL_REQUIREMENTS,
-    CWL_HINTS,
-    CWL_STDOUT
-]
-
-CWL_INPUT_TYPE = 'type'
-CWL_INPUT_BINDING = 'inputBinding'
-CWL_INPUT_POSITION = 'position'
-CWL_INPUT_PREFIX = 'prefix'
-
 CWL_OUTPUT_TYPE = 'type'
 CWL_OUTPUT_BINDING = 'outputBinding'
 CWL_OUTPUT_SOURCE = 'outputSource'
@@ -72,13 +32,7 @@ CWL_WORKFLOW_RUN = 'run'
 CWL_WORKFLOW_IN = 'in'
 CWL_WORKFLOW_OUT = 'out'
 
-NOTEBOOK_EXTENSION = '.ipynb'
 DEFAULT_JOB_NAME = 'wf_job'
-DEFAULT_JOB_NAME_EXTENSION = DEFAULT_JOB_NAME + NOTEBOOK_EXTENSION
-PATTERN_EXTENSION = '.pattern'
-
-PATTERN_NAME = 'Pattern'
-RECIPE_NAME = 'Recipe'
 
 PATTERN_LIST = 'pattern_list'
 RECIPE_LIST = 'recipe_list'
@@ -87,10 +41,6 @@ VGRID_WORKFLOWS_OBJECT = 'workflows'
 VGRID_PATTERN_OBJECT_TYPE = 'workflowpattern'
 VGRID_RECIPE_OBJECT_TYPE = 'workflowrecipe'
 VGRID_ANY_OBJECT_TYPE = 'any'
-VGRID_QUEUE_OBJECT_TYPE = 'queue'
-VGRID_JOB_OBJECT_TYPE = 'job'
-CANCEL_JOB = 'cancel_job'
-RESUBMIT_JOB = 'resubmit_job'
 
 VALID_WORKFLOW_TYPES = [
     VGRID_WORKFLOWS_OBJECT,
@@ -99,14 +49,17 @@ VALID_WORKFLOW_TYPES = [
     VGRID_ANY_OBJECT_TYPE
 ]
 
+VGRID_QUEUE_OBJECT_TYPE = 'queue'
+VGRID_JOB_OBJECT_TYPE = 'job'
+CANCEL_JOB = 'cancel_job'
+RESUBMIT_JOB = 'resubmit_job'
+
 VALID_JOB_TYPES = [
     VGRID_QUEUE_OBJECT_TYPE,
     VGRID_JOB_OBJECT_TYPE,
     CANCEL_JOB,
     RESUBMIT_JOB
 ]
-
-MRSL_VGRID = 'VGRID'
 
 VGRID_ERROR_TYPE = 'error_text'
 VGRID_TEXT_TYPE = 'text'
@@ -121,11 +74,6 @@ VALID_OPERATIONS = [
     VGRID_UPDATE,
     VGRID_DELETE
 ]
-
-PATTERNS_DIR = '.workflow_patterns_home'
-RECIPES_DIR = '.workflow_recipes_home'
-EXPORT_DIR = '.meow_export_home'
-FILES_DIR = 'vgrid_files_home'
 
 OBJECT_TYPE = 'object_type'
 PERSISTENCE_ID = 'persistence_id'
@@ -143,34 +91,17 @@ VGRID = 'vgrid'
 SOURCE = 'source'
 PATTERNS = 'patterns'
 TRIGGER_RECIPES = 'trigger_recipes'
-
-TRIGGER_PATH = "trigger_path"
 TRIGGER_OUTPUT = "trigger_output"
 NOTEBOOK_OUTPUT = "notebook_output"
-ALL_PATTERN_INPUTS = [
-    NAME,
-    INPUT_FILE,
-    TRIGGER_PATH,
-    TRIGGER_OUTPUT,
-    NOTEBOOK_OUTPUT,
-    OUTPUT,
-    RECIPES,
-    VARIABLES
-]
 
 CWL_CLASS_COMMAND_LINE_TOOL = 'CommandLineTool'
 CWL_CLASS_WORKFLOW = 'Workflow'
 
+PATTERN_NAME = 'Pattern'
+RECIPE_NAME = 'Recipe'
 WORKFLOW_NAME = 'Workflow'
 STEP_NAME = 'Step'
 VARIABLES_NAME = 'Arguments'
-
-ALL_RECIPE_INPUTS = [
-    SOURCE,
-    NAME,
-]
-
-OUTPUT_MAGIC_CHAR = '*'
 
 PLACEHOLDER = 'PLACEHOLDER'
 
@@ -199,19 +130,12 @@ DESCENDANTS = 'descendants'
 WORKFLOW_INPUTS = 'workflow inputs'
 WORKFLOW_OUTPUTS = 'workflow outputs'
 
-WORKFLOW_NODE = {
-    DESCENDANTS: []
-}
-
 CHAR_LOWERCASE = 'abcdefghijklmnopqrstuvwxyz'
 CHAR_UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 CHAR_NUMERIC = '0123456789'
 CHAR_LINES = '-_'
 
-DEFAULT_WORKFLOW_FILENAME = 'meow_workflow_file'
-
-WORKFLOW_IMAGE_EXTENSION = ".png"
-
+NOTEBOOK_EXTENSION = '.ipynb'
 NOTEBOOK_EXTENSIONS = [
     NOTEBOOK_EXTENSION
 ]
@@ -219,10 +143,23 @@ NOTEBOOK_EXTENSIONS = [
 GREEN = 'green'
 RED = 'red'
 WHITE = 'white'
-BLUE = 'blue'
 
 COLOURS = [
     GREEN,
     RED,
     WHITE
 ]
+
+NO_OUTPUT_SET_WARNING = \
+    'No output has been set, meaning no resulting data will be copied back ' \
+    'into the vgrid. ANY OUTPUT WILL BE LOST. '
+
+MEOW_MODE = 'MEOW'
+CWL_MODE = 'CWL'
+WIDGET_MODES = [
+    MEOW_MODE,
+    CWL_MODE
+]
+
+DEFAULT_WORKFLOW_TITLE = 'workflow'
+DEFAULT_CWL_IMPORT_EXPORT_DIR = 'cwl_directory'

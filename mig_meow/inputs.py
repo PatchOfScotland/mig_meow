@@ -2,7 +2,7 @@
 import os
 
 from .constants import CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_UPPERCASE, \
-    VALID_PATTERN
+    VALID_PATTERN, RECIPE_NAME, VALID_RECIPE
 
 
 def check_input(variable, expected_type, name, or_none=False):
@@ -90,10 +90,35 @@ def valid_string(variable, name, valid_chars):
             )
 
 
-def valid_path(path, name, extensions=None):
+def valid_dir_path(path, name):
     """
-    Checks that a given string is a valid path. Will raise an exception if it
-    is not a valid path. Raises ValueError if not a valid path.
+    Checks that a given string is a valid path. Raises ValueError if not a
+    valid path.
+
+    :param path: (str) path to check.
+
+    :param name: (str) name of variable to check. Only used to clarify debug
+    messages.
+
+    :return: No return.
+    """
+    check_input(path, str, name)
+
+    valid_chars = \
+        CHAR_NUMERIC + CHAR_UPPERCASE + CHAR_LOWERCASE + '-_' + os.path.sep
+
+    for char in path:
+        if char not in valid_chars:
+            raise ValueError(
+                'Invalid character %s in string %s for variable %s. Only '
+                'valid characters are %s' % (char, path, name, valid_chars)
+            )
+
+
+def valid_file_path(path, name, extensions=None):
+    """
+    Checks that a given string is a valid file path. Raises ValueError if not
+    a valid path.
 
     :param path: (str) path to check.
 
@@ -164,4 +189,59 @@ def is_valid_pattern_dict(to_test):
             message += ' %s is expected to have type %s but actually has %s' \
                        % (value, VALID_PATTERN[key], type(value))
             return False, message
+    if 'trigger_recipes' not in to_test:
+        return False, "'trigger_recipes' key was not in %s. " \
+               % str(list(to_test.keys()))
+    if not isinstance(to_test['trigger_recipes'], dict):
+        return False, \
+               "Trigger id's have not be stored in the correct format. " \
+               "Expected dict but got %s." % type(to_test['trigger_recipes'])
+
+    for trigger_id in to_test['trigger_recipes'].values():
+        if not isinstance(trigger_id, str):
+            return False, "Trigger id %s is a %s, not the expected str." \
+                   % (str(trigger_id), type(trigger_id))
+        for id, recipe in to_test['trigger_recipes'][trigger_id].items():
+            if not isinstance(id, str):
+                return False, "Recipe id %s is a %s, not the expected str." \
+                       % (str(id), type(id))
+            valid, msg = is_valid_recipe_dict(recipe)
+            if not valid:
+                return False, msg
+
+    return True, ''
+
+
+def is_valid_recipe_dict(to_test):
+    """
+    Validates that the passed dictionary expresses a recipe.
+
+    :param to_test: (dict) A dictionary, hopefully expressing a meow recipe
+
+    :return: (Tuple (bool, string). Returns a tuple where if the provided
+    dictionary does not express a meow recipe the first value will be False.
+    Otherwise it will be True. If the first value is False then an explanatory
+    error message is provided in the second value which will otherwise be an
+    empty string.
+    """
+
+    if not to_test:
+        return False, 'A workflow %s was not provided. ' % RECIPE_NAME
+
+    if not isinstance(to_test, dict):
+        return False, \
+               'The workflow %s was incorrectly formatted. ' % RECIPE_NAME
+
+    message = 'The workflow %s %s had an incorrect structure, ' \
+              % (RECIPE_NAME, to_test)
+    for key, value in VALID_RECIPE.items():
+        if key not in to_test:
+            message += ' is missing key %s. ' % key
+            return False, message
+        if not isinstance(to_test[key], value):
+            message += \
+                ' %s is expected to have type %s but actually has %s. ' \
+                % (to_test[key], value, type(to_test[key]))
+            return False, message
+
     return True, ''

@@ -4,10 +4,13 @@ import os
 
 from .constants import VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
     NAME, INPUT_FILE, TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, \
-    VGRID_CREATE, OBJECT_TYPE, PERSISTENCE_ID, VGRID, \
-    MRSL_VGRID, VALID_OPERATIONS, VALID_WORKFLOW_TYPES, VALID_JOB_TYPES
+    VGRID_CREATE, VGRID, \
+    VALID_OPERATIONS, VALID_WORKFLOW_TYPES, VALID_JOB_TYPES
 from .inputs import check_input
 from .meow import Pattern, is_valid_recipe_dict
+
+
+MRSL_VGRID = 'VGRID'
 
 
 def export_pattern_to_vgrid(vgrid, pattern, print_feedback=True):

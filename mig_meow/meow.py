@@ -3,46 +3,16 @@ import os
 import nbformat
 
 from .inputs import valid_string, is_valid_pattern_dict, check_input, \
-    valid_path
-from .constants import OUTPUT_MAGIC_CHAR, DESCENDANTS, WORKFLOW_INPUTS, \
+    valid_file_path, is_valid_recipe_dict
+from .constants import DESCENDANTS, WORKFLOW_INPUTS, \
     WORKFLOW_OUTPUTS, ANCESTORS, DEFAULT_JOB_NAME, NAME, INPUT_FILE, \
     TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, CHAR_UPPERCASE, \
     CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, PERSISTENCE_ID, \
     TRIGGER_OUTPUT, NOTEBOOK_OUTPUT, PLACEHOLDER, TRIGGER_RECIPES, \
-    VALID_RECIPE, SOURCE, RECIPE
+    SOURCE, RECIPE, PATTERN_NAME, RECIPE_NAME, NO_OUTPUT_SET_WARNING
 
 
-def is_valid_recipe_dict(to_test):
-    """
-    Validates that the passed dictionary expresses a recipe.
-
-    :param to_test: (dict) A dictionary, hopefully expressing a meow recipe
-
-    :return: (Tuple (bool, string). Returns a tuple where if the provided
-    dictionary does not express a meow recipe the first value will be False.
-    Otherwise it will be True. If the first value is False then an explanatory
-    error message is provided in the second value which will otherwise be an
-    empty string.
-    """
-
-    if not to_test:
-        return False, 'A workflow recipe was not provided. '
-
-    if not isinstance(to_test, dict):
-        return False, 'The workflow recipe was incorrectly formatted. '
-
-    message = 'The workflow recipe %s had an incorrect structure, ' % to_test
-    for key, value in VALID_RECIPE.items():
-        if key not in to_test:
-            message += ' is missing key %s. ' % key
-            return False, message
-        if not isinstance(to_test[key], value):
-            message += \
-                ' %s is expected to have type %s but actually has %s. ' \
-                % (to_test[key], value, type(to_test[key]))
-            return False, message
-
-    return True, ''
+OUTPUT_MAGIC_CHAR = '*'
 
 
 def is_valid_pattern_object(to_test):
@@ -58,10 +28,11 @@ def is_valid_pattern_object(to_test):
     """
 
     if not to_test:
-        return False, 'A workflow pattern was not provided'
+        return False, 'A workflow %s was not provided' % PATTERN_NAME
 
     if not isinstance(to_test, Pattern):
-        return False, 'The workflow pattern was incorrectly formatted'
+        return False, \
+               'The workflow %s was incorrectly formatted' % PATTERN_NAME
 
     return True, ''
 
@@ -79,16 +50,24 @@ def check_patterns_dict(patterns):
     otherwise be an empty string.
     """
     if not isinstance(patterns, dict):
-        return False, 'The provided patterns were not in a dict'
-    for pattern in patterns.values():
+        return False, 'The provided %s(s) were not in a dict' % PATTERN_NAME
+    for name, pattern in patterns.items():
         if not isinstance(pattern, Pattern):
             return False, \
-                   'Object %s is a  %s, not the expected Pattern. '\
-                   % (pattern, type(pattern))
+                   'Object %s is a  %s, not the expected %s. '\
+                   % (pattern, type(pattern), type(Pattern))
+
+        if name != pattern.name:
+            return False, \
+                   '%s %s is not stored correctly as it does not share a ' \
+                   'name with its key %s.' \
+                   % (PATTERN_NAME, pattern.name, name)
 
         valid, feedback = is_valid_pattern_object(pattern)
         if not valid:
-            return False, 'Pattern %s was not valid. %s' % (pattern, feedback)
+            return False, \
+                   '%s %s was not valid. %s' \
+                   % (PATTERN_NAME, pattern, feedback)
     return True, ''
 
 
@@ -105,13 +84,14 @@ def check_recipes_dict(recipes):
     otherwise be an empty string.
     """
     if not isinstance(recipes, dict):
-        return False, 'The provided recipes were not in a dict'
+        return False, 'The provided %s(s) were not in a dict' % RECIPE_NAME
     else:
         for recipe in recipes.values():
             valid, feedback = is_valid_recipe_dict(recipe)
             if not valid:
                 return False, \
-                       'Recipe %s was not valid. %s' % (recipe, feedback)
+                       '%s %s was not valid. %s' \
+                       % (RECIPE_NAME, recipe, feedback)
     return True, ''
 
 
@@ -150,19 +130,32 @@ class Pattern:
         # if given dict we are importing from a stored pattern object
         if isinstance(parameters, dict):
             is_valid_pattern_dict(parameters)
+
+            self.name = parameters[NAME]
+
             if PERSISTENCE_ID in parameters:
                 self.persistence_id = parameters[PERSISTENCE_ID]
-            self.name = parameters[NAME]
-            self.trigger_file = parameters[INPUT_FILE]
-            self.outputs = parameters[OUTPUT]
-            self.variables = parameters[VARIABLES]
+
             self.trigger_paths = parameters[TRIGGER_PATHS]
-            recipes = []
-            for k1, v1 in parameters[TRIGGER_RECIPES].items():
-                for k2, v2 in v1.items():
-                    if 'name' in v2:
-                        recipes.append(v2['name'])
-            self.recipes = recipes
+            self.recipes = []
+            self.outputs = {}
+            self.variables = {}
+
+            self.trigger_file = parameters[INPUT_FILE]
+            self.add_variable(parameters[INPUT_FILE], parameters[INPUT_FILE])
+
+            for trig_id, trig in parameters[TRIGGER_RECIPES].items():
+                for rec_id, rec in trig.items():
+                    self.add_recipe(rec['name'])
+
+            for name, path in parameters[OUTPUT].items():
+                self.add_output(name, path)
+
+            for name, value in parameters[VARIABLES].items():
+                if name != self.trigger_file \
+                        and name not in self.outputs:
+                    self.add_variable(name, value)
+
             return
         raise TypeError(
             'Pattern requires either a str input as a name for a new pattern, '
@@ -284,9 +277,7 @@ class Pattern:
         if len(self.outputs) == 0 \
                 or PLACEHOLDER in self.outputs.keys()\
                 or PLACEHOLDER in self.outputs.values():
-            warning += 'No output has been set, meaning no resulting ' \
-                       'data will be copied back into the vgrid. ANY OUTPUT ' \
-                       'WILL BE LOST. '
+            warning += NO_OUTPUT_SET_WARNING
         if len(self.recipes) == 0 \
                 or PLACEHOLDER in self.recipes:
             return False, "No recipes have been defined. "
@@ -573,7 +564,7 @@ def create_recipe_dict(notebook, name, source):
                  + CHAR_LOWERCASE
                  + CHAR_NUMERIC
                  + CHAR_LINES)
-    valid_path(source,
+    valid_file_path(source,
                'recipe source')
     nbformat.validate(notebook)
 

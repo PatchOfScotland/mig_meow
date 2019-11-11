@@ -9,31 +9,47 @@ from shutil import copyfile
 
 from IPython.display import display
 
-from .inputs import valid_path, valid_string, check_input_args, check_input
+from .inputs import valid_file_path, valid_string, check_input_args, \
+    check_input, valid_dir_path
 from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
-    DEFAULT_JOB_NAME, SOURCE, PATTERN_NAME, RECIPE_NAME, OBJECT_TYPE, \
+    DEFAULT_JOB_NAME, SOURCE, OBJECT_TYPE, \
     VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
     VGRID_WORKFLOWS_OBJECT, INPUT_FILE, OUTPUT, RECIPES, VARIABLES, \
     CHAR_UPPERCASE, CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, \
     VGRID_ERROR_TYPE, VGRID_TEXT_TYPE, PERSISTENCE_ID, VGRID_CREATE, \
-    VGRID_UPDATE, PATTERNS, RECIPE, VGRID_DELETE, WIDGET_MODES, MEOW_MODE, \
+    VGRID_UPDATE, PATTERNS, RECIPE, VGRID_DELETE, \
     VGRID, VGRID_READ, WORKFLOW_INPUTS, WORKFLOW_OUTPUTS, WHITE, ANCESTORS, \
-    CWL_MODE, TRIGGER_OUTPUT, NOTEBOOK_OUTPUT, TRIGGER_PATHS, CWL_INPUTS, \
+    TRIGGER_OUTPUT, NOTEBOOK_OUTPUT, TRIGGER_PATHS, CWL_INPUTS, \
     CWL_NAME, CWL_OUTPUTS, CWL_BASE_COMMAND, CWL_ARGUMENTS, CWL_REQUIREMENTS, \
-    CWL_STDOUT, CWL_HINTS, CWL_STEPS, CWL_INPUT_TYPE, CWL_INPUT_BINDING, \
-    CWL_INPUT_POSITION, CWL_INPUT_PREFIX, CWL_OUTPUT_TYPE, \
+    CWL_STDOUT, CWL_HINTS, CWL_STEPS, CWL_OUTPUT_TYPE, \
     CWL_OUTPUT_BINDING, CWL_OUTPUT_SOURCE, CWL_OUTPUT_GLOB, CWL_YAML_CLASS, \
     CWL_YAML_PATH, CWL_WORKFLOW_RUN, CWL_WORKFLOW_IN, CWL_WORKFLOW_OUT, \
     CWL_VARIABLES, PLACEHOLDER, WORKFLOW_NAME, STEP_NAME, VARIABLES_NAME, \
-    WORKFLOWS, STEPS, SETTINGS, YAML_EXTENSIONS, CWL_EXTENSIONS, CWL_CLASS, \
-    CWL_CLASS_WORKFLOW, CWL_CLASS_COMMAND_LINE_TOOL, VGRID_ANY_OBJECT_TYPE
+    WORKFLOWS, STEPS, SETTINGS, CWL_CLASS, PATTERN_NAME, RECIPE_NAME, \
+    CWL_CLASS_WORKFLOW, CWL_CLASS_COMMAND_LINE_TOOL, VGRID_ANY_OBJECT_TYPE, \
+    MEOW_MODE, CWL_MODE, WIDGET_MODES, DEFAULT_WORKFLOW_TITLE, \
+    DEFAULT_CWL_IMPORT_EXPORT_DIR
 from .cwl import make_step_dict, make_workflow_dict, get_linked_workflow, \
     make_settings_dict, check_workflow_is_valid, check_step_is_valid, \
     get_glob_value, get_glob_entry_keys, get_step_name_from_title, \
     get_output_lookup
 from .mig import vgrid_workflow_json_call
 from .meow import build_workflow_object, pattern_has_recipes, Pattern, \
-    create_recipe_dict
+    create_recipe_dict, check_patterns_dict, check_recipes_dict
+
+YAML_EXTENSIONS = [
+    '.yaml',
+    '.yml'
+]
+
+CWL_EXTENSIONS = [
+    '.cwl'
+]
+
+CWL_INPUT_TYPE = 'type'
+CWL_INPUT_BINDING = 'inputBinding'
+CWL_INPUT_POSITION = 'position'
+CWL_INPUT_PREFIX = 'prefix'
 
 MEOW_NEW_PATTERN_BUTTON = 'meow_new_pattern_button'
 MEOW_EDIT_PATTERN_BUTTON = 'meow_edit_pattern_button'
@@ -59,9 +75,6 @@ DEFAULT_RESULT_NOTEBOOKS = [
     'result'
 ]
 CWL_WORK_DIR_REQ = 'InitialWorkDirRequirement'
-
-DEFAULT_WORKFLOW_TITLE = 'workflow'
-DEFAULT_CWL_IMPORT_EXPORT_DIR = 'cwl_directory'
 
 MODE = 'mode'
 AUTO_IMPORT = 'auto_import'
@@ -633,7 +646,8 @@ def prepare_to_dump(to_export):
 
 
 class WorkflowWidget:
-    # TODO allow for imports of patterns and recipes defined in code.
+    # TODO allow importing of cwl dicts at creation too. Also add validation
+    #  for CWL dicts.
     def __init__(self, **kwargs):
         """
         Constructor for a new WorkflowWidget. Takes optional keyword arguments.
@@ -663,7 +677,8 @@ class WorkflowWidget:
         exported or imported to/from. Default value 'cwl_directory'.
 
         :param export_name: (str)[optional] Workflow name used for CWL
-        workflows created by converting MEOW defintions. Default is 'workflow'.
+        workflows created by converting MEOW definitions. Default is
+        'workflow'.
         """
         check_input_args(kwargs, SUPPORTED_ARGS)
 
@@ -679,7 +694,7 @@ class WorkflowWidget:
         cwl_dir = kwargs.get(CWL_IMPORT_EXPORT_DIR_ARG, None)
         if cwl_dir:
             check_input(cwl_dir, str, CWL_IMPORT_EXPORT_DIR_ARG)
-            valid_path(cwl_dir, CWL_IMPORT_EXPORT_DIR_ARG)
+            valid_dir_path(cwl_dir, CWL_IMPORT_EXPORT_DIR_ARG)
             self.cwl_import_export_dir = cwl_dir
         else:
             self.cwl_import_export_dir = DEFAULT_CWL_IMPORT_EXPORT_DIR
@@ -695,6 +710,14 @@ class WorkflowWidget:
         if vgrid:
             check_input(vgrid, str, VGRID)
             self.vgrid = vgrid
+        else:
+            self.vgrid = None
+
+        patterns = kwargs.get(PATTERNS, None)
+        check_input(patterns, dict, PATTERNS, or_none=True)
+
+        recipes = kwargs.get(RECIPES, None)
+        check_input(recipes, dict, RECIPES, or_none=True)
 
         auto_import = kwargs.get(AUTO_IMPORT, False)
         check_input(auto_import, bool, AUTO_IMPORT)
@@ -723,6 +746,16 @@ class WorkflowWidget:
             PATTERNS: {},
             RECIPES: {}
         }
+
+        if patterns:
+            valid, feedback = check_patterns_dict(patterns)
+            if valid:
+                self.meow[PATTERNS] = patterns
+        if recipes:
+            valid, feedback = check_recipes_dict(recipes)
+            if valid:
+                self.meow[RECIPES] = recipes
+
         self.cwl = {
             WORKFLOWS: {},
             STEPS: {},
@@ -832,7 +865,7 @@ class WorkflowWidget:
         """
         Ensures the WorkflowWidget is ready to be displayed before doing so.
 
-        :return: (WorkflowWidget) The current, display ready WorkflowWidget.
+        :return: (widgets.VBox) The current, display ready WorkflowWidget.
         """
         widget = widgets.VBox(
             [
@@ -850,8 +883,19 @@ class WorkflowWidget:
 
         return widget
 
-    # TODO update description
     def __on_mode_selection_changed(self, change):
+        """
+        Widget mode toggle selection changed handler. Only does anything on
+        new changes, if the new selection is not the same as the current mode
+        to prevent update spam.
+
+        If change is actionable will construct a new widget according to the
+        new mode.
+
+        :param change: (dict) ToggleButton change dict.
+
+        :return: No return.
+        """
         new_mode = change['new']
         if change['type'] == 'change' \
                 and change['name'] == 'value'\
@@ -865,21 +909,38 @@ class WorkflowWidget:
                 self.__construct_widget()
                 self.__update_workflow_visualisation()
 
-    # TODO update description
     def __check_state(self, state=None):
+        """
+        Checks that the mode selection is valid. Will raise SystemError if
+        self.mode is not valid.
+
+        :param state: (str)[optional] Ths current desired state. Is used to
+        check that we are in the expected mode. Valid values are 'MEOW' and
+        'CWL'. If not stated then will just check that internal state is still
+        valid. Default is None.
+
+        :return: No return.
+        """
         if self.mode not in WIDGET_MODES:
-            raise Exception("Internal state corrupted. Invalid mode %s. Only "
-                            "valid modes are %s. " % (self.mode, WIDGET_MODES))
+            raise SystemError(
+                "Internal state corrupted. Invalid mode %s. Only valid modes "
+                "are %s. " % (self.mode, WIDGET_MODES)
+            )
         if state:
             if self.mode != state:
                 if self.mode not in WIDGET_MODES:
-                    raise Exception(
+                    raise SystemError(
                         "Internal state corrupted. Invalid function call for "
                         "state %s. Should be only accessible to %s. "
                         % (state, self.mode))
 
-    # TODO update description
     def __construct_widget(self):
+        """
+        Starts construction of a new widget state depending on the current
+        mode selection.
+
+        :return: No return.
+        """
         self.__check_state()
 
         if self.mode == MEOW_MODE:
@@ -888,8 +949,17 @@ class WorkflowWidget:
         elif self.mode == CWL_MODE:
             self.__construct_cwl_widget()
 
-    # TODO update description
     def __construct_meow_widget(self):
+        """
+        Sets the state of the WorkflowWidget to enable editing of MEOW
+        workflows using Patterns and Recipes. Will clear any current form and
+        construct a new one. If no MEOW data is present and auto_import is
+        True then importing of data will be attempted. If CWL data is already
+        present this will be imported. If CWL data is not present then will
+        attempt to import data from MiG.
+
+        :return: No return.
+        """
         self.__check_state(state=MEOW_MODE)
         self.button_elements = {}
         self.__close_form()
@@ -925,10 +995,10 @@ class WorkflowWidget:
                         "%s data detected, attempting to convert to %s "
                         "format. " % (CWL_MODE, MEOW_MODE)
                     )
-                    status, result = self.__cwl_to_meow()
+                    valid, buffer_meow = self.__cwl_to_meow()
 
-                    if status:
-                        self.__import_meow_workflow(**result)
+                    if valid:
+                        self.__import_meow_workflow(**buffer_meow)
                     self.__enable_top_buttons()
 
                 else:
@@ -947,8 +1017,17 @@ class WorkflowWidget:
         with self.button_area:
             display(new_buttons)
 
-    # TODO update description
     def __construct_cwl_widget(self):
+        """
+        Sets the state of the WorkflowWidget to enable editing of CWL
+        workflows using Workflows, Steps and Arguments. Will clear any current
+        form and construct a new one. If no CWL data is present and
+        auto_import is True then importing of data will be attempted. If MEOW
+        data is already present this will be imported. If MEOW data is not
+        present then will attempt to import data from cwl_dir.
+
+        :return: No return.
+        """
         self.__check_state(state=CWL_MODE)
         self.button_elements = {}
         self.__close_form()
@@ -985,10 +1064,10 @@ class WorkflowWidget:
                         "%s data detected, attempting to convert to %s "
                         "format. " % (MEOW_MODE, CWL_MODE)
                     )
-                    status, result = self.__meow_to_cwl()
+                    valid, buffer_cwl = self.__meow_to_cwl()
 
-                    if status:
-                        self.__import_cwl(**result)
+                    if valid:
+                        self.__import_cwl(**buffer_cwl)
                     self.__enable_top_buttons()
                 else:
                     status, feedback = self.__import_from_dir()
@@ -1030,8 +1109,15 @@ class WorkflowWidget:
         with self.button_area:
             display(new_buttons)
 
-    # TODO update description
     def new_pattern_clicked(self, button):
+        """
+        Event handler for 'New Pattern' button clicked. Will create a form for
+        defining new MEOW patterns.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
         self.__clear_feedback()
         self.__create_new_form(
             [
@@ -1048,8 +1134,15 @@ class WorkflowWidget:
             PATTERN_NAME
         )
 
-    # TODO update description
     def edit_pattern_clicked(self, button):
+        """
+        Event handler for 'Edit Pattern' button clicked. Will create a form for
+        editing and deleting existing MEOW patterns.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
         self.__clear_feedback()
         self.__create_new_form(
             [
@@ -1068,8 +1161,15 @@ class WorkflowWidget:
             selector_dict=self.meow[PATTERNS]
         )
 
-    # TODO update description
     def new_recipe_clicked(self, button):
+        """
+        Event handler for 'New Recipe' button clicked. Will create a form for
+        defining new MEOW recipes.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
         self.__clear_feedback()
         self.__create_new_form(
             [
@@ -1080,8 +1180,15 @@ class WorkflowWidget:
             RECIPE_NAME
         )
 
-    # TODO update description
     def edit_recipe_clicked(self, button):
+        """
+        Event handler for 'Edit Recipe' button clicked. Will create a form for
+        editing and deleting eexisting MEOW recipes.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
         self.__clear_feedback()
         self.__create_new_form(
             [
@@ -1094,30 +1201,61 @@ class WorkflowWidget:
             selector_dict=self.meow[RECIPES]
         )
 
-    # TODO update description
     def import_from_cwl_clicked(self, button):
+        """
+        Event handler for 'Import CWL' button clicked. Will attempt to convert
+        any existing CWL data into MEOW Patterns and Recipes.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
         self.__close_form()
         self.__clear_feedback()
 
-        status, result = self.__cwl_to_meow()
+        valid, buffer_meow = self.__cwl_to_meow()
 
-        if status:
-            self.__import_meow_workflow(**result)
+        # TODO should be a confirmation here
 
-    # TODO update description
+        if valid:
+            self.__import_meow_workflow(**buffer_meow)
+
+
     def import_from_vgrid_clicked(self, button):
+        """
+        Event handler for 'Import from VGrid' button clicked. Will attempt to
+        import Patterns and Recipes from MiG VGrid.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
         self.__close_form()
         self.__clear_feedback()
         self.__import_from_vgrid()
 
-    # TODO update description
     def export_to_vgrid_clicked(self, button):
+        """
+        Event handler for 'Export to Vgrid' button clicked. Will attempt to
+        export existing Patterns and Recipes to a MiG Vgrid.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
         self.__close_form()
         self.__clear_feedback()
         self.__export_to_vgrid()
 
-    # TODO update description
     def new_workflow_clicked(self, button):
+        """
+        Event handler for 'New Workflow' button clicked. Will create a form for
+        defining new CWL workflow.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
         self.__clear_feedback()
         self.__create_new_form(
             [
@@ -1131,8 +1269,15 @@ class WorkflowWidget:
             WORKFLOW_NAME
         )
 
-    # TODO update description
     def edit_workflow_clicked(self, button):
+        """
+        Event handler for 'Edit Workflow' button clicked. Will create a form
+        for editing and deleting existing CWL workflows.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
         self.__clear_feedback()
         self.__create_new_form(
             [
@@ -1148,8 +1293,15 @@ class WorkflowWidget:
             selector_dict=self.cwl[WORKFLOWS]
         )
 
-    # TODO update description
     def new_step_clicked(self, button):
+        """
+        Event handler for 'New Step' button clicked. Will create a form for
+        defining new CWL steps.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
         self.__clear_feedback()
         self.__create_new_form(
             [
@@ -1166,8 +1318,15 @@ class WorkflowWidget:
             STEP_NAME
         )
 
-    # TODO update description
     def edit_step_clicked(self, button):
+        """
+        Event handler for 'Edit Step' button clicked. Will create a form for
+        editing and deleting existing CWL steps.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
         self.__clear_feedback()
         self.__create_new_form(
             [
@@ -1186,8 +1345,15 @@ class WorkflowWidget:
             selector_dict=self.cwl[STEPS]
         )
 
-    # TODO update description
     def new_variables_clicked(self, button):
+        """
+        Event handler for 'New Arguments' button clicked. Will create a form
+        for defining new CWL arguments.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
         self.__clear_feedback()
         self.__create_new_form(
             [
@@ -1198,8 +1364,15 @@ class WorkflowWidget:
             VARIABLES_NAME
         )
 
-    # TODO update description
     def edit_variables_clicked(self, button):
+        """
+        Event handler for 'Edit Arguments' button clicked. Will create a form
+        for editing and deleting existing CWL arguments.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
         self.__clear_feedback()
         self.__create_new_form(
             [
@@ -1212,25 +1385,34 @@ class WorkflowWidget:
             selector_dict=self.cwl[VARIABLES],
         )
 
-    # TODO update description
     def import_from_meow_clicked(self, button):
+        """
+        Event handler for 'Import MEOW' button clicked. Will attempt to import
+        existing MEOW Patterns and Recipes into CWL Workflows, Steps and
+        Arguments. Will prompt the user for confirmation once potential
+        imports have be identified.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
         self.__close_form()
         self.__clear_feedback()
 
-        status, result = self.__meow_to_cwl()
+        valid, buffer_cwl = self.__meow_to_cwl()
 
-        if status:
+        if valid:
             self.__add_to_feedback(
                 "%s(s) %s, %s(s) %s, and %s(s) %s have been identified for "
                 "import. Any currently registered %s(s), %s(s), and %s(s) "
                 "will be overwritten. "
                 % (
                     WORKFLOW_NAME,
-                    str(list(result[WORKFLOWS].keys())),
+                    str(list(buffer_cwl[WORKFLOWS].keys())),
                     STEP_NAME,
-                    str(list(result[STEPS].keys())),
+                    str(list(buffer_cwl[STEPS].keys())),
                     VARIABLES_NAME,
-                    str(list(result[VARIABLES].keys())),
+                    str(list(buffer_cwl[VARIABLES].keys())),
                     WORKFLOW_NAME,
                     STEP_NAME,
                     VARIABLES_NAME
@@ -1239,15 +1421,26 @@ class WorkflowWidget:
 
             self.__create_confirmation_buttons(
                 self.__import_cwl,
-                result,
+                buffer_cwl,
                 "Confirm Import",
                 "Cancel Import",
-                "Import canceled. No local data has been changed. "
+                "Import canceled. No local data has been changed. ",
+                "Confirm Import of shown data. ",
+                "Cancel Import. No loca data will be changed. "
             )
         self.__enable_top_buttons()
 
-    # TODO update description
     def import_from_dir_clicked(self, button):
+        """
+        Event handler for 'Import From Directory' button clicked. Will attempt
+        to import CWL Workflows, Steps and Arguments from the defined cwl
+        import/export dir as defined by 'cwl_dir'.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
+
         self.__close_form()
         self.__clear_feedback()
 
@@ -1281,15 +1474,24 @@ class WorkflowWidget:
                 feedback,
                 "Confirm Import",
                 "Cancel Import",
-                "Import canceled. No local data has been changed. "
+                "Import canceled. No local data has been changed. ",
+                "Confirm Import of the shown data. ",
+                "Cancel Import. No local data will be changed. "
             )
         else:
             self.__add_to_feedback("No CWL inputs were found")
         self.__enable_top_buttons()
 
-    # TODO update description
     def export_to_dir_clicked(self, button):
-        # TODO update this description
+        """
+        Event handler for 'Export To Directory' button clicked. Will attempt
+        to export existing CWL Workflows, Steps and Arguments to the defined
+        cwl import/export dir as defined by 'cwl_dir'.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
         self.__close_form()
         self.__clear_feedback()
 
@@ -1414,9 +1616,16 @@ class WorkflowWidget:
             self.__add_to_feedback(
                 "toil-cwl-runner %s %s" % (cwl_filename, yaml_filename))
 
-    # TODO update description
     def __enable_top_buttons(self):
+        """
+        Enable or disable the buttons at the top of a widget form depending on
+        the current mode, and if the appropriate data is available. For
+        instance, if no MEOW Patterns are currently defined disable the 'Edit
+        Patterns' button. Also disable VGrid interaction buttons if a VGrid
+        was not specified during widget creation.
 
+        :return: No return.
+        """
         if self.button_elements:
             if self.mode == MEOW_MODE:
                 self.button_elements[MEOW_NEW_PATTERN_BUTTON].disabled = \
@@ -1495,11 +1704,38 @@ class WorkflowWidget:
                 self.button_elements[CWL_IMPORT_DIR_BUTTON].disabled = False
                 self.button_elements[CWL_EXPORT_DIR_BUTTON].disabled = False
 
-    # TODO update description
     def __create_new_form(
             self, form_parts, done_function, label_text, selector_key=None,
             selector_dict=None, delete_func=None
     ):
+        """
+        Creation/Editing/Deletion form base constructor. Will assemble a
+        complete form and display it within the widget display area.
+
+        :param form_parts: (dict) Dictionary of the different entry areas of
+        the form.
+
+        :param done_function: (func) The function to be called at form
+        completion.
+
+        :param label_text: (str) The type name of the created/edited/deleted
+        object. Used for labels and error messages.
+
+        :param selector_key: (str)[optional] If form should allow for a user
+        to select a populating object this is the key used to do so. If this
+        is not defined the form will not be auto populatable with existing
+        object data. Default is None.
+
+        :param selector_dict: (dict)[optional] If form should allow for a user
+        to select a populating object this is the dict the key selects from.
+        If this is not defined the form will not be auto populatable with
+        existing object data. Default is None.
+
+        :param delete_func: (func)[optional] If form should allow for a user
+        to delete a selected object this is the function to be called.
+
+        :return: No return.
+        """
         self.form_inputs = {}
         self.form_sections = {}
         dropdown = None
@@ -1516,6 +1752,16 @@ class WorkflowWidget:
             )
 
             def on_dropdown_select(change):
+                """
+                Form selection dropdown change handler. On a valid selection
+                change will update the current form with the newly selected
+                objects parameters. Will add/remove extra form rows as
+                necessary.
+
+                :param change: (dict) Dropdown change dictionary.
+
+                :return: No return.
+                """
                 if change['type'] == 'change' and change['name'] == 'value':
                     to_update = [i[INPUT_KEY] for i in form_parts]
                     selected_object = selector_dict[change['new']]
@@ -1582,6 +1828,13 @@ class WorkflowWidget:
             dropdown.observe(on_dropdown_select)
 
             def delete_button_click(button):
+                """
+                Delete button event handler. Will call the passed 'delete_func'
+
+                :param button: (widgets.Button) The delete button object.
+
+                :return: No return.
+                """
                 delete_func(dropdown.value)
             delete_button = widgets.Button(
                 value=False,
@@ -1633,6 +1886,14 @@ class WorkflowWidget:
                 rows.append(form_section)
 
         def done_button_click(button):
+            """
+            Done button click event handler. Will pull user inputs from the
+            form, place them in a dict and pass them to 'done_func'
+
+            :param button: (widgets.Button) The done button object.
+
+            :return: No return.
+            """
             values = {}
             if dropdown:
                 values[selector_key] = dropdown.value
@@ -1661,10 +1922,15 @@ class WorkflowWidget:
         done_button.on_click(done_button_click)
 
         def cancel_button_click(button):
+            """
+            Cancel button click event handler. Will clear the current form.
+
+            :param button: (widgets.Button) The cancel button object.
+
+            :return: No return.
+            """
             self.__close_form()
             self.__clear_feedback()
-
-            pass
         cancel_button = widgets.Button(
             value=False,
             description="Cancel",
@@ -1697,9 +1963,13 @@ class WorkflowWidget:
         with self.form_area:
             display(form)
 
-    # TODO update description
     def __refresh_current_form_layout(self):
+        """
+        Updates the current form with the required number of rows and
+        displays the new form layout.
 
+        :return: No return.
+        """
         rows = []
         for section in self.form_sections.values():
             rows.append(section)
@@ -1712,22 +1982,35 @@ class WorkflowWidget:
         with self.form_area:
             display(form)
 
-    # TODO update description
     def __close_form(self):
-        # self.displayed_form = None
+        """
+        Clears the currently displayed form area.
+
+        :return: No return.
+        """
         self.form_area.clear_output()
         self.__enable_top_buttons()
         self.__clear_current_form()
 
-    # TODO update description
     def __clear_current_form(self):
-        # TODO update this description
+        """
+        Clears the internal state of the current form.
 
+        :return: No return.
+        """
         self.form_inputs = {}
 
-    # TODO update description
     def __make_help_button(self, help_text):
-        # TODO update this description
+        """
+        Creates help buttons for displaying additional help text within a form
+        row. This help text can be toggled to display or not using the button.
+
+        :param help_text: (str) Text to display if help text is toggled.
+
+        :return: (Tuple (widgets.Button, widgets.HTML) Returns and tuple
+        containing the Button to toggle help text, and the HTML element to
+        display said text.
+        """
 
         default_tooltip_text = 'Displays additional help text. '
 
@@ -1745,6 +2028,15 @@ class WorkflowWidget:
         )
 
         def help_button_click(button):
+            """
+            Help button click event handler. Will toggle the HTML elements
+            text to either be empty, or the desired help text depending on
+            its current state.
+
+            :param button: (widgets.Button) The button object.
+
+            :return: No return.
+            """
             if help_html.value is "":
                 message = help_text
                 help_html.value = message
@@ -1756,8 +2048,16 @@ class WorkflowWidget:
 
         return help_button, help_html
 
-    # TODO update description
     def __make_additional_input_row(self, key):
+        """
+        Adds additional row to a form input row to allow for multiple values
+        to be inserted in one form input.
+
+        :param key: (str) The key of the form row requiring an additional
+        input.
+
+        :return: (widgets.HBox) The container with the new input in it.
+        """
         hidden_label = widgets.Label(
             value="",
             layout=widgets.Layout(width='20%', min_width='10ex')
@@ -1774,8 +2074,19 @@ class WorkflowWidget:
             additional_input
         ])
 
-    # TODO update description
     def __make_dict_input_row(self, key, output_items):
+        """
+        Makes an additional input row for a dict based form input. The
+        additional row is appended in place.
+
+        :param key: (str) The key of the form row requiring an additional
+        input.
+
+        :param output_items: (list) A list of form rows to which the
+        additional shall be appended.
+
+        :return: No return.
+        """
 
         hidden_label = widgets.Label(
             value="",
@@ -1803,10 +2114,25 @@ class WorkflowWidget:
 
         output_items.insert(-1, row)
 
-    # TODO update description
     def __form_single_text_input(
             self, key, display_text, help_text, optional=False
     ):
+        """
+        Creates a new form input row. This row will only accept a single input.
+
+        :param key: (str) The form row key.
+
+        :param display_text: (str) text to display as a label to this row.
+
+        :param help_text: (str) help text, so a user knows how to fill in
+        this row.
+
+        :param optional: (boolean)[optional] If true the label will be marked
+        with additional text showing this input row is optional. Default is
+        False.
+
+        :return: (widgets.VBow) Form input row container ready to display.
+        """
         label_text = display_text
         if optional:
             label_text += " (optional)"
@@ -1841,11 +2167,31 @@ class WorkflowWidget:
             layout=widgets.Layout(width='100%'))
         return input_widget
 
-    # TODO update description
     def __form_multi_text_input(
             self, key, display_text, help_text, optional=False,
             additional_inputs=None,
     ):
+        """
+        Creates a new form input row. This row can accept multiple inputs,
+        with a user able to add and remove rows as needed.
+
+        :param key: (str) The form row key.
+
+        :param display_text: (str) text to display as a label to this row.
+
+        :param help_text: (str) help text, so a user knows how to fill in
+        this row.
+
+        :param optional: (boolean)[optional] If true the label will be marked
+        with additional text showing this input row is optional. Default is
+        False.
+
+        :param additional_inputs: (int) The number of additional rows that are
+        needed to accomodate all values for the object that will be populating
+        the form.
+
+        :return: (widgets.VBow) Form input row container ready to display.
+        """
         output_items = []
 
         label_text = display_text
@@ -1863,6 +2209,12 @@ class WorkflowWidget:
         self.form_inputs[key] = [input]
 
         def activate_remove_button():
+            """
+            Function to determine if the remove row button should be enabled
+            or not. Should be disabled if there is only 1 row.
+
+            :return: No return.
+            """
             if key in self.form_inputs.keys():
                 if len(self.form_inputs[key]) > 1:
                     remove_button.disabled = False
@@ -1870,6 +2222,14 @@ class WorkflowWidget:
             remove_button.disabled = True
 
         def add_button_click(button):
+            """
+            'Add Row' button clicked event handler. Will add another row to
+            the form and refresh the layout.
+
+            :param button: (widgets.Button) The button object.
+
+            :return: No return.
+            """
             additional_row = self.__make_additional_input_row(key)
             output_items.insert(-1, additional_row)
             expanded_section = widgets.VBox(
@@ -1891,6 +2251,14 @@ class WorkflowWidget:
         add_button.on_click(add_button_click)
 
         def remove_button_click(button):
+            """
+            'Remove Row' button clicked event handler. Will remove a row from
+            the form and refresh the layout.
+
+            :param button: (widgets.Button) The button object.
+
+            :return: No return.
+            """
             del self.form_inputs[key][-1]
             del output_items[-2]
             reduced_section = widgets.VBox(
@@ -1943,11 +2311,32 @@ class WorkflowWidget:
         )
         return section
 
-    # TODO update description
     def __form_multi_dict_input(
             self, key, display_text, help_text,
             optional=False, additional_inputs=None,
     ):
+        """
+        Creates a new form input row. This row can accept multiple inputs,
+        with a user able to add and remove rows as needed. Each input has two
+        sections to be translated into a key/value pair for a dictionary.
+
+        :param key: (str) The form row key.
+
+        :param display_text: (str) text to display as a label to this row.
+
+        :param help_text: (str) help text, so a user knows how to fill in
+        this row.
+
+        :param optional: (boolean)[optional] If true the label will be marked
+        with additional text showing this input row is optional. Default is
+        False.
+
+        :param additional_inputs: (int) The number of additional rows that are
+        needed to accomodate all values for the object that will be populating
+        the form.
+
+        :return: (widgets.VBow) Form input row container ready to display.
+        """
         output_items = []
 
         label_text = display_text
@@ -1969,6 +2358,12 @@ class WorkflowWidget:
         )
 
         def activate_remove_button():
+            """
+            Function to determine if the remove row button should be enabled
+            or not. Should be disabled if there is only 1 row.
+
+            :return: No return.
+            """
             if key in self.form_inputs.keys():
                 if len(self.form_inputs[key]) > 1:
                     remove_button.disabled = False
@@ -1976,6 +2371,14 @@ class WorkflowWidget:
             remove_button.disabled = True
 
         def add_button_click(button):
+            """
+            'Add Row' button clicked event handler. Will add another row to
+            the form and refresh the layout.
+
+            :param button: (widgets.Button) The button object.
+
+            :return: No return.
+            """
             self.__make_dict_input_row(key, output_items)
             expanded_section = widgets.VBox(
                 output_items,
@@ -1996,6 +2399,14 @@ class WorkflowWidget:
         add_button.on_click(add_button_click)
 
         def remove_button_click(button):
+            """
+            'Remove Row' button clicked event handler. Will remove a row from
+            the form and refresh the layout.
+
+            :param button: (widgets.Button) The button object.
+
+            :return: No return.
+            """
             del self.form_inputs[key][-1]
             del output_items[-2]
             reduced_section = widgets.VBox(
@@ -2052,20 +2463,54 @@ class WorkflowWidget:
         )
         return section
 
-    # TODO update description
     def __create_confirmation_buttons(
             self, confirmation_function, confirmation_args, confirm_text,
-            cancel_text, cancel_feedback
+            cancel_text, cancel_feedback, confirm_tooltip, cancel_tooltip
     ):
+        """
+        Creates a confirmation and a cancel button. If confirm is clicked then
+        a given function is performed, and if cancel is clicked do nothing.
+        The buttons are created and immediately displayed on the
+        WorkflowWidgets display area.
+
+        :param confirmation_function: (func) The function to be performed if
+        the confirm button is clicked.
+
+        :param confirmation_args: (dict) Keyword arguments to be passed to the
+        function 'confirmation_func'.
+
+        :param confirm_text: (str) Text to be displayed on the confirm button.
+
+        :param cancel_text: (str) Text to be displayed on the cancel button.
+
+        :param cancel_feedback: (str) Feedback text to be displayed if cancel
+        clicked.
+
+        :param confirm_tooltip: (str) Tooltip text to be displayed on
+        confirmation button.
+
+        :param cancel_toolip: (str) Tooltip text to be displayed on cancel
+        button.
+
+        :return: No return.
+        """
         confirm_button = widgets.Button(
             value=False,
             description=confirm_text,
             disabled=False,
             button_style='',
-            tooltip='TODO'
+            tooltip=confirm_tooltip
         )
 
         def confirm_button_click(button):
+            """
+            Event handler for 'Confirm' button clicked. Calls function
+            'confirmation_func'.
+
+            :param button: (widgets.Button) The button object.
+
+            :return: No return.
+            """
             confirmation_function(**confirmation_args)
 
         confirm_button.on_click(confirm_button_click)
@@ -2075,10 +2520,18 @@ class WorkflowWidget:
             description=cancel_text,
             disabled=False,
             button_style='',
-            tooltip='TODO'
+            tooltip=cancel_tooltip
         )
 
         def cancel_button_click(button):
+            """
+            Event handler for 'Cancel' button clicked. Sets feedback and
+            aborts.
+
+            :param button: (widgets.Button) The button object.
+
+            :return: No return.
+            """
             self.__set_feedback(cancel_feedback)
             self.__close_form()
 
@@ -2094,10 +2547,21 @@ class WorkflowWidget:
         with self.form_area:
             display(confirmation_buttons)
 
-    # TODO update description
     def __process_new_pattern(self, values, editing=False):
-        # TODO update this description
+        """
+        Attempts to construct a new MEOW Pattern object from a dictionary of
+        values. Will save resulting Pattern to internal database dictionary.
 
+        :param values: (dict) Arguments to use in Pattern creation.
+
+        :param editing: (bool)[optional] True/False used to denote if the
+        values to process are an update to an existing Pattern object or an
+        entirely new Pattern. Will be True if an update. If True, does not
+        enforce that Pattern name is unique. Default is False.
+
+        :return: (bool) Returns True if Pattern could be created, and False
+        otherwise.
+        """
         try:
             pattern = Pattern(values[NAME])
             if not editing:
@@ -2106,7 +2570,7 @@ class WorkflowWidget:
                           "already registered with that name. " \
                           % (PATTERN_NAME, PATTERN_NAME)
                     self.__set_feedback(msg)
-                    return
+                    return False
             file_name = values[INPUT_FILE]
             trigger_paths = values[TRIGGER_PATHS]
             trigger_output = values[TRIGGER_OUTPUT]
@@ -2133,7 +2597,9 @@ class WorkflowWidget:
                 pattern.add_recipe(recipe)
             for variable in values[VARIABLES]:
                 if variable[VALUE_KEY]:
-                    pattern.add_variable(variable[NAME_KEY], variable[VALUE_KEY])
+                    pattern.add_variable(
+                        variable[NAME_KEY], variable[VALUE_KEY]
+                    )
             for output in values[OUTPUT]:
                 if output[VALUE_KEY]:
                     pattern.add_output(output[NAME_KEY], output[VALUE_KEY])
@@ -2169,15 +2635,27 @@ class WorkflowWidget:
             self.__set_feedback(msg)
             return False
 
-    # TODO update description
-    def __process_new_recipe(self, values, ignore_conflicts=False):
-        # TODO update this description
+    def __process_new_recipe(self, values, editing=False):
+        """
+        Attempts to construct a new MEOW Recipe dictionary from a dictionary of
+        values. Will save resulting Recipe to internal database dictionary.
+
+        :param values: (dict) Arguments to use in Recipe creation.
+
+        :param editing: (bool)[optional] True/False used to denote if
+        the values to process are an update to an existing Recipe dict or an
+        entirely new Recipe. Will be True if an update. If True, does not
+        enforce that Recipe name is unique. Default is False.
+
+        :return: (bool) Returns True if Recipe could be created, and False
+        otherwise.
+        """
 
         try:
             source = values[SOURCE]
             name = values[NAME]
 
-            valid_path(
+            valid_file_path(
                 source,
                 'Source',
                 extensions=NOTEBOOK_EXTENSIONS
@@ -2191,7 +2669,7 @@ class WorkflowWidget:
                 name = filename
             if not os.path.isfile(source):
                 self.__set_feedback("Source %s was not found. " % source)
-                return
+                return False
             if name:
                 valid_string(name,
                              'Name',
@@ -2199,14 +2677,14 @@ class WorkflowWidget:
                              + CHAR_LOWERCASE
                              + CHAR_NUMERIC
                              + CHAR_LINES)
-                if not ignore_conflicts:
+                if not editing:
                     if name in self.meow[RECIPES]:
                         msg = "%s name is not valid as another %s " \
                               "is already registered with that name. Please " \
                               "try again using a different name. " \
                               % (RECIPE_NAME, RECIPE_NAME)
                         self.__set_feedback(msg)
-                        return
+                        return False
 
             with open(source, "r") as read_file:
                 notebook = json.load(read_file)
@@ -2234,8 +2712,22 @@ class WorkflowWidget:
             )
             return False
 
-    # TODO update description
     def __process_new_workflow(self, values, editing=False):
+        """
+        Attempts to construct a new CWL Workflow dictionary from a dictionary
+        of values. Will save resulting Workflow to internal database
+        dictionary.
+
+        :param values: (dict) Arguments to use in Workflow creation.
+
+        :param editing: (bool)[optional] True/False used to denote if the
+        values to process are an update to an existing Workflow dict or an
+        entirely new Workflow. Will be True if an update. If True, does not
+        enforce that Workflow name is unique. Default is False.
+
+        :return: (bool) Returns True if Workflow could be created, and False
+        otherwise.
+        """
         try:
             name = values[CWL_NAME]
             inputs_list = values[CWL_INPUTS]
@@ -2290,8 +2782,22 @@ class WorkflowWidget:
             )
             return False
 
-    # TODO update description
     def __process_new_step(self, values, editing=False):
+        """
+        Attempts to construct a new CWL Step dictionary from a dictionary
+        of values. Will save resulting Step to internal database
+        dictionary.
+
+        :param values: (dict) Arguments to use in Step creation.
+
+        :param editing: (bool)[optional] True/False used to denote if the
+        values to process are an update to an existing Step dict or an
+        entirely new Step. Will be True if an update. If True, does not
+        enforce that WStep name is unique. Default is False.
+
+        :return: (bool) Returns True if Step could be created, and False
+        otherwise.
+        """
         try:
             name = values[CWL_NAME]
             base_command = values[CWL_BASE_COMMAND]
@@ -2357,8 +2863,22 @@ class WorkflowWidget:
             )
             return False
 
-    # TODO update description
     def __process_new_variables(self, values, editing=False):
+        """
+        Attempts to construct a new CWL Arguments dictionary from a dictionary
+        of values. Will save resulting Arguments to internal database
+        dictionary.
+
+        :param values: (dict) Arguments to use in Arguments creation.
+
+        :param editing: (bool)[optional] True/False used to denote if the
+        values to process are an update to an existing Arguments dict or
+        entirely new Arguments. Will be True if an update. If True, does not
+        enforce that Arguments name is unique. Default is False.
+
+        :return: (bool) Returns True if Arguments could be created, and False
+        otherwise.
+        """
         try:
             name = values[CWL_NAME]
             variables_list = values[CWL_VARIABLES]
@@ -2401,82 +2921,184 @@ class WorkflowWidget:
             )
             return False
 
-    # TODO update description
     def __process_editing_pattern(self, values):
-        # TODO update this description
+        """
+        Attempts to update values for an existing MEOW Pattern using the given
+        values. This is done by processing the values as though it is a new
+        Pattern, which will overwrite the old one. Note that all Pattern
+        values must be passed to this function, not just the ones to update.
+        Will save resulting Pattern to internal database dictionary. If the
+        Pattern is not updated the form is left open so that users may address
+        any problems.
+
+        :param values: (dict) Arguments to use in updating the Pattern.
+
+        :return: No return.
+        """
 
         if self.__process_new_pattern(values, editing=True):
             self.__update_workflow_visualisation()
             self.__close_form()
 
-    # TODO update description
     def __process_editing_recipe(self, values):
-        # TODO update this description
+        """
+        Attempts to update values for an existing MEOW Recipe using the given
+        values. This is done by processing the values as though it is a new
+        Recipe, which will overwrite the old one. Note that all Recipe
+        values must be passed to this function, not just the ones to update.
+        Will save resulting Recipe to internal database dictionary. If the
+        Recipe is not updated the form is left open so that users may address
+        any problems.
 
+        :param values: (dict) Arguments to use in updating the Recipe.
+
+        :return: No return.
+        """
         if self.__process_new_recipe(values, ignore_conflicts=True):
             self.__update_workflow_visualisation()
             self.__close_form()
 
-    # TODO update description
     def __process_editing_workflow(self, values):
+        """
+        Attempts to update values for an existing CWl Workflow using the given
+        values. This is done by processing the values as though it is a new
+        Workflow, which will overwrite the old one. Note that all Workflow
+        values must be passed to this function, not just the ones to update.
+        Will save resulting Workflow to internal database dictionary. If the
+        Workflow is not updated the form is left open so that users may address
+        any problems.
+
+        :param values: (dict) Arguments to use in updating the Workflow.
+
+        :return: No return.
+        """
         if self.__process_new_workflow(values, editing=True):
             self.__update_workflow_visualisation()
             self.__close_form()
 
-    # TODO update description
     def __process_editing_step(self, values):
+        """
+        Attempts to update values for an existing MEOW Step using the given
+        values. This is done by processing the values as though it is a new
+        Step, which will overwrite the old one. Note that all Step
+        values must be passed to this function, not just the ones to update.
+        Will save resulting Step to internal database dictionary. If the
+        Step is not updated the form is left open so that users may address
+        and problems.
+
+        :param values: (dict) Arguments to use in updating the Step.
+
+        :return: No return.
+        """
         if self.__process_new_step(values, editing=True):
             self.__update_workflow_visualisation()
             self.__close_form()
 
-    # TODO update description
     def __process_editing_variables(self, values):
+        """
+        Attempts to update values for existing MEOW Arguments using the given
+        values. This is done by processing the values as though it is new
+        Arguments, which will overwrite the old one. Note that all Argument
+        values must be passed to this function, not just the ones to update.
+        Will save resulting Arguments to internal database dictionary. If the
+        Arguments are not updated the form is left open so that users may
+        address and problems.
+
+        :param values: (dict) Parameters to use in updating Arguments.
+
+        :return: No return.
+        """
+
         if self.__process_new_variables(values, editing=True):
             self.__update_workflow_visualisation()
             self.__close_form()
 
-    # TODO update description
     def __process_delete_pattern(self, to_delete):
+        """
+        Attempts to delete a given Pattern. Will update the workflow
+        visualisation and close the form.
+
+        :param to_delete: (str) Name of Pattern to delete.
+
+        :return: No return.
+        """
         if to_delete in self.meow[PATTERNS]:
             self.meow[PATTERNS].pop(to_delete)
-        self.__set_feedback("%s %s deleted. " % (RECIPE_NAME, to_delete))
-        self.__update_workflow_visualisation()
+            self.__set_feedback("%s %s deleted. " % (RECIPE_NAME, to_delete))
+            self.__update_workflow_visualisation()
         self.__close_form()
 
-    # TODO update description
     def __process_delete_recipe(self, to_delete):
+        """
+        Attempts to delete a given recipe. Will update the workflow
+        visualisation and close the form.
+
+        :param to_delete: (str) Name of Recipe to delete.
+
+        :return: No return.
+        """
         if to_delete in self.meow[RECIPES]:
             self.meow[RECIPES].pop(to_delete)
-        self.__set_feedback("%s %s deleted. " % (PATTERN_NAME, to_delete))
-        self.__update_workflow_visualisation()
+            self.__set_feedback("%s %s deleted. " % (PATTERN_NAME, to_delete))
+            self.__update_workflow_visualisation()
         self.__close_form()
 
-    # TODO update description
     def __process_delete_workflow(self, to_delete):
+        """
+        Attempts to delete a given Workflow. Will update the workflow
+        visualisation and close the form.
+
+        :param to_delete: (str) Name of Workflow to delete.
+
+        :return: No return.
+        """
         if to_delete in self.cwl[WORKFLOWS]:
             self.cwl[WORKFLOWS].pop(to_delete)
-        self.__set_feedback("%s %s deleted. " % (WORKFLOW_NAME, to_delete))
-        self.__update_workflow_visualisation()
+            self.__set_feedback("%s %s deleted. " % (WORKFLOW_NAME, to_delete))
+            self.__update_workflow_visualisation()
         self.__close_form()
 
-    # TODO update description
     def __process_delete_step(self, to_delete):
+        """
+        Attempts to delete a given Step. Will update the workflow
+        visualisation and close the form.
+
+        :param to_delete: (str) Name of Step to delete.
+
+        :return: No return.
+        """
         if to_delete in self.cwl[STEPS]:
             self.cwl[STEPS].pop(to_delete)
-        self.__set_feedback("%s %s deleted. " % (STEP_NAME, to_delete))
-        self.__update_workflow_visualisation()
+            self.__set_feedback("%s %s deleted. " % (STEP_NAME, to_delete))
+            self.__update_workflow_visualisation()
         self.__close_form()
 
-    # TODO update description
     def __process_delete_variables(self, to_delete):
+        """
+        Attempts to delete a given Arguments. Will update the workflow
+        visualisation and close the form.
+
+        :param to_delete: (str) Name of Arguments to delete.
+
+        :return: No return.
+        """
         if to_delete in self.cwl[SETTINGS]:
             self.cwl[SETTINGS].pop(to_delete)
-        self.__set_feedback("%s %s deleted. " % (VARIABLES_NAME, to_delete))
-        self.__update_workflow_visualisation()
+            self.__set_feedback("%s %s deleted. " % (VARIABLES_NAME, to_delete))
+            self.__update_workflow_visualisation()
         self.__close_form()
 
-    # TODO update description
     def __import_from_vgrid(self, confirm=True):
+        """
+        Retrieves MEOW Patterns and Recipes from a VGrid. If no VGrid was
+        defined during widget creation this will abort.
+
+        :param confirm: (bool)[optional] flag for if user confirmation is
+        sought before final import, with True denoting that confirmation is
+        needed. Default is True.
+
+        :return: No return.
+        """
         if not self.vgrid:
             self.__add_to_feedback(NO_VGRID_MSG)
             return
@@ -2537,7 +3159,9 @@ class WorkflowWidget:
                     args,
                     "Confirm Import",
                     "Cancel Import",
-                    "Import canceled. No local data has been changed. "
+                    "Import canceled. No local data has been changed. ",
+                    "Confirm Import of the shown data. ",
+                    "Cancel Import. No local data will be changed. "
                 )
             else:
                 self.__import_meow_workflow(**args)
@@ -2549,8 +3173,21 @@ class WorkflowWidget:
             self.__add_to_feedback("Unexpected response: {}".format(response))
         self.__enable_top_buttons()
 
-    # TODO update description
     def __import_meow_workflow(self, **kwargs):
+        """
+        Writes the given patterns and recipes into internal database
+        dictionaries. No checking occurs at this point, as it is assumed to
+        have been performed already by this point. Once saved the
+        visualisation is updated automatically.
+
+        :param patterns: (dict)[optional] The dictionary of MEOW Patterns to
+        save. Default is None.
+
+        :param recipes: (dict)[optional] The dictionary of MEOW Recipes to
+        save. Default is None.
+
+        :return: No return.
+        """
         response_patterns = kwargs.get(PATTERNS, None)
         response_recipes = kwargs.get(RECIPES, None)
 
@@ -2594,8 +3231,17 @@ class WorkflowWidget:
         self.__update_workflow_visualisation()
         self.__close_form()
 
-    # TODO update description
     def __export_to_vgrid(self):
+        """
+        Starts to export the current MEOW Patterns and Recipes to the MiG VGrid
+        specified during WorkflowWidget creation. If no VGrid was specified
+        this will abort. This function will assemble the required JSON calls
+        to communicate the current state of the MEOW workflow and will seek a
+        user confirmation that this is the expected export. If it is, the
+        calls are passed to the function '__export_workflow'.
+
+        :return: No return.
+        """
         if not self.vgrid:
             self.__set_feedback(NO_VGRID_MSG)
             return
@@ -2741,11 +3387,24 @@ class WorkflowWidget:
             },
             "Confirm Export",
             "Cancel Export",
-            "Export canceled. No VGrid data has been changed. "
+            "Export canceled. No VGrid data has been changed. ",
+            "Confirm Export of shown data. This may overwrite existing VGrid "
+            "data. ",
+            "Cancel Export. No VGrid data will be changed. "
         )
 
-    # TODO update description
     def __export_workflow(self, **kwargs):
+        """
+        Takes a list of calls and creates a corresponding JSON call from them.
+        Due to the manner in which this function is called it takes keyword
+        arguments, but only accepts the key 'calls'. Each message will produce
+        feedback that is individually added to the form feedback.
+
+        :param calls: (list)[optional] The list of calls, each which will
+        generate a JSON message to the VGrid.
+
+        :return: No return.
+        """
         self.__clear_feedback()
         calls = kwargs.get('calls', None)
         for call in calls:
@@ -2811,20 +3470,40 @@ class WorkflowWidget:
                 self.__set_feedback(err)
         self.__close_form()
 
-    # TODO update description
     def __meow_to_cwl(self):
-        valid, meow_workflow = build_workflow_object(self.meow[PATTERNS])
+        """
+        Attempts to convert the existing definitions for MEOW Pattern and
+        Recipes into CWL Workflow, Steps and Arguments. This is mostly
+        dependent upon the MEOW Patterns, which will each become a CWL Step,
+        but may also combine into one or more CWL Workflows. These CWL
+        definitions assume that they will be used to run papermill operations
+        and so must generate additional arguments to allow for papermills job
+        parameters to be input on the command line.
 
-        if not valid:
-            self.__set_feedback(
-                'Could not build workflow object. %s' % meow_workflow
-            )
-
+        :return: (Tuple (bool, string or dict)) If cannot convert MEOW to CWL
+        then a tuple is returned with first value False, and an explanatory
+        error message as the second value. Otherwise a tuple is returned with
+        first value True, and the dictionary of created CWL as the second
+        value. This is not saved to the system yet, so as to enable user
+        confirmation before doing so. Format is:
+        {
+            'workflows': dict,
+            'steps': dict,
+            'variables': dict
+        }
+        """
         buffer_cwl = {
             WORKFLOWS: {},
             STEPS: {},
             SETTINGS: {}
         }
+
+        valid, meow_workflow = build_workflow_object(self.meow[PATTERNS])
+
+        if not valid:
+            msg = 'Could not build workflow object. %s' % meow_workflow
+            self.__set_feedback(msg)
+            return False, msg
 
         step_count = 1
         yaml_dict = {}
@@ -3069,14 +3748,18 @@ class WorkflowWidget:
                 for ancestor_key, ancestor_value in current[ANCESTORS].items():
                     ancestor_step_name = pattern_to_step[ancestor_key]
                     ancestor_outfile_key = ancestor_value['output_file']
-                    output_lookup = "%s_%s" % (ancestor_key, ancestor_outfile_key)
+                    output_lookup = \
+                        "%s_%s" % (ancestor_key, ancestor_outfile_key)
                     ancestor_out = output_lookups[output_lookup]
-                    current_key = "%s_value" % self.meow[PATTERNS][ancestor_key].trigger_file
+                    current_key = \
+                        "%s_value" \
+                        % self.meow[PATTERNS][ancestor_key].trigger_file
                     if current_key in step_dict[CWL_WORKFLOW_IN]:
                         step_dict[CWL_WORKFLOW_IN][current_key] = \
                             "%s/%s" % (ancestor_step_name, ancestor_out)
                     else:
-                        step_dict[CWL_WORKFLOW_IN][self.meow[PATTERNS][ancestor_key].trigger_file] = \
+                        step_dict[CWL_WORKFLOW_IN][self.meow[PATTERNS][
+                            ancestor_key].trigger_file] = \
                             "%s/%s" % (ancestor_step_name, ancestor_out)
 
             workflow_cwl_dict[CWL_STEPS][step_name] = step_dict
@@ -3087,8 +3770,24 @@ class WorkflowWidget:
 
         return True, buffer_cwl
 
-    # TODO update description
     def __cwl_to_meow(self):
+        """
+        Attempts to convert existing CWL Workflows, Steps and Arguments into
+        MEOW Patterns and Recipes. Not all MEOW necessary information is
+        provided in CWL so some placeholder values are used in the MEOW
+        Patterns and Recipes.
+
+        :return: (Tuple (bool, string or dict)) If cannot convert CWL to MEOW
+        then a tuple is returned with first value False, and an explanatory
+        error message as the second value. Otherwise, a tuple is returned with
+        first value True, and the dictionary of created MEOW as the second
+        value. This is not saved to the system yet, so as to enable user
+        confirmation before doing so. Format is:
+        {
+            'patterns': dict,
+            'recipes': dict
+        }
+        """
         buffer_meow = {
             PATTERNS: {},
             RECIPES: {}
@@ -3119,17 +3818,17 @@ class WorkflowWidget:
                         )
                         name = input_file[:input_file.rfind('.')]
 
-                        # try:
-                        valid_string(
-                            name,
-                            'Name',
-                            CHAR_UPPERCASE
-                            + CHAR_LOWERCASE
-                            + CHAR_NUMERIC
-                            + CHAR_LINES
-                        )
-                        # except Exception:
-                        #     break
+                        try:
+                            valid_string(
+                                name,
+                                'Name',
+                                CHAR_UPPERCASE
+                                + CHAR_LOWERCASE
+                                + CHAR_NUMERIC
+                                + CHAR_LINES
+                            )
+                        except Exception:
+                            break
                         if name not in buffer_meow[RECIPES]:
                             with open(source, "r") as read_file:
                                 notebook = json.load(read_file)
@@ -3151,7 +3850,7 @@ class WorkflowWidget:
                 step = self.cwl[STEPS][step_name]
                 try:
                     pattern = Pattern(step_name)
-                except Exception as ex:
+                except Exception:
                     break
 
                 entries = {}
@@ -3367,8 +4066,18 @@ class WorkflowWidget:
 
         return True, buffer_meow
 
-    # TODO update description
     def __import_from_dir(self):
+        """
+        Attempts to read in CWL data from files in a directory. No data is
+        saved to the internal CWL database, to allow for a user confirmation
+        before import is completed.
+
+        :return: (Tuple (bool, string or dict)) If import is not possible then
+        returns a tuple with first value False, and an explanatory error
+        message in the second value. If it is possible then a tuple is
+        returned with first value True, and the identified CWL definitions in
+        a dict as the second value.
+        """
         buffer_cwl = {
             WORKFLOWS: {},
             STEPS: {},
@@ -3444,8 +4153,24 @@ class WorkflowWidget:
                             buffer_cwl[STEPS][filename] = step
         return True, buffer_cwl
 
-    # TODO update description
     def __import_cwl(self, **kwargs):
+        """
+        Writes the given Workflows, Steps and Arguments into internal database
+        dictionaries. No checking occurs at this point, as it is assumed to
+        have been performed already by this point. Once saved the
+        visualisation is updated automatically.
+
+        :param workflows: (dict)[optional] The dictionary of CWL Workflows to
+        save. Default is None.
+
+        :param steps: (dict)[optional] The dictionary of CWL Steps to save.
+        Default is None.
+
+        :param variables: (dict)[optional] The dictionary of CWL Arguments to
+        save. Default is None.
+
+        :return: No return.
+        """
         workflows = kwargs.get(WORKFLOWS, None)
         steps = kwargs.get(STEPS, None)
         variables = kwargs.get(SETTINGS, None)
@@ -3486,9 +4211,14 @@ class WorkflowWidget:
         self.__update_workflow_visualisation()
         self.__close_form()
 
-    # TODO update description
     def __update_workflow_visualisation(self):
-        # TODO update this description
+        """
+        Updates the current workflow visualisation. Depending on the mode the
+        widget is in, this will call the appropriate specific updated function.
+        This will return a new visualisation which replaces the current one.
+
+        :return: No return.
+        """
 
         self.__check_state()
 
@@ -3521,9 +4251,20 @@ class WorkflowWidget:
             with self.visualisation_area:
                 display(visualisation)
 
-    # TODO update description
     def __get_meow_workflow_visualisation(self, patterns, recipes, workflow):
-        # TODO update this description
+        """
+        Updates a visualisation of the current emergent workflow from MEOW
+        patterns and recipes.
+
+        :param patterns: (dict) Dictionary of MEOW Pattern objects.
+
+        :param recipes: (dict) Dictionary of MEOW Recipe dictionaries.
+
+        :param workflow: (dict) Dictionary of MEOW Workflow nodes.
+
+        :return: (Figure) A bqplot figure showing the current emergent
+        workflow.
+        """
 
         pattern_display = []
 
@@ -3539,7 +4280,8 @@ class WorkflowWidget:
 
         for pattern, pattern_dict in workflow.items():
             pattern_index = self.__get_node_index(pattern, pattern_display)
-            if pattern_has_recipes(patterns[pattern], recipes)[0]:
+            valid, _ = pattern_has_recipes(patterns[pattern], recipes)
+            if valid:
                 colour_display[pattern_index] = GREEN
             else:
                 colour_display[pattern_index] = RED
@@ -3592,7 +4334,7 @@ class WorkflowWidget:
             tooltip=MEOW_TOOLTIP
         )
 
-        # TODO investiaget graph.interactions to see if we can get tooltip to
+        # TODO investigate graph.interactions to see if we can get tooltip to
         #  only display for patterns
         graph.on_element_click(self.__meow_visualisation_element_click)
         graph.on_hover(self.__toggle_tooltips)
@@ -3601,9 +4343,19 @@ class WorkflowWidget:
 
         return Figure(marks=[graph], layout=fig_layout)
 
-    # TODO update description
     def __get_cwl_workflow_visualisation(self, workflows, steps, settings):
-        # TODO update this description
+        """
+        Updates a visualisation of the current workflows from current CWL
+        Workflow, Step and Argument definitions.
+
+        :param workflows: (dict) Dictionary of CWL Workflows.
+
+        :param steps: (dict) Dictionary of CWL Steps.
+
+        :param settings: (dict) Dictionary of CWL Arguments.
+
+        :return: (Figure) A bqplot figure showing the current CWL workflows.
+        """
 
         node_data = []
         link_data = []
@@ -3717,8 +4469,20 @@ class WorkflowWidget:
         return Figure(marks=[graph], layout=fig_layout)
 
     # TODO improve this to remove occasional flickering
-    # TODO update description
     def __toggle_tooltips(self, graph, node):
+        """
+        Function to toggle tooltip display. This should make it so that a
+        tooltip is only displayed for a workflow node, and not the
+        input/output files that are also displayed. Does not work perfectly
+        and will occasionally show black dot over input/output, or hide
+        tooltip from node.
+
+        :param graph: (Graph) The Graph object.
+
+        :param node: (dict) The Node dictionary.
+
+        :return: No return.
+        """
         if node['data']['tooltip']:
             if not graph.tooltip:
                 graph.tooltip_style = {'opacity': 0.9}
@@ -3731,9 +4495,16 @@ class WorkflowWidget:
                 graph.tooltip_style = {'opacity': 0.0}
                 graph.tooltip = None
 
-    # TODO update description
     def __set_meow_node_dict(self, pattern):
-        # TODO update this description
+        """
+        Sets up the dictionary for a MEOW visualisation node. This should
+        always display a tooltip.
+
+        :param pattern: (Pattern) The pattern object used a basis for this
+        node.
+
+        :return: (dict) The resulting node dictionary.
+        """
 
         node_dict = {
             'label': pattern.name,
@@ -3749,9 +4520,15 @@ class WorkflowWidget:
         }
         return node_dict
 
-    # TODO update description
     def __set_phantom_meow_node_dict(self, label):
-        # TODO update this description
+        """
+        Sets up the dictionary for a MEOW input/output file node. This should
+        never display a tooltip.
+
+        :param label: (str) The text to label this node.
+
+        :return: (dict) The resulting node dictionary.
+        """
         node_dict = {
             'label': label,
             'shape': 'rect',
@@ -3760,9 +4537,15 @@ class WorkflowWidget:
         }
         return node_dict
 
-    # TODO update description
     def __set_cwl_step_dict(self, step):
-        # TODO update this description
+        """
+        Sets up the dictionary for a CWL visualisation node. This should
+        always display a tooltip.
+
+        :param step: (dict) The step dict used a basis for this node.
+
+        :return: (dict) The resulting node dictionary.
+        """
 
         node_dict = {
             'label': step[CWL_NAME],
@@ -3780,10 +4563,15 @@ class WorkflowWidget:
         }
         return node_dict
 
-    # TODO update description
     def __set_phantom_cwl_node_dict(self, label):
-        # TODO update this description
+        """
+        Sets up the dictionary for a CWL input/output file node. This should
+        never display a tooltip.
 
+        :param label: (str) The text to label this node.
+
+        :return: (dict) The resulting node dictionary.
+        """
         node_dict = {
             'label': label,
             'shape': 'rect',
@@ -3792,44 +4580,76 @@ class WorkflowWidget:
         }
         return node_dict
 
-    # TODO update description
     def __get_node_index(self, pattern, nodes):
-        # TODO update this description
+        """
+        retrieves the index of a given pattern within a list of nodes.
+
+        :param pattern: (str) The name of the pattern.
+
+        :param nodes: (list) A list of pattern nodes.
+
+        :return: (int) The index of the pattern. If the node is not found a
+        value of -1 is returned.
+        """
 
         for index in range(0, len(nodes)):
             if nodes[index]['Name'] == pattern:
                 return index
         return -1
 
-    # TODO update description
     def __meow_visualisation_element_click(self, graph, element):
-        # TODO update this description
+        """
+        MEOW visualisation node click event handler. Currently does nothing.
 
+        :param graph: (Graph) The graph object.
+
+        :param element: (dict) The node dictionary.
+
+        :return: No return.
+        """
         # pattern = self.patterns[element['data']['label']]
         # self.construct_new_edit_form(default=pattern)
         pass
 
-    # TODO update description
     def __cwl_visualisation_element_click(self, graph, element):
-        # TODO update this description
+        """
+        CWL visualisation node click event handler. Currently does nothing.
+
+        :param graph: (Graph) The graph object.
+
+        :param element: (dict) The node dictionary.
+
+        :return: No return.
+        """
         pass
 
-    # TODO update description
     def __add_to_feedback(self, to_add):
-        # TODO update this description
+        """
+        Appends the given string to the current form feedback on a new line.
 
+        :param to_add: (str) The feedback to add.
+
+        :return: No return.
+        """
         if self.feedback_area.value:
             self.feedback_area.value += "<br/>"
         self.feedback_area.value += to_add
 
-    # TODO update description
     def __set_feedback(self, to_set):
-        # TODO update this description
+        """
+        Removes all existing form feedback and sets the given string as the
+        feedback.
 
+        :param to_set: (str) The feedback to set.
+
+        :return: No return.
+        """
         self.feedback_area.value = to_set
 
-    # TODO update description
     def __clear_feedback(self):
-        # TODO update this description
+        """
+        Clears any current feedback in the form feedback area.
 
+        :return: No return.
+        """
         self.feedback_area.value = ""
