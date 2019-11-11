@@ -2,6 +2,7 @@
 # Only constants shared amongst multiple files should be declared here.
 # Variables that are only used in one file should be declared there, unless it
 # is clearer to group them here with appropriate variables.
+# Variables may also need to be saved here if needed for testing.
 
 WORKFLOWS = 'workflows'
 STEPS = 'steps'
@@ -191,3 +192,11 @@ WIDGET_MODES = [
 
 DEFAULT_WORKFLOW_TITLE = 'workflow'
 DEFAULT_CWL_IMPORT_EXPORT_DIR = 'cwl_directory'
+
+MEOW_NEW_PATTERN_BUTTON = 'meow_new_pattern_button'
+MEOW_EDIT_PATTERN_BUTTON = 'meow_edit_pattern_button'
+MEOW_NEW_RECIPE_BUTTON = 'meow_new_recipe_button'
+MEOW_EDIT_RECIPE_BUTTON = 'meow_edit_recipe_button'
+MEOW_IMPORT_CWL_BUTTON = 'meow_import_cwl_button'
+MEOW_IMPORT_VGRID_BUTTON = 'meow_import_vgrid_button'
+MEOW_EXPORT_VGRID_BUTTON = 'meow_export_vgrid_button'

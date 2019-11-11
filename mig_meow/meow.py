@@ -142,7 +142,6 @@ class Pattern:
             self.variables = {}
 
             self.trigger_file = parameters[INPUT_FILE]
-            self.add_variable(parameters[INPUT_FILE], parameters[INPUT_FILE])
 
             for trig_id, trig in parameters[TRIGGER_RECIPES].items():
                 for rec_id, rec in trig.items():
@@ -155,6 +154,9 @@ class Pattern:
                 if name != self.trigger_file \
                         and name not in self.outputs:
                     self.add_variable(name, value)
+
+            if parameters[INPUT_FILE] not in self.variables:
+                self.add_variable(parameters[INPUT_FILE], parameters[INPUT_FILE])
 
             return
         raise TypeError(
@@ -194,6 +196,7 @@ class Pattern:
         :return: (bool) True/False, with True denoting that the two Pattern
         objects are equal.
         """
+
         if not other:
             return False
         if not isinstance(other, Pattern):

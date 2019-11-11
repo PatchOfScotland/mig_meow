@@ -28,7 +28,10 @@ from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
     WORKFLOWS, STEPS, SETTINGS, CWL_CLASS, PATTERN_NAME, RECIPE_NAME, \
     CWL_CLASS_WORKFLOW, CWL_CLASS_COMMAND_LINE_TOOL, VGRID_ANY_OBJECT_TYPE, \
     MEOW_MODE, CWL_MODE, WIDGET_MODES, DEFAULT_WORKFLOW_TITLE, \
-    DEFAULT_CWL_IMPORT_EXPORT_DIR
+    DEFAULT_CWL_IMPORT_EXPORT_DIR, MEOW_IMPORT_CWL_BUTTON, \
+    MEOW_NEW_PATTERN_BUTTON, MEOW_EXPORT_VGRID_BUTTON, \
+    MEOW_IMPORT_VGRID_BUTTON, MEOW_EDIT_PATTERN_BUTTON, \
+    MEOW_EDIT_RECIPE_BUTTON, MEOW_NEW_RECIPE_BUTTON
 from .cwl import make_step_dict, make_workflow_dict, get_linked_workflow, \
     make_settings_dict, check_workflow_is_valid, check_step_is_valid, \
     get_glob_value, get_glob_entry_keys, get_step_name_from_title, \
@@ -51,14 +54,6 @@ CWL_INPUT_TYPE = 'type'
 CWL_INPUT_BINDING = 'inputBinding'
 CWL_INPUT_POSITION = 'position'
 CWL_INPUT_PREFIX = 'prefix'
-
-MEOW_NEW_PATTERN_BUTTON = 'meow_new_pattern_button'
-MEOW_EDIT_PATTERN_BUTTON = 'meow_edit_pattern_button'
-MEOW_NEW_RECIPE_BUTTON = 'meow_new_recipe_button'
-MEOW_EDIT_RECIPE_BUTTON = 'meow_edit_recipe_button'
-MEOW_IMPORT_CWL_BUTTON = 'meow_import_cwl_button'
-MEOW_IMPORT_VGRID_BUTTON = 'meow_import_vgrid_button'
-MEOW_EXPORT_VGRID_BUTTON = 'meow_export_vgrid_button'
 
 CWL_NEW_WORKFLOW_BUTTON = 'cwl_new_workflow_button'
 CWL_EDIT_WORKFLOW_BUTTON = 'cwl_edit_workflow_button'
@@ -916,7 +911,7 @@ class WorkflowWidget:
         )
 
         self.__update_workflow_visualisation()
-        self.__construct_widget()
+        self.construct_widget()
 
         return widget
 
@@ -939,11 +934,11 @@ class WorkflowWidget:
                 and new_mode != self.mode:
             if new_mode == CWL_MODE:
                 self.mode = new_mode
-                self.__construct_widget()
+                self.construct_widget()
                 self.__update_workflow_visualisation()
             elif new_mode == MEOW_MODE:
                 self.mode = new_mode
-                self.__construct_widget()
+                self.construct_widget()
                 self.__update_workflow_visualisation()
 
     def __check_state(self, state=None):
@@ -971,7 +966,7 @@ class WorkflowWidget:
                         "state %s. Should be only accessible to %s. "
                         % (state, self.mode))
 
-    def __construct_widget(self):
+    def construct_widget(self):
         """
         Starts construction of a new widget state depending on the current
         mode selection.
@@ -1167,7 +1162,7 @@ class WorkflowWidget:
                 PATTERN_FORM_INPUTS[FORM_PATTERN_OUTPUT],
                 PATTERN_FORM_INPUTS[FORM_PATTERN_VARIABLES]
             ],
-            self.__process_new_pattern,
+            self.process_new_pattern,
             PATTERN_NAME
         )
 
@@ -1191,9 +1186,9 @@ class WorkflowWidget:
                 PATTERN_FORM_INPUTS[FORM_PATTERN_OUTPUT],
                 PATTERN_FORM_INPUTS[FORM_PATTERN_VARIABLES]
             ],
-            self.__process_editing_pattern,
+            self.process_editing_pattern,
             PATTERN_NAME,
-            delete_func=self.__process_delete_pattern,
+            delete_func=self.process_delete_pattern,
             selector_key=NAME,
             selector_dict=self.meow[PATTERNS]
         )
@@ -1256,7 +1251,6 @@ class WorkflowWidget:
 
         if valid:
             self.__import_meow_workflow(**buffer_meow)
-
 
     def import_from_vgrid_clicked(self, button):
         """
@@ -2584,7 +2578,7 @@ class WorkflowWidget:
         with self.form_area:
             display(confirmation_buttons)
 
-    def __process_new_pattern(self, values, editing=False):
+    def process_new_pattern(self, values, editing=False):
         """
         Attempts to construct a new MEOW Pattern object from a dictionary of
         values. Will save resulting Pattern to internal database dictionary.
@@ -2599,6 +2593,7 @@ class WorkflowWidget:
         :return: (bool) Returns True if Pattern could be created, and False
         otherwise.
         """
+
         try:
             pattern = Pattern(values[NAME])
             if not editing:
@@ -2633,7 +2628,7 @@ class WorkflowWidget:
             for recipe in values[RECIPES]:
                 pattern.add_recipe(recipe)
             for variable in values[VARIABLES]:
-                if variable[VALUE_KEY]:
+                if variable[NAME_KEY]:
                     pattern.add_variable(
                         variable[NAME_KEY], variable[VALUE_KEY]
                     )
@@ -2958,7 +2953,7 @@ class WorkflowWidget:
             )
             return False
 
-    def __process_editing_pattern(self, values):
+    def process_editing_pattern(self, values):
         """
         Attempts to update values for an existing MEOW Pattern using the given
         values. This is done by processing the values as though it is a new
@@ -2970,12 +2965,15 @@ class WorkflowWidget:
 
         :param values: (dict) Arguments to use in updating the Pattern.
 
-        :return: No return.
+        :return: (bool) Returns True, if edit is applied and False if not.
         """
 
-        if self.__process_new_pattern(values, editing=True):
+        if self.process_new_pattern(values, editing=True):
             self.__update_workflow_visualisation()
             self.__close_form()
+            return True
+        else:
+            return False
 
     def __process_editing_recipe(self, values):
         """
@@ -3050,20 +3048,25 @@ class WorkflowWidget:
             self.__update_workflow_visualisation()
             self.__close_form()
 
-    def __process_delete_pattern(self, to_delete):
+    def process_delete_pattern(self, to_delete):
         """
         Attempts to delete a given Pattern. Will update the workflow
         visualisation and close the form.
 
         :param to_delete: (str) Name of Pattern to delete.
 
-        :return: No return.
+        :return: (bool). Will return True if pattern deleted and False
+        otherwise.
         """
         if to_delete in self.meow[PATTERNS]:
             self.meow[PATTERNS].pop(to_delete)
             self.__set_feedback("%s %s deleted. " % (RECIPE_NAME, to_delete))
             self.__update_workflow_visualisation()
-        self.__close_form()
+            self.__close_form()
+            return True
+        else:
+            self.__close_form()
+            return False
 
     def __process_delete_recipe(self, to_delete):
         """

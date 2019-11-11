@@ -1,9 +1,13 @@
 import unittest
+import copy
 
 from mig_meow.meow import Pattern, check_patterns_dict, build_workflow_object
 from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
     DEFAULT_WORKFLOW_TITLE, DEFAULT_CWL_IMPORT_EXPORT_DIR, PATTERNS, RECIPES, \
-    WORKFLOWS, STEPS, SETTINGS
+    WORKFLOWS, STEPS, SETTINGS, MEOW_NEW_RECIPE_BUTTON, \
+    MEOW_EDIT_RECIPE_BUTTON, MEOW_EDIT_PATTERN_BUTTON, \
+    MEOW_IMPORT_VGRID_BUTTON, MEOW_EXPORT_VGRID_BUTTON, \
+    MEOW_NEW_PATTERN_BUTTON, MEOW_IMPORT_CWL_BUTTON, DEFAULT_JOB_NAME
 from mig_meow.workflow_widget import WorkflowWidget
 
 
@@ -603,3 +607,264 @@ class WorkflowTest(unittest.TestCase):
         with self.assertRaises(AttributeError):
             WorkflowWidget(**invalid_mode)
 
+    def testWorkflowWidgetPatternInteractions(self):
+        workflow_widget = WorkflowWidget()
+
+        workflow_widget.construct_widget()
+
+        self.assertEqual(workflow_widget.meow[PATTERNS], {})
+        self.assertEqual(workflow_widget.meow[RECIPES], {})
+
+        pattern_values = {
+            'name': 'value_pattern',
+            'input_paths': ['dir/literal.path'],
+            'recipes': {
+                'recipe_name': {
+                    'name': 'recipe_name',
+                    'source': 'source.ipynb',
+                    'recipe': {}
+                }
+            },
+            'input_file': 'trigger_file_name',
+            'trigger_output': 'in_file_output',
+            'notebook_output': 'notebook_output',
+            'output': [
+                {
+                    'Name': 'outfile_1',
+                    'Value': 'out_1.path'
+                },
+                {
+                    'Name': 'outfile_2',
+                    'Value': 'out_2.path'
+                }
+            ],
+            'variables': [
+                {
+                    'Name': 'int',
+                    'Value': 0
+                },
+                {
+                    'Name': 'float',
+                    'Value': 3.5
+                },
+                {
+                    'Name': 'array',
+                    'Value': [0, 1]
+                },
+                {
+                    'Name': 'dict',
+                    'Value': {1: 1, 2: 2}
+                },
+                {
+                    'Name': 'set',
+                    'Value': {1, 2}
+                },
+                {
+                    'Name': 'char',
+                    'Value': 'c'
+                },
+                {
+                    'Name': 'string',
+                    'Value': "String"
+                },
+                {
+                    'Name': 'boolean',
+                    'Value': True
+                }
+            ]
+        }
+
+        completed = workflow_widget.process_new_pattern(pattern_values)
+        self.assertTrue(completed)
+
+        same_name_values = copy.deepcopy(pattern_values)
+        completed = workflow_widget.process_new_pattern(same_name_values)
+        self.assertFalse(completed)
+
+        incomplete_values = copy.deepcopy(pattern_values)
+        incomplete_values.pop('variables')
+        completed = workflow_widget.process_new_pattern(incomplete_values)
+        self.assertFalse(completed)
+
+        self.assertEqual(len(workflow_widget.meow[PATTERNS]), 1)
+        self.assertIn('value_pattern', workflow_widget.meow[PATTERNS])
+
+        extracted_pattern = workflow_widget.meow[PATTERNS]['value_pattern']
+        valid, msg = extracted_pattern.integrity_check()
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        pattern_dict = {
+            'name': 'value_pattern',
+            'input_paths': ['dir/literal.path'],
+            'trigger_recipes': {
+                'trigger_id': {
+                    'recipe_id': {
+                        'name': 'recipe_name',
+                        'source': 'source.ipynb',
+                        'recipe': {}
+                    }
+                }
+            },
+            'input_file': 'trigger_file_name',
+            'output': {
+                'outfile_1': 'out_1.path',
+                'outfile_2': 'out_2.path',
+                'trigger_file_name': 'in_file_output',
+                DEFAULT_JOB_NAME: 'notebook_output'
+            },
+            'variables': {
+                'int': 0,
+                'float': 3.5,
+                'array': [0, 1],
+                'dict': {1: 1, 2: 2},
+                'set': {1, 2},
+                'char': 'c',
+                'string': "String",
+                'boolean': True
+            }
+        }
+        tester_pattern = Pattern(pattern_dict)
+        valid, msg = tester_pattern.integrity_check()
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        self.assertTrue(tester_pattern == extracted_pattern)
+
+        updated_pattern_values = copy.deepcopy(pattern_values)
+        updated_pattern_values['variables'] = [
+            {
+                'Name': 'int',
+                'Value': 45
+            },
+            {
+                'Name': 'string',
+                'Value': "Word"
+            }
+        ]
+
+        updated_pattern_dict = copy.deepcopy(pattern_dict)
+        updated_pattern_dict['variables'] = {
+            'int': 45,
+            'string': "Word"
+        }
+
+        workflow_widget.process_editing_pattern(updated_pattern_values)
+
+        self.assertEqual(len(workflow_widget.meow[PATTERNS]), 1)
+        self.assertIn('value_pattern', workflow_widget.meow[PATTERNS])
+
+        updated_pattern = workflow_widget.meow[PATTERNS]['value_pattern']
+        valid, msg = updated_pattern.integrity_check()
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        updated_tester_pattern = Pattern(updated_pattern_dict)
+        valid, msg = updated_tester_pattern.integrity_check()
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        self.assertTrue(updated_pattern == updated_tester_pattern)
+        self.assertFalse(extracted_pattern == updated_pattern)
+        self.assertFalse(tester_pattern == updated_tester_pattern)
+
+        self.assertEqual(len(workflow_widget.meow[PATTERNS]), 1)
+        self.assertIn('value_pattern', workflow_widget.meow[PATTERNS])
+
+        completed = workflow_widget.process_editing_pattern(incomplete_values)
+        self.assertFalse(completed)
+        self.assertEqual(len(workflow_widget.meow[PATTERNS]), 1)
+        self.assertIn('value_pattern', workflow_widget.meow[PATTERNS])
+
+        updated_pattern = workflow_widget.meow[PATTERNS]['value_pattern']
+        valid, msg = updated_pattern.integrity_check()
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        self.assertTrue(updated_pattern == updated_tester_pattern)
+        self.assertFalse(extracted_pattern == updated_pattern)
+        self.assertFalse(tester_pattern == updated_tester_pattern)
+
+        completed = workflow_widget.process_delete_pattern('unregistered_name')
+        self.assertFalse(completed)
+        self.assertEqual(len(workflow_widget.meow[PATTERNS]), 1)
+        self.assertIn('value_pattern', workflow_widget.meow[PATTERNS])
+
+        completed = workflow_widget.process_delete_pattern('value_pattern')
+        self.assertTrue(completed)
+        self.assertEqual(workflow_widget.meow[PATTERNS], {})
+
+    # TODO come back to this once we've test creation and deleting.
+    def testWorkflowWidgetButtonEnabling(self):
+        pattern_dict = {
+            'name': 'dict_pattern',
+            'input_paths': ['dir/literal.path'],
+            'trigger_recipes': {
+                'trigger_id': {
+                    'recipe_id': {
+                        'name': 'recipe',
+                        'source': 'source.ipynb',
+                        'recipe': {}
+                    }
+                }
+            },
+            'input_file': 'trigger_file_name',
+            'output': {
+                'outfile_1': 'dir_1/outpath.txt',
+                'outfile_2': 'dir_2/outpath.txt',
+            },
+            'variables': {
+                'int': 0,
+                'float': 3.5,
+                'array': [0, 1],
+                'dict': {1: 1, 2: 2},
+                'set': {1, 2},
+                'char': 'c',
+                'string': "String",
+                'boolean': True
+            }
+        }
+        pattern = Pattern(pattern_dict)
+        valid, msg = pattern.integrity_check()
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        recipe_dict = {
+            'name': 'recipe_name',
+            'source': 'recipe_source',
+            'recipe': {}
+        }
+
+        args = {
+            PATTERNS: {
+                pattern.name: pattern
+            },
+            RECIPES: {
+                'recipe_name': recipe_dict
+            }
+        }
+
+        workflow_widget = WorkflowWidget(**args)
+
+        self.assertEqual(len(workflow_widget.meow[PATTERNS]), 1)
+        self.assertIn(pattern.name, workflow_widget.meow[PATTERNS])
+        self.assertEqual(len(workflow_widget.meow[RECIPES]), 1)
+        self.assertIn('recipe_name', workflow_widget.meow[RECIPES])
+
+        workflow_widget.construct_widget()
+
+        for key, button in workflow_widget.button_elements.items():
+            if key == MEOW_NEW_PATTERN_BUTTON:
+                self.assertFalse(button.disabled)
+            if key == MEOW_EDIT_PATTERN_BUTTON:
+                self.assertFalse(button.disabled)
+            if key == MEOW_NEW_RECIPE_BUTTON:
+                self.assertFalse(button.disabled)
+            if key == MEOW_EDIT_RECIPE_BUTTON:
+                self.assertFalse(button.disabled)
+            if key == MEOW_IMPORT_CWL_BUTTON:
+                self.assertTrue(button.disabled)
+            if key == MEOW_IMPORT_VGRID_BUTTON:
+                self.assertTrue(button.disabled)
+            if key == MEOW_EXPORT_VGRID_BUTTON:
+                self.assertTrue(button.disabled)
