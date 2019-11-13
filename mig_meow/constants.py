@@ -182,6 +182,27 @@ COLOURS = [
 NO_OUTPUT_SET_WARNING = \
     'No output has been set, meaning no resulting data will be copied back ' \
     'into the vgrid. ANY OUTPUT WILL BE LOST. '
+NO_NAME_SET_ERROR = "A pattern name must be defined. "
+NO_INPUT_FILE_SET_ERROR = \
+    "An input file must be defined. This is the file that is used to " \
+    "trigger any processing and can be defined using the methods " \
+    "'.add_single_input' or 'add_gathering_input. "
+NO_INPUT_PATH_SET_ERROR = \
+    "At least one input path must be defined. This is the path to the file " \
+    "that is used to trigger any processing and can be defined using the " \
+    "methods '.add_single_input' or 'add_gathering_input. "
+INVALID_INPUT_PATH_ERROR = "The input path is not valid. "
+NO_RECIPES_SET_ERROR = "No recipes have been defined. "
+PLACEHOLDER_ERROR = \
+    "A placeholder value was detected. Please update this before proceeding. "
+TRIGGER_NOT_VARIABLE_ERROR = \
+    "Trigger file has been defined but is not accessible as a variable " \
+    "within the job. If you manually set the trigger file you should also " \
+    "add it to the variables dict"
+OUTPUT_NOT_VARIABLE_ERROR = \
+    "Output has been defined but is not accessible as a variable within the " \
+    "job. If you manually set the trigger file you should also add it to " \
+    "the variables dict"
 
 MEOW_MODE = 'MEOW'
 CWL_MODE = 'CWL'

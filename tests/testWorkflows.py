@@ -1,5 +1,7 @@
 import unittest
 import copy
+import nbformat
+import os
 
 from mig_meow.meow import Pattern, check_patterns_dict, build_workflow_object
 from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
@@ -7,16 +9,28 @@ from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
     WORKFLOWS, STEPS, SETTINGS, MEOW_NEW_RECIPE_BUTTON, \
     MEOW_EDIT_RECIPE_BUTTON, MEOW_EDIT_PATTERN_BUTTON, \
     MEOW_IMPORT_VGRID_BUTTON, MEOW_EXPORT_VGRID_BUTTON, \
-    MEOW_NEW_PATTERN_BUTTON, MEOW_IMPORT_CWL_BUTTON, DEFAULT_JOB_NAME
+    MEOW_NEW_PATTERN_BUTTON, MEOW_IMPORT_CWL_BUTTON, DEFAULT_JOB_NAME, \
+    NO_NAME_SET_ERROR, NO_RECIPES_SET_ERROR, NO_INPUT_PATH_SET_ERROR, \
+    NO_INPUT_FILE_SET_ERROR, PLACEHOLDER_ERROR, \
+    OUTPUT_NOT_VARIABLE_ERROR, TRIGGER_NOT_VARIABLE_ERROR, \
+    INVALID_INPUT_PATH_ERROR, PLACEHOLDER
 from mig_meow.workflow_widget import WorkflowWidget
+
+EMPTY_NOTEBOOK = 'test_notebook.ipynb'
 
 
 class WorkflowTest(unittest.TestCase):
     def setUp(self):
-        pass
+        if os.path.exists(EMPTY_NOTEBOOK):
+            raise Exception(
+                "Required test location '%s' is already in use"
+                % EMPTY_NOTEBOOK
+            )
+        notebook = nbformat.v4.new_notebook()
+        nbformat.write(notebook, EMPTY_NOTEBOOK)
 
     def tearDown(self):
-        pass
+        os.remove(EMPTY_NOTEBOOK)
 
     def testNewPatternCreation(self):
         test_pattern = Pattern('standard_pattern')
@@ -99,15 +113,14 @@ class WorkflowTest(unittest.TestCase):
 
         valid, msg = test_pattern.integrity_check()
         self.assertTrue(valid)
+        self.assertEqual(msg, '')
 
-        invalid_recipes_dict = {
-            'name': 'dict_pattern',
+        alt_pattern_dict = {
+            'name': 'alt_dict_pattern',
             'input_paths': ['dir/literal.path'],
             'trigger_recipes': {
-                'recipe_id': {
-                    'name': 'recipe',
-                    'source': 'source.ipynb',
-                    'recipe': {}
+                'trigger_id': {
+                    'recipe_name': {}
                 }
             },
             'input_file': 'trigger_file_name',
@@ -127,18 +140,27 @@ class WorkflowTest(unittest.TestCase):
             }
         }
 
-        with self.assertRaises(Exception):
-            Pattern(invalid_recipes_dict)
+        test_alt_pattern = Pattern(alt_pattern_dict)
 
-        invalid_variables = {
-            'name': 'dict_pattern',
+        valid, msg = test_alt_pattern.integrity_check()
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        test_alt_pattern.name = None
+        valid, msg = test_alt_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, NO_NAME_SET_ERROR)
+
+        test_alt_pattern.name = ''
+        valid, msg = test_alt_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, NO_NAME_SET_ERROR)
+
+        invalid_recipes = {
+            'name': 'invalid_recipes',
             'input_paths': ['dir/literal.path'],
             'trigger_recipes': {
-                'recipe_id': {
-                    'name': 'recipe',
-                    'source': 'source.ipynb',
-                    'recipe': {}
-                }
+                'recipe_name': {}
             },
             'input_file': 'trigger_file_name',
             'output': {
@@ -153,15 +175,16 @@ class WorkflowTest(unittest.TestCase):
                 'set': {1, 2},
                 'char': 'c',
                 'string': "String",
-                'boolean': True,
-                'outfile_1': 'something'
+                'boolean': True
             }
         }
 
-        with self.assertRaises(Exception):
-            Pattern(invalid_variables)
+        invalid_recipes_pattern = Pattern(invalid_recipes)
+        valid, msg = invalid_recipes_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, NO_RECIPES_SET_ERROR)
 
-        invalid_paths = {
+        no_paths = {
             'name': 'dict_pattern',
             'input_paths': [],
             'trigger_recipes': {
@@ -189,8 +212,203 @@ class WorkflowTest(unittest.TestCase):
             }
         }
 
+        no_paths_pattern = Pattern(no_paths)
+        valid, msg = no_paths_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, NO_INPUT_PATH_SET_ERROR)
+
+        invalid_paths = {
+            'name': 'dict_pattern',
+            'input_paths': [''],
+            'trigger_recipes': {
+                'recipe_id': {
+                    'name': 'recipe',
+                    'source': 'source.ipynb',
+                    'recipe': {}
+                }
+            },
+            'input_file': 'trigger_file_name',
+            'output': {
+                'outfile_1': 'dir_1/outpath.txt',
+                'outfile_2': 'dir_2/outpath.txt',
+            },
+            'variables': {
+                'int': 0,
+                'float': 3.5,
+                'array': [0, 1],
+                'dict': {1: 1, 2: 2},
+                'set': {1, 2},
+                'char': 'c',
+                'string': "String",
+                'boolean': True,
+                'outfile_1': 'something'
+            }
+        }
+
+        invalid_paths_pattern = Pattern(invalid_paths)
+        valid, msg = invalid_paths_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertIn(INVALID_INPUT_PATH_ERROR, msg)
+
+        invalid_in_file = {
+            'name': 'dict_pattern',
+            'input_paths': ['path'],
+            'trigger_recipes': {
+                'recipe_id': {
+                    'name': 'recipe',
+                    'source': 'source.ipynb',
+                    'recipe': {}
+                }
+            },
+            'input_file': '',
+            'output': {
+                'outfile_1': 'dir_1/outpath.txt',
+                'outfile_2': 'dir_2/outpath.txt',
+            },
+            'variables': {
+                'int': 0,
+                'float': 3.5,
+                'array': [0, 1],
+                'dict': {1: 1, 2: 2},
+                'set': {1, 2},
+                'char': 'c',
+                'string': "String",
+                'boolean': True,
+                'outfile_1': 'something'
+            }
+        }
+
         with self.assertRaises(Exception):
-            Pattern(invalid_paths)
+            Pattern(invalid_in_file)
+
+        no_infile_pattern = Pattern(pattern_dict)
+        valid, msg = no_infile_pattern.integrity_check()
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+        no_infile_pattern.trigger_file = None
+        valid, msg = no_infile_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, NO_INPUT_FILE_SET_ERROR)
+        no_infile_pattern.trigger_file = ''
+        valid, msg = no_infile_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, NO_INPUT_FILE_SET_ERROR)
+
+        output_not_variable_pattern = Pattern(pattern_dict)
+        valid, msg = output_not_variable_pattern.integrity_check()
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+        output_not_variable_pattern.variables.pop('outfile_1')
+        valid, msg = output_not_variable_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertIn(OUTPUT_NOT_VARIABLE_ERROR, msg)
+
+        trigger_not_variable_pattern = Pattern(pattern_dict)
+        valid, msg = trigger_not_variable_pattern.integrity_check()
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+        trigger_not_variable_pattern.variables.pop('trigger_file_name')
+        valid, msg = trigger_not_variable_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, TRIGGER_NOT_VARIABLE_ERROR)
+
+    def testPatternPlaceholderCheck(self):
+        pattern_dict = {
+            'name': 'dict_pattern',
+            'input_paths': ['dir/literal.path'],
+            'trigger_recipes': {
+                'trigger_id': {
+                    'recipe_id': {
+                        'name': 'recipe',
+                        'source': 'source.ipynb',
+                        'recipe': {}
+                    }
+                }
+            },
+            'input_file': 'trigger_file_name',
+            'output': {
+                'outfile_1': 'dir_1/outpath.txt',
+                'outfile_2': 'dir_2/outpath.txt',
+            },
+            'variables': {
+                'int': 0,
+                'float': 3.5,
+                'array': [0, 1],
+                'dict': {1: 1, 2: 2},
+                'set': {1, 2},
+                'char': 'c',
+                'string': "String",
+                'boolean': True
+            }
+        }
+
+        test_pattern = Pattern(pattern_dict)
+        valid, msg = test_pattern.integrity_check()
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        placeholder_name_pattern = Pattern(pattern_dict)
+        placeholder_name_pattern.name = PLACEHOLDER
+        valid, msg = placeholder_name_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, PLACEHOLDER_ERROR)
+
+        placeholder_trigger_file_pattern = Pattern(pattern_dict)
+        placeholder_trigger_file_pattern.trigger_file = PLACEHOLDER
+        placeholder_trigger_file_pattern.variables[PLACEHOLDER] = PLACEHOLDER
+        valid, msg = placeholder_trigger_file_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, PLACEHOLDER_ERROR)
+
+        placeholder_trigger_paths_pattern = Pattern(pattern_dict)
+        placeholder_trigger_paths_pattern.trigger_paths = PLACEHOLDER
+        valid, msg = placeholder_trigger_paths_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, PLACEHOLDER_ERROR)
+
+        placeholder_recipes_pattern = Pattern(pattern_dict)
+        placeholder_recipes_pattern.recipes = PLACEHOLDER
+        valid, msg = placeholder_recipes_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, PLACEHOLDER_ERROR)
+
+        placeholder_in_paths_pattern = Pattern(pattern_dict)
+        placeholder_in_paths_pattern.trigger_paths[0] = PLACEHOLDER
+        valid, msg = placeholder_in_paths_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, PLACEHOLDER_ERROR)
+
+        placeholder_recipes_pattern = Pattern(pattern_dict)
+        placeholder_recipes_pattern.recipes[0] = PLACEHOLDER
+        valid, msg = placeholder_recipes_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, PLACEHOLDER_ERROR)
+
+        placeholder_variable_key_pattern = Pattern(pattern_dict)
+        placeholder_variable_key_pattern.variables[PLACEHOLDER] = 'value'
+        valid, msg = placeholder_variable_key_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, PLACEHOLDER_ERROR)
+
+        placeholder_variable_value_pattern = Pattern(pattern_dict)
+        placeholder_variable_value_pattern.variables['extra'] = PLACEHOLDER
+        valid, msg = placeholder_variable_value_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, PLACEHOLDER_ERROR)
+
+        placeholder_output_key_pattern = Pattern(pattern_dict)
+        placeholder_output_key_pattern.outputs[PLACEHOLDER] = 'path'
+        placeholder_output_key_pattern.variables[PLACEHOLDER] = PLACEHOLDER
+        valid, msg = placeholder_output_key_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, PLACEHOLDER_ERROR)
+
+        placeholder_output_value_pattern = Pattern(pattern_dict)
+        placeholder_output_value_pattern.outputs['extra'] = PLACEHOLDER
+        placeholder_output_value_pattern.variables['extra'] = 'extra'
+        valid, msg = placeholder_output_value_pattern.integrity_check()
+        self.assertFalse(valid)
+        self.assertEqual(msg, PLACEHOLDER_ERROR)
 
     def testPatternIdentify(self):
         test_pattern_1 = Pattern('identical_pattern')

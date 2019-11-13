@@ -9,7 +9,11 @@ from .constants import DESCENDANTS, WORKFLOW_INPUTS, \
     TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, CHAR_UPPERCASE, \
     CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, PERSISTENCE_ID, \
     TRIGGER_OUTPUT, NOTEBOOK_OUTPUT, PLACEHOLDER, TRIGGER_RECIPES, \
-    SOURCE, RECIPE, PATTERN_NAME, RECIPE_NAME, NO_OUTPUT_SET_WARNING
+    SOURCE, RECIPE, PATTERN_NAME, RECIPE_NAME, NO_OUTPUT_SET_WARNING, \
+    NO_INPUT_FILE_SET_ERROR, NO_INPUT_PATH_SET_ERROR, NO_NAME_SET_ERROR, \
+    NO_RECIPES_SET_ERROR, PLACEHOLDER_ERROR, \
+    TRIGGER_NOT_VARIABLE_ERROR, OUTPUT_NOT_VARIABLE_ERROR, \
+    INVALID_INPUT_PATH_ERROR
 
 
 OUTPUT_MAGIC_CHAR = '*'
@@ -143,9 +147,14 @@ class Pattern:
 
             self.trigger_file = parameters[INPUT_FILE]
 
-            for trig_id, trig in parameters[TRIGGER_RECIPES].items():
-                for rec_id, rec in trig.items():
-                    self.add_recipe(rec['name'])
+            for trigger_id, trigger in parameters[TRIGGER_RECIPES].items():
+                for recipe_key, recipe in trigger.items():
+                    # A MiG recipe by this name has already been registered
+                    if 'name' in recipe:
+                        self.add_recipe(recipe['name'])
+                    # If not already registered
+                    else:
+                        self.add_recipe(recipe_key)
 
             for name, path in parameters[OUTPUT].items():
                 self.add_output(name, path)
@@ -263,41 +272,39 @@ class Pattern:
         warnings of possible issues in the event of a pass.
         """
         warning = ''
-        if self.name is None:
-            return False, "A pattern name must be defined. "
-        if self.trigger_file is None \
-                or self.trigger_file == PLACEHOLDER:
-            return (False, "An input file must be defined. This is the file "
-                           "that is used to trigger any processing and can be "
-                           "defined using the methods '.add_single_input' or "
-                           "'add_gathering_input. ")
-        if len(self.trigger_paths) == 0 \
-                or PLACEHOLDER in self.trigger_paths:
-            return (False, "At least one input path must be defined. This is "
-                           "the path to the file that is used to trigger any "
-                           "processing and can be defined using the methods "
-                           "'.add_single_input' or 'add_gathering_input. ")
-        if len(self.outputs) == 0 \
-                or PLACEHOLDER in self.outputs.keys()\
-                or PLACEHOLDER in self.outputs.values():
+        if self.name is None or not self.name:
+            return False, NO_NAME_SET_ERROR
+        if self.trigger_file is None or not self.trigger_file:
+            return False, NO_INPUT_FILE_SET_ERROR
+        if len(self.trigger_paths) == 0:
+            return False, NO_INPUT_PATH_SET_ERROR
+        for trigger_path in self.trigger_paths:
+            if trigger_path is None or not trigger_path:
+                return False, ("Error for input path '%s' " % trigger_path) \
+                       + INVALID_INPUT_PATH_ERROR
+        if len(self.outputs) == 0:
             warning += NO_OUTPUT_SET_WARNING
-        if len(self.recipes) == 0 \
-                or PLACEHOLDER in self.recipes:
-            return False, "No recipes have been defined. "
-        if PLACEHOLDER in self.variables.keys() \
-                or PLACEHOLDER in self.variables.values():
-            return False, "A variable uses a placeholder value. "
+        if len(self.recipes) == 0:
+            return False, NO_RECIPES_SET_ERROR
         if self.trigger_file not in self.variables.keys():
-            return (False, "Trigger file has been defined but is not "
-                           "accessible as a variable within the job. If you "
-                           "manually set the trigger file you should also "
-                           "add it to the variables dict")
+            return False, TRIGGER_NOT_VARIABLE_ERROR
         for output in self.outputs.keys():
             if output not in self.variables.keys():
-                return (False, "Output %s has been defined but is not "
-                               "accessible as a variable within the job. If "
-                               "you manually set the trigger file you should "
-                               "also add it to the variables dict" % output)
+                return False, ("Error for output '%s' " % output) \
+                       + OUTPUT_NOT_VARIABLE_ERROR
+
+        if self.name == PLACEHOLDER \
+                or self.trigger_file == PLACEHOLDER \
+                or self.trigger_paths == PLACEHOLDER \
+                or self.recipes == PLACEHOLDER \
+                or PLACEHOLDER in self.trigger_paths \
+                or PLACEHOLDER in self.outputs.keys() \
+                or PLACEHOLDER in self.outputs.values() \
+                or PLACEHOLDER in self.recipes \
+                or PLACEHOLDER in self.variables.keys() \
+                or PLACEHOLDER in self.variables.values():
+            return False, PLACEHOLDER_ERROR
+
         return True, warning
 
     def add_single_input(self, input_file, regex_path, output_path=None):
@@ -561,14 +568,18 @@ def create_recipe_dict(notebook, name, source):
     'source': str, 'recipe': dict}
     """
 
-    valid_string(name,
-                 'recipe name',
-                 CHAR_UPPERCASE
-                 + CHAR_LOWERCASE
-                 + CHAR_NUMERIC
-                 + CHAR_LINES)
-    valid_file_path(source,
-               'recipe source')
+    valid_string(
+        name,
+        'recipe name',
+        CHAR_UPPERCASE
+        + CHAR_LOWERCASE
+        + CHAR_NUMERIC
+        + CHAR_LINES
+    )
+    valid_file_path(
+        source,
+       'recipe source'
+    )
     nbformat.validate(notebook)
 
     recipe = {
