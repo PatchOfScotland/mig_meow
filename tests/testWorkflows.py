@@ -1311,7 +1311,6 @@ class WorkflowTest(unittest.TestCase):
 
     def testWorkflowWidgetPatternInteractions(self):
         workflow_widget = WorkflowWidget()
-
         workflow_widget.construct_widget()
 
         # Test that no patterns at setup.
@@ -1456,7 +1455,6 @@ class WorkflowTest(unittest.TestCase):
 
     def testWorkflowWidgetRecipeInteractions(self):
         workflow_widget = WorkflowWidget()
-
         workflow_widget.construct_widget()
 
         # Test that no recipes at setup.
@@ -1603,46 +1601,28 @@ class WorkflowTest(unittest.TestCase):
         self.assertTrue(completed)
         self.assertEqual(workflow_widget.meow[RECIPES], {})
 
-    # TODO come back to this once we've test creation and deleting.
-    def testWorkflowWidgetButtonEnabling(self):
-        # Test that valid pattern is valid.
-        pattern = Pattern(VALID_PATTERN_DICT)
-        valid, msg = pattern.integrity_check()
-        self.assertTrue(valid)
-        self.assertEqual(msg, '')
-
-        args = {
-            PATTERNS: {
-                pattern.name: pattern
-            },
-            RECIPES: {
-                VALID_RECIPE_DICT[NAME]: VALID_RECIPE_DICT
-            }
-        }
-
-        workflow_widget = WorkflowWidget(**args)
-
-        # Test that keyword arguments passes successfully
-        self.assertEqual(len(workflow_widget.meow[PATTERNS]), 1)
-        self.assertIn(pattern.name, workflow_widget.meow[PATTERNS])
-        self.assertEqual(len(workflow_widget.meow[RECIPES]), 1)
-        self.assertIn(VALID_RECIPE_DICT[NAME], workflow_widget.meow[RECIPES])
-
+    # TODO come back to this once cwl testing done.
+    def testWorkflowWidgetMeowButtonEnabling(self):
+        workflow_widget = WorkflowWidget()
         workflow_widget.construct_widget()
+
+        # Test that no patterns and recipes at start.
+        self.assertEqual(workflow_widget.meow[PATTERNS], {})
+        self.assertEqual(workflow_widget.meow[RECIPES], {})
 
         for key, button in workflow_widget.button_elements.items():
             if key == MEOW_NEW_PATTERN_BUTTON:
-                # Test that new pattern button is not disabled.
+                # Test that new pattern button is enabled.
                 self.assertFalse(button.disabled)
             if key == MEOW_EDIT_PATTERN_BUTTON:
-                # Test that edit pattern button is not disabled.
-                self.assertFalse(button.disabled)
+                # Test that edit pattern button is disabled.
+                self.assertTrue(button.disabled)
             if key == MEOW_NEW_RECIPE_BUTTON:
-                # Test that new recipe button is not disabled.
+                # Test that new recipe button is enabled.
                 self.assertFalse(button.disabled)
             if key == MEOW_EDIT_RECIPE_BUTTON:
-                # Test that edit recipe button is not disabled.
-                self.assertFalse(button.disabled)
+                # Test that edit recipe button is disabled.
+                self.assertTrue(button.disabled)
             if key == MEOW_IMPORT_CWL_BUTTON:
                 # Test that cwl import button is disabled.
                 self.assertTrue(button.disabled)
@@ -1652,3 +1632,60 @@ class WorkflowTest(unittest.TestCase):
             if key == MEOW_EXPORT_VGRID_BUTTON:
                 # Test that vgrid export button is disabled.
                 self.assertTrue(button.disabled)
+
+        # Test that valid pattern dict is accepted.
+        completed = \
+            workflow_widget.process_new_pattern(VALID_PATTERN_FORM_VALUES)
+        self.assertTrue(completed)
+        self.assertEqual(len(workflow_widget.meow[PATTERNS]), 1)
+
+        # Test that edit pattern button is now enabled.
+        self.assertFalse(
+            workflow_widget.button_elements[MEOW_EDIT_PATTERN_BUTTON].disabled
+        )
+
+        # Test that pattern is now deleted.
+        completed = workflow_widget.process_delete_pattern(
+            VALID_PATTERN_FORM_VALUES[NAME]
+        )
+        self.assertTrue(completed)
+        self.assertEqual(workflow_widget.meow[PATTERNS], {})
+
+        # Test that edit pattern button is disabled.
+        self.assertTrue(
+            workflow_widget.button_elements[MEOW_EDIT_PATTERN_BUTTON].disabled
+        )
+
+        # Test that valid recipe dict is accepted.
+        completed = \
+            workflow_widget.process_new_recipe(VALID_RECIPE_FORM_VALUES)
+        self.assertTrue(completed)
+        self.assertEqual(len(workflow_widget.meow[RECIPES]), 1)
+
+        # Test that edit pattern button is now enabled.
+        self.assertFalse(
+            workflow_widget.button_elements[MEOW_EDIT_RECIPE_BUTTON].disabled
+        )
+
+        # Test that recipe is now deleted.
+        completed = workflow_widget.process_delete_recipe(
+            VALID_RECIPE_FORM_VALUES[NAME]
+        )
+        self.assertTrue(completed)
+        self.assertEqual(workflow_widget.meow[RECIPES], {})
+
+        # Test that edit recipe button is disabled.
+        self.assertTrue(
+            workflow_widget.button_elements[MEOW_EDIT_RECIPE_BUTTON].disabled
+        )
+
+        workflow_widget = WorkflowWidget(vgrid='vgrid')
+        workflow_widget.construct_widget()
+
+        # Test that vgrid button are enabled when vgrid provided.
+        self.assertFalse(
+            workflow_widget.button_elements[MEOW_IMPORT_VGRID_BUTTON].disabled
+        )
+        self.assertFalse(
+            workflow_widget.button_elements[MEOW_EXPORT_VGRID_BUTTON].disabled
+        )
