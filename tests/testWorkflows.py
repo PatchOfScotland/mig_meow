@@ -19,7 +19,7 @@ from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
     CWL_VARIABLES, TRIGGER_OUTPUT, NOTEBOOK_OUTPUT
 from mig_meow.inputs import is_valid_recipe_dict, is_valid_pattern_dict
 from mig_meow.meow import Pattern, check_patterns_dict, \
-    build_workflow_object, create_recipe_dict
+    build_workflow_object, create_recipe_dict, check_recipes_dict
 from mig_meow.workflow_widget import WorkflowWidget
 
 EMPTY_NOTEBOOK = 'test_notebook.ipynb'
@@ -703,7 +703,59 @@ class WorkflowTest(unittest.TestCase):
 
     def testPatternsDictCheck(self):
         # Test that check on patterns dict is acceptable
-        pass
+        pattern_one = Pattern(VALID_PATTERN_DICT)
+
+        pattern_two_dict = copy.deepcopy(VALID_PATTERN_DICT)
+        pattern_two_dict[NAME] = 'second_pattern'
+        pattern_two = Pattern(pattern_two_dict)
+
+        patterns = {
+            pattern_one.name: pattern_one,
+            pattern_two.name: pattern_two
+        }
+
+        # Test that dict of patterns is a dict of patterns.
+        valid, msg = check_patterns_dict(patterns)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that non-dict types are rejected.
+        valid, msg = check_patterns_dict(1)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        wrong_names_patterns = {
+            pattern_one.name: pattern_two,
+            pattern_two.name: pattern_one
+        }
+
+        # Test that wrongly labeled patterns are rejected.
+        valid, msg = check_patterns_dict(wrong_names_patterns)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        wrong_type = {
+            pattern_one.name: pattern_one,
+            pattern_two.name: 2
+        }
+
+        # Test that wrongly typed patterns are rejected.
+        valid, msg = check_patterns_dict(wrong_type)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        invalid_pattern = Pattern(VALID_PATTERN_DICT)
+        invalid_pattern.recipes = None
+
+        invalid_patterns = {
+            pattern_one.name: pattern_one,
+            pattern_two.name: invalid_pattern
+        }
+
+        # Test that invalid patterns are rejected.
+        valid, msg = check_patterns_dict(invalid_patterns)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
 
     def testRecipeDictCheck(self):
         # Test that valid dict is valid.
@@ -784,8 +836,57 @@ class WorkflowTest(unittest.TestCase):
         self.assertTrue(recipe_dict == expected_dict)
 
     def testRecipesDictCheck(self):
+        recipe_one = copy.deepcopy(VALID_RECIPE_DICT)
+        recipe_two = copy.deepcopy(VALID_RECIPE_DICT)
+        recipe_two[NAME] = 'second_recipe'
+
+        recipes = {
+            recipe_one[NAME]: recipe_one,
+            recipe_two[NAME]: recipe_two
+        }
+
         # Test that check on recipes dict is acceptable
-        pass
+        valid, msg = check_recipes_dict(recipes)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that non-dict types are rejected.
+        valid, msg = check_recipes_dict(1)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        wrong_names_recipes = {
+            recipe_one[NAME]: recipe_two,
+            recipe_two[NAME]: recipe_one
+        }
+
+        # Test that wrongly labeled recipes are rejected.
+        valid, msg = check_recipes_dict(wrong_names_recipes)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        wrong_type = {
+            recipe_one[NAME]: recipe_one,
+            recipe_two[NAME]: 2
+        }
+
+        # Test that wrongly typed recipes are rejected.
+        valid, msg = check_recipes_dict(wrong_type)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        invalid_recipe = copy.deepcopy(VALID_PATTERN_DICT)
+        invalid_recipe[SOURCE] = None
+
+        invalid_recipes = {
+            recipe_one[NAME]: recipe_one,
+            recipe_two[NAME]: invalid_recipe
+        }
+
+        # Test that invalid recipes are rejected.
+        valid, msg = check_recipes_dict(invalid_recipes)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
 
     def testMeowWorkflow(self):
         pattern_one_dict = {

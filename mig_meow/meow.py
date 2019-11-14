@@ -91,12 +91,19 @@ def check_recipes_dict(recipes):
     if not isinstance(recipes, dict):
         return False, 'The provided %s(s) were not in a dict' % RECIPE_NAME
     else:
-        for recipe in recipes.values():
+        for name, recipe in recipes.items():
             valid, feedback = is_valid_recipe_dict(recipe)
             if not valid:
                 return False, \
                        '%s %s was not valid. %s' \
                        % (RECIPE_NAME, recipe, feedback)
+
+            if name != recipe[NAME]:
+                return False, \
+                       '%s %s is not stored correctly as it does not share ' \
+                       'a name with its key %s.' \
+                       % (RECIPE_NAME, recipe[NAME], name)
+
     return True, ''
 
 
