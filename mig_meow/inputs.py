@@ -6,7 +6,8 @@ from .constants import CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_UPPERCASE, \
     WORKFLOW_NAME, STEP_NAME, VARIABLES_NAME, MEOW_MODE, CWL_MODE, \
     VALID_WORKFLOW_MIN, VALID_STEP_MIN, VALID_SETTING_MIN, \
     VALID_PATTERN_OPTIONAL, VALID_RECIPE_OPTIONAL, VALID_SETTING_OPTIONAL, \
-    VALID_STEP_OPTIONAL, VALID_WORKFLOW_OPTIONAL
+    VALID_STEP_OPTIONAL, VALID_WORKFLOW_OPTIONAL, CWL_CLASS_WORKFLOW, \
+    CWL_CLASS_COMMAND_LINE_TOOL, CWL_CLASS
 
 
 def check_input(variable, expected_type, name, or_none=False):
@@ -238,7 +239,7 @@ def is_valid_pattern_dict(to_test, strict=False):
     True then any extra arguments that have been provided will fail. Default
     is False.
 
-    :return: (Tuple(bool, str))tuple. First value is boolean. True = to_test
+    :return: (Tuple(bool, str)) First value is boolean. True = to_test
     is Pattern, False = to_test is not Pattern. Second value is feedback
     string and will be empty if first value is True.
     """
@@ -315,10 +316,11 @@ def is_valid_workflow_dict(to_test, strict=False):
     True then any extra arguments that have been provided will fail. Default
     is False.
 
-    :return: (function call to 'is_valid_dict'). Returns a function call to
-    'is_valid_dict'.
+    :return: (Tuple(bool, str)) First value is boolean. True = to_test
+    is workflow, False = to_test is not workflow. Second value is feedback
+    string and will be empty if first value is True.
     """
-    return is_valid_dict(
+    valid, msg = is_valid_dict(
         to_test,
         VALID_WORKFLOW_MIN,
         VALID_WORKFLOW_OPTIONAL,
@@ -326,6 +328,15 @@ def is_valid_workflow_dict(to_test, strict=False):
         CWL_MODE,
         strict=strict
     )
+
+    if not valid:
+        return False, msg
+
+    if to_test[CWL_CLASS] != CWL_CLASS_WORKFLOW:
+        return False, "%s class is '%s' not %s" \
+               % (WORKFLOW_NAME, to_test[CWL_CLASS], CWL_CLASS_WORKFLOW)
+
+    return True, ''
 
 
 def is_valid_step_dict(to_test, strict=False):
@@ -338,10 +349,11 @@ def is_valid_step_dict(to_test, strict=False):
     True then any extra arguments that have been provided will fail. Default
     is False.
 
-    :return: (function call to 'is_valid_dict'). Returns a function call to
-    'is_valid_dict'.
+    :return: (Tuple(bool, str)) First value is boolean. True = to_test
+    is step, False = to_test is not step. Second value is feedback
+    string and will be empty if first value is True.
     """
-    return is_valid_dict(
+    valid, msg = is_valid_dict(
         to_test,
         VALID_STEP_MIN,
         VALID_STEP_OPTIONAL,
@@ -349,6 +361,15 @@ def is_valid_step_dict(to_test, strict=False):
         CWL_MODE,
         strict=strict
     )
+
+    if not valid:
+        return False, msg
+
+    if to_test[CWL_CLASS] != CWL_CLASS_COMMAND_LINE_TOOL:
+        return False, "%s class is '%s' not %s" \
+               % (STEP_NAME, to_test[CWL_CLASS], CWL_CLASS_COMMAND_LINE_TOOL)
+
+    return True, ''
 
 
 def is_valid_setting_dict(to_test, strict=False):

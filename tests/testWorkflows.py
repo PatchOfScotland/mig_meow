@@ -16,7 +16,8 @@ from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
     TRIGGER_RECIPES, OUTPUT, VARIABLES, SOURCE, RECIPE, CWL_NAME, \
     CWL_REQUIREMENTS, CWL_CWL_VERSION, CWL_CLASS, CWL_BASE_COMMAND, \
     CWL_INPUTS, CWL_OUTPUTS, CWL_STEPS, CWL_STDOUT, CWL_ARGUMENTS, CWL_HINTS, \
-    CWL_VARIABLES, TRIGGER_OUTPUT, NOTEBOOK_OUTPUT
+    CWL_VARIABLES, TRIGGER_OUTPUT, NOTEBOOK_OUTPUT, CWL_CLASS_WORKFLOW, \
+    CWL_CLASS_COMMAND_LINE_TOOL
 from mig_meow.cwl import make_workflow_dict, make_step_dict, \
     make_settings_dict, check_workflows_dict, check_steps_dict, \
     check_settings_dict
@@ -942,6 +943,13 @@ class WorkflowTest(unittest.TestCase):
         self.assertFalse(valid)
         self.assertIsNotNone(msg)
 
+        # Test that non 'Workflow' class is rejected.
+        incorrect_class_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        incorrect_class_dict[CWL_CLASS] = CWL_CLASS_COMMAND_LINE_TOOL
+        valid, msg = is_valid_workflow_dict(incorrect_class_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
         # Test that invalid 'name' type is rejected.
         incorrect_name_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
         incorrect_name_dict[CWL_NAME] = 1
@@ -1124,6 +1132,13 @@ class WorkflowTest(unittest.TestCase):
 
         # Test that non-dict type is rejected.
         valid, msg = is_valid_step_dict(1)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that non 'CommandLineTool' class is rejected.
+        incorrect_class_dict = copy.deepcopy(VALID_STEP_DICT)
+        incorrect_class_dict[CWL_CLASS] = CWL_CLASS_WORKFLOW
+        valid, msg = is_valid_step_dict(incorrect_class_dict)
         self.assertFalse(valid)
         self.assertIsNotNone(msg)
 
