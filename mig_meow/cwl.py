@@ -440,12 +440,17 @@ def check_workflows_dict(workflows):
     if not isinstance(workflows, dict):
         return False, 'The provided %s(s) were not in a dict' % WORKFLOW_NAME
     else:
-        for workflow in workflows.values():
+        for name, workflow in workflows.items():
             valid, feedback = is_valid_workflow_dict(workflow)
             if not valid:
                 return False, \
                        '%s %s was not valid. %s' \
                        % (WORKFLOW_NAME, workflow, feedback)
+            if name != workflow[CWL_NAME]:
+                return False, \
+                       '%s %s is not stored correctly as it does not share ' \
+                       'a name with its key %s.' \
+                       % (WORKFLOW_NAME, workflow[CWL_NAME], name)
     return True, ''
 
 
@@ -464,12 +469,17 @@ def check_steps_dict(steps):
     if not isinstance(steps, dict):
         return False, 'The provided %s(s) were not in a dict' % STEP_NAME
     else:
-        for step in steps.values():
+        for name, step in steps.items():
             valid, feedback = is_valid_step_dict(step)
             if not valid:
                 return False, \
                        '%s %s was not valid. %s' \
                        % (STEP_NAME, step, feedback)
+            if name != step[CWL_NAME]:
+                return False, \
+                       '%s %s is not stored correctly as it does not share ' \
+                       'a name with its key %s.' \
+                       % (WORKFLOW_NAME, step[CWL_NAME], name)
     return True, ''
 
 
@@ -488,10 +498,15 @@ def check_settings_dict(settings):
     if not isinstance(settings, dict):
         return False, 'The provided %s(s) were not in a dict' % VARIABLES_NAME
     else:
-        for setting in settings.values():
+        for name, setting in settings.items():
             valid, feedback = is_valid_setting_dict(setting)
             if not valid:
                 return False, \
                        '%s %s was not valid. %s' \
                        % (VARIABLES_NAME, setting, feedback)
+            if name != setting[CWL_NAME]:
+                return False, \
+                       '%s %s is not stored correctly as it does not share ' \
+                       'a name with its key %s.' \
+                       % (WORKFLOW_NAME, setting[CWL_NAME], name)
     return True, ''

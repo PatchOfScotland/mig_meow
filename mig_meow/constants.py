@@ -155,11 +155,11 @@ VALID_STEP_OPTIONAL = {
 }
 
 VALID_SETTING_MIN = {
-    CWL_NAME: str
+    CWL_NAME: str,
+    CWL_VARIABLES: dict
 }
 
 VALID_SETTING_OPTIONAL = {
-    CWL_VARIABLES: dict
 }
 
 ANCESTORS = 'ancestors'

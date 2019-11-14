@@ -17,7 +17,11 @@ from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
     CWL_REQUIREMENTS, CWL_CWL_VERSION, CWL_CLASS, CWL_BASE_COMMAND, \
     CWL_INPUTS, CWL_OUTPUTS, CWL_STEPS, CWL_STDOUT, CWL_ARGUMENTS, CWL_HINTS, \
     CWL_VARIABLES, TRIGGER_OUTPUT, NOTEBOOK_OUTPUT
-from mig_meow.inputs import is_valid_recipe_dict, is_valid_pattern_dict
+from mig_meow.cwl import make_workflow_dict, make_step_dict, \
+    make_settings_dict, check_workflows_dict, check_steps_dict, \
+    check_settings_dict
+from mig_meow.inputs import is_valid_recipe_dict, is_valid_pattern_dict, \
+    is_valid_workflow_dict, is_valid_step_dict, is_valid_setting_dict
 from mig_meow.meow import Pattern, check_patterns_dict, \
     build_workflow_object, create_recipe_dict, check_recipes_dict
 from mig_meow.workflow_widget import WorkflowWidget
@@ -88,7 +92,7 @@ VALID_RECIPE_DICT = {
 VALID_WORKFLOW_DICT = {
     CWL_NAME: 'workflow_name',
     CWL_CWL_VERSION: 'v1.0',
-    CWL_CLASS: 'workflow',
+    CWL_CLASS: 'Workflow',
     CWL_INPUTS: {},
     CWL_OUTPUTS: {},
     CWL_STEPS: {},
@@ -98,8 +102,8 @@ VALID_WORKFLOW_DICT = {
 VALID_STEP_DICT = {
     CWL_NAME: 'step_name',
     CWL_CWL_VERSION: 'v1.0',
-    CWL_CLASS: 'commandLineTool',
-    CWL_BASE_COMMAND: '',
+    CWL_CLASS: 'CommandLineTool',
+    CWL_BASE_COMMAND: 'papermill',
     CWL_STDOUT: '',
     CWL_INPUTS: {},
     CWL_OUTPUTS: {},
@@ -838,6 +842,13 @@ class WorkflowTest(unittest.TestCase):
         self.assertFalse(valid)
         self.assertIsNotNone(msg)
 
+        # Test that no 'recipe' key is rejected.
+        no_recipe_dict = copy.deepcopy(VALID_RECIPE_DICT)
+        no_recipe_dict.pop(RECIPE)
+        valid, msg = is_valid_recipe_dict(no_recipe_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
         # Test that extra keys are still valid when 'strict' left set to False.
         extra_values_dict = copy.deepcopy(VALID_RECIPE_DICT)
         extra_values_dict['extra'] = 'extra'
@@ -853,22 +864,14 @@ class WorkflowTest(unittest.TestCase):
     def testRecipeCreation(self):
         notebook_dict = nbformat.read(EMPTY_NOTEBOOK, nbformat.NO_CONVERT)
 
-        recipe_dict = \
-            create_recipe_dict(notebook_dict, 'test_recipe', EMPTY_NOTEBOOK)
-
-        expected_dict = {
-            NAME: 'test_recipe',
-            SOURCE: EMPTY_NOTEBOOK,
-            RECIPE: {
-                'cells': [],
-                'metadata': {},
-                'nbformat': 4,
-                'nbformat_minor': 2
-            }
-        }
+        recipe_dict = create_recipe_dict(
+            notebook_dict,
+            VALID_RECIPE_DICT[NAME],
+            EMPTY_NOTEBOOK
+        )
 
         # Test that created recipe has expected values.
-        self.assertTrue(recipe_dict == expected_dict)
+        self.assertTrue(recipe_dict == VALID_RECIPE_DICT)
 
         # Test that created recipe is valid
         valid, msg = is_valid_recipe_dict(recipe_dict)
@@ -915,7 +918,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertFalse(valid)
         self.assertIsNotNone(msg)
 
-        invalid_recipe = copy.deepcopy(VALID_PATTERN_DICT)
+        invalid_recipe = copy.deepcopy(VALID_RECIPE_DICT)
         invalid_recipe[SOURCE] = None
 
         invalid_recipes = {
@@ -925,6 +928,532 @@ class WorkflowTest(unittest.TestCase):
 
         # Test that invalid recipes are rejected.
         valid, msg = check_recipes_dict(invalid_recipes)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+    def testWorkflowDictCheck(self):
+        # Test that valid dict is valid.
+        valid, msg = is_valid_workflow_dict(VALID_WORKFLOW_DICT)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that non-dict type is rejected.
+        valid, msg = is_valid_workflow_dict(1)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'name' type is rejected.
+        incorrect_name_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        incorrect_name_dict[CWL_NAME] = 1
+        valid, msg = is_valid_workflow_dict(incorrect_name_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'cwl_version' type is rejected.
+        incorrect_version_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        incorrect_version_dict[CWL_CWL_VERSION] = 1
+        valid, msg = is_valid_workflow_dict(incorrect_version_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'class' type is rejected.
+        incorrect_class_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        incorrect_class_dict[CWL_CLASS] = 1
+        valid, msg = is_valid_workflow_dict(incorrect_class_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'inputs' type is rejected.
+        incorrect_inputs_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        incorrect_inputs_dict[CWL_INPUTS] = 1
+        valid, msg = is_valid_workflow_dict(incorrect_inputs_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'outputs' type is rejected.
+        incorrect_outputs_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        incorrect_outputs_dict[CWL_OUTPUTS] = 1
+        valid, msg = is_valid_workflow_dict(incorrect_outputs_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'steps' type is rejected.
+        incorrect_steps_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        incorrect_steps_dict[CWL_STEPS] = 1
+        valid, msg = is_valid_workflow_dict(incorrect_steps_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'requirements' type is rejected.
+        incorrect_requirements_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        incorrect_requirements_dict[CWL_REQUIREMENTS] = 1
+        valid, msg = is_valid_workflow_dict(incorrect_requirements_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that no 'name' key is rejected.
+        no_name_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        no_name_dict.pop(CWL_NAME)
+        valid, msg = is_valid_workflow_dict(no_name_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that no 'cwl_version' key is rejected.
+        no_version_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        no_version_dict.pop(CWL_CWL_VERSION)
+        valid, msg = is_valid_workflow_dict(no_version_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that no 'class' key is rejected.
+        no_class_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        no_class_dict.pop(CWL_CLASS)
+        valid, msg = is_valid_workflow_dict(no_class_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that no 'inputs' key is rejected.
+        no_inputs_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        no_inputs_dict.pop(CWL_INPUTS)
+        valid, msg = is_valid_workflow_dict(no_inputs_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that no 'outputs' key is rejected.
+        no_outputs_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        no_outputs_dict.pop(CWL_OUTPUTS)
+        valid, msg = is_valid_workflow_dict(no_outputs_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that no 'steps' key is rejected.
+        no_steps_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        no_steps_dict.pop(CWL_STEPS)
+        valid, msg = is_valid_workflow_dict(no_steps_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that 'requirements' key is optional.
+        no_requirements_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        no_requirements_dict.pop(CWL_REQUIREMENTS)
+        valid, msg = is_valid_workflow_dict(no_requirements_dict)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that extra keys are still valid when 'strict' left set to False.
+        extra_values_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
+        extra_values_dict['extra'] = 'extra'
+        valid, msg = is_valid_workflow_dict(extra_values_dict)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that extra keys are rejected when 'strict' set to True.
+        valid, msg = is_valid_workflow_dict(extra_values_dict, strict=True)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+    def testWorkflowCreation(self):
+        workflow_dict = make_workflow_dict(VALID_WORKFLOW_DICT[CWL_NAME])
+
+        # Test that created workflow has expected values.
+        self.assertTrue(workflow_dict == VALID_WORKFLOW_DICT)
+
+        # Test that created workflow is valid
+        valid, msg = is_valid_workflow_dict(workflow_dict)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+    def testWorkflowsDictCheck(self):
+        workflow_one = copy.deepcopy(VALID_WORKFLOW_DICT)
+        workflow_two = copy.deepcopy(VALID_WORKFLOW_DICT)
+        workflow_two[CWL_NAME] = 'second_workflow'
+
+        workflows = {
+            workflow_one[CWL_NAME]: workflow_one,
+            workflow_two[CWL_NAME]: workflow_two
+        }
+
+        # Test that check on workflows dict is acceptable
+        valid, msg = check_workflows_dict(workflows)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that non-dict types are rejected.
+        valid, msg = check_workflows_dict(1)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        wrong_names_workflows = {
+            workflow_one[CWL_NAME]: workflow_two,
+            workflow_two[CWL_NAME]: workflow_one
+        }
+
+        # Test that wrongly labeled workflows are rejected.
+        valid, msg = check_workflows_dict(wrong_names_workflows)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        wrong_type = {
+            workflow_one[CWL_NAME]: workflow_one,
+            workflow_two[CWL_NAME]: 2
+        }
+
+        # Test that wrongly typed workflows are rejected.
+        valid, msg = check_workflows_dict(wrong_type)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        invalid_workflow = copy.deepcopy(VALID_WORKFLOW_DICT)
+        invalid_workflow[CWL_NAME] = None
+
+        invalid_workflows = {
+            workflow_one[CWL_NAME]: workflow_one,
+            workflow_two[CWL_NAME]: invalid_workflow
+        }
+
+        # Test that invalid workflows are rejected.
+        valid, msg = check_workflows_dict(invalid_workflows)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+    def testStepDictCheck(self):
+        # Test that valid dict is valid.
+        valid, msg = is_valid_step_dict(VALID_STEP_DICT)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that non-dict type is rejected.
+        valid, msg = is_valid_step_dict(1)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'name' type is rejected.
+        incorrect_name_dict = copy.deepcopy(VALID_STEP_DICT)
+        incorrect_name_dict[CWL_NAME] = 1
+        valid, msg = is_valid_step_dict(incorrect_name_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'cwl_version' type is rejected.
+        incorrect_version_dict = copy.deepcopy(VALID_STEP_DICT)
+        incorrect_version_dict[CWL_CWL_VERSION] = 1
+        valid, msg = is_valid_step_dict(incorrect_version_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'class' type is rejected.
+        incorrect_class_dict = copy.deepcopy(VALID_STEP_DICT)
+        incorrect_class_dict[CWL_CLASS] = 1
+        valid, msg = is_valid_step_dict(incorrect_class_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'inputs' type is rejected.
+        incorrect_inputs_dict = copy.deepcopy(VALID_STEP_DICT)
+        incorrect_inputs_dict[CWL_INPUTS] = 1
+        valid, msg = is_valid_step_dict(incorrect_inputs_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'outputs' type is rejected.
+        incorrect_outputs_dict = copy.deepcopy(VALID_STEP_DICT)
+        incorrect_outputs_dict[CWL_OUTPUTS] = 1
+        valid, msg = is_valid_step_dict(incorrect_outputs_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'base_command' type is rejected.
+        incorrect_base_command_dict = copy.deepcopy(VALID_STEP_DICT)
+        incorrect_base_command_dict[CWL_BASE_COMMAND] = 1
+        valid, msg = is_valid_step_dict(incorrect_base_command_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'stdout' type is rejected.
+        incorrect_stdout_dict = copy.deepcopy(VALID_STEP_DICT)
+        incorrect_stdout_dict[CWL_STDOUT] = 1
+        valid, msg = is_valid_step_dict(incorrect_stdout_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'arguments' type is rejected.
+        incorrect_arguments_dict = copy.deepcopy(VALID_STEP_DICT)
+        incorrect_arguments_dict[CWL_ARGUMENTS] = 1
+        valid, msg = is_valid_step_dict(incorrect_arguments_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'requirements' type is rejected.
+        incorrect_requirements_dict = copy.deepcopy(VALID_STEP_DICT)
+        incorrect_requirements_dict[CWL_REQUIREMENTS] = 1
+        valid, msg = is_valid_step_dict(incorrect_requirements_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'hints' type is rejected.
+        incorrect_hints_dict = copy.deepcopy(VALID_STEP_DICT)
+        incorrect_hints_dict[CWL_HINTS] = 1
+        valid, msg = is_valid_step_dict(incorrect_hints_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that no 'name' key is rejected.
+        no_name_dict = copy.deepcopy(VALID_STEP_DICT)
+        no_name_dict.pop(CWL_NAME)
+        valid, msg = is_valid_step_dict(no_name_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that no 'cwl_version' key is rejected.
+        no_version_dict = copy.deepcopy(VALID_STEP_DICT)
+        no_version_dict.pop(CWL_CWL_VERSION)
+        valid, msg = is_valid_step_dict(no_version_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that no 'class' key is rejected.
+        no_class_dict = copy.deepcopy(VALID_STEP_DICT)
+        no_class_dict.pop(CWL_CLASS)
+        valid, msg = is_valid_step_dict(no_class_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that no 'inputs' key is rejected.
+        no_inputs_dict = copy.deepcopy(VALID_STEP_DICT)
+        no_inputs_dict.pop(CWL_INPUTS)
+        valid, msg = is_valid_step_dict(no_inputs_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that no 'outputs' key is rejected.
+        no_outputs_dict = copy.deepcopy(VALID_STEP_DICT)
+        no_outputs_dict.pop(CWL_OUTPUTS)
+        valid, msg = is_valid_step_dict(no_outputs_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that no 'base_command' key is rejected.
+        no_base_command_dict = copy.deepcopy(VALID_STEP_DICT)
+        no_base_command_dict.pop(CWL_BASE_COMMAND)
+        valid, msg = is_valid_step_dict(no_base_command_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that 'stdout' key is optional.
+        no_stdout_dict = copy.deepcopy(VALID_STEP_DICT)
+        no_stdout_dict.pop(CWL_STDOUT)
+        valid, msg = is_valid_step_dict(no_stdout_dict)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that 'arguments' key is optional.
+        no_arguments_dict = copy.deepcopy(VALID_STEP_DICT)
+        no_arguments_dict.pop(CWL_ARGUMENTS)
+        valid, msg = is_valid_step_dict(no_arguments_dict)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that 'requirements' key is optional.
+        no_requirements_dict = copy.deepcopy(VALID_STEP_DICT)
+        no_requirements_dict.pop(CWL_REQUIREMENTS)
+        valid, msg = is_valid_step_dict(no_requirements_dict)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that 'hints' key is optional.
+        no_hints_dict = copy.deepcopy(VALID_STEP_DICT)
+        no_hints_dict.pop(CWL_HINTS)
+        valid, msg = is_valid_step_dict(no_hints_dict)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that extra keys are still valid when 'strict' left set to False.
+        extra_values_dict = copy.deepcopy(VALID_STEP_DICT)
+        extra_values_dict['extra'] = 'extra'
+        valid, msg = is_valid_step_dict(extra_values_dict)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that extra keys are rejected when 'strict' set to True.
+        valid, msg = is_valid_step_dict(extra_values_dict, strict=True)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+    def testStepCreation(self):
+        step_dict = make_step_dict(
+            VALID_STEP_DICT[CWL_NAME],
+            VALID_STEP_DICT[CWL_BASE_COMMAND]
+        )
+
+        # Test that created step has expected values.
+        self.assertTrue(step_dict == VALID_STEP_DICT)
+
+        # Test that created step is valid
+        valid, msg = is_valid_step_dict(step_dict)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+    def testStepsDictCheck(self):
+        step_one = copy.deepcopy(VALID_STEP_DICT)
+        step_two = copy.deepcopy(VALID_STEP_DICT)
+        step_two[CWL_NAME] = 'second_step'
+
+        steps = {
+            step_one[CWL_NAME]: step_one,
+            step_two[CWL_NAME]: step_two
+        }
+
+        # Test that check on steps dict is acceptable
+        valid, msg = check_steps_dict(steps)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that non-dict types are rejected.
+        valid, msg = check_steps_dict(1)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        wrong_names_steps = {
+            step_one[CWL_NAME]: step_two,
+            step_two[CWL_NAME]: step_one
+        }
+
+        # Test that wrongly labeled steps are rejected.
+        valid, msg = check_steps_dict(wrong_names_steps)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        wrong_type = {
+            step_one[CWL_NAME]: step_one,
+            step_two[CWL_NAME]: 2
+        }
+
+        # Test that wrongly typed steps are rejected.
+        valid, msg = check_steps_dict(wrong_type)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        invalid_step = copy.deepcopy(VALID_STEP_DICT)
+        invalid_step[CWL_NAME] = None
+
+        invalid_steps = {
+            step_one[CWL_NAME]: step_one,
+            step_two[CWL_NAME]: invalid_step
+        }
+
+        # Test that invalid steps are rejected.
+        valid, msg = check_steps_dict(invalid_steps)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+    def testSettingDictCheck(self):
+        # Test that valid dict is valid.
+        valid, msg = is_valid_setting_dict(VALID_SETTINGS_DICT)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that non-dict type is rejected.
+        valid, msg = is_valid_setting_dict(1)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that invalid 'variables' type is rejected.
+        incorrect_variables_dict = copy.deepcopy(VALID_SETTINGS_DICT)
+        incorrect_variables_dict[CWL_VARIABLES] = 1
+        valid, msg = is_valid_setting_dict(incorrect_variables_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that no 'name' key is rejected.
+        no_name_dict = copy.deepcopy(VALID_SETTINGS_DICT)
+        no_name_dict.pop(CWL_NAME)
+        valid, msg = is_valid_setting_dict(no_name_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that not 'variables' key is rejected.
+        no_variables_dict = copy.deepcopy(VALID_SETTINGS_DICT)
+        no_variables_dict.pop(CWL_VARIABLES)
+        valid, msg = is_valid_setting_dict(no_variables_dict)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        # Test that extra keys are still valid when 'strict' left set to False.
+        extra_values_dict = copy.deepcopy(VALID_SETTINGS_DICT)
+        extra_values_dict['extra'] = 'extra'
+        valid, msg = is_valid_setting_dict(extra_values_dict)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that extra keys are rejected when 'strict' set to True.
+        valid, msg = is_valid_setting_dict(extra_values_dict, strict=True)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+    def testSettingCreation(self):
+        setting_dict = make_settings_dict(
+            VALID_SETTINGS_DICT[CWL_NAME],
+            VALID_SETTINGS_DICT[CWL_VARIABLES]
+        )
+
+        # Test that created setting has expected values.
+        self.assertTrue(setting_dict == VALID_SETTINGS_DICT)
+
+        # Test that created setting is valid
+        valid, msg = is_valid_setting_dict(setting_dict)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+    def testSettingsDictCheck(self):
+        setting_one = copy.deepcopy(VALID_SETTINGS_DICT)
+        setting_two = copy.deepcopy(VALID_SETTINGS_DICT)
+        setting_two[CWL_NAME] = 'second_setting'
+
+        settings = {
+            setting_one[CWL_NAME]: setting_one,
+            setting_two[CWL_NAME]: setting_two
+        }
+
+        # Test that check on settings dict is acceptable
+        valid, msg = check_settings_dict(settings)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that non-dict types are rejected.
+        valid, msg = check_settings_dict(1)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        wrong_names_settings = {
+            setting_one[CWL_NAME]: setting_two,
+            setting_two[CWL_NAME]: setting_one
+        }
+
+        # Test that wrongly labeled settings are rejected.
+        valid, msg = check_settings_dict(wrong_names_settings)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        wrong_type = {
+            setting_one[CWL_NAME]: setting_one,
+            setting_two[CWL_NAME]: 2
+        }
+
+        # Test that wrongly typed settings are rejected.
+        valid, msg = check_settings_dict(wrong_type)
+        self.assertFalse(valid)
+        self.assertIsNotNone(msg)
+
+        invalid_setting = copy.deepcopy(VALID_SETTINGS_DICT)
+        invalid_setting[CWL_NAME] = None
+
+        invalid_settings = {
+            setting_one[CWL_NAME]: setting_one,
+            setting_two[CWL_NAME]: invalid_setting
+        }
+
+        # Test that invalid settings are rejected.
+        valid, msg = check_settings_dict(invalid_settings)
         self.assertFalse(valid)
         self.assertIsNotNone(msg)
 
