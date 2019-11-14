@@ -78,9 +78,6 @@ VALID_OPERATIONS = [
 
 OBJECT_TYPE = 'object_type'
 PERSISTENCE_ID = 'persistence_id'
-TRIGGER = 'trigger'
-TRIGGERS = 'triggers'
-OWNER = 'owner'
 NAME = 'name'
 INPUT_FILE = 'input_file'
 TRIGGER_PATHS = 'input_paths'
@@ -106,51 +103,62 @@ VARIABLES_NAME = 'Arguments'
 
 PLACEHOLDER = 'PLACEHOLDER'
 
-VALID_PATTERN = {
-    OBJECT_TYPE: str,
-    PERSISTENCE_ID: str,
-    TRIGGER: dict,
-    OWNER: str,
+VALID_PATTERN_MIN = {
     NAME: str,
     INPUT_FILE: str,
     TRIGGER_PATHS: list,
-    TRIGGER_RECIPES: dict,
-    OUTPUT: dict,
-    VARIABLES: dict,
-    VGRID: str
+    TRIGGER_RECIPES: dict
 }
 
-VALID_RECIPE = {
+VALID_PATTERN_OPTIONAL = {
+    OUTPUT: dict,
+    VARIABLES: dict
+}
+
+VALID_RECIPE_MIN = {
     NAME: str,
     RECIPE: dict,
     SOURCE: str
 }
 
-VALID_WORKFLOW = {
+VALID_RECIPE_OPTIONAL = {
+
+}
+
+VALID_WORKFLOW_MIN = {
     CWL_NAME: str,
     CWL_CWL_VERSION: str,
     CWL_CLASS: str,
     CWL_INPUTS: dict,
     CWL_OUTPUTS: dict,
-    CWL_STEPS: dict,
+    CWL_STEPS: dict
+}
+
+VALID_WORKFLOW_OPTIONAL = {
     CWL_REQUIREMENTS: dict
 }
 
-VALID_STEP = {
+VALID_STEP_MIN = {
     CWL_NAME: str,
     CWL_CWL_VERSION: str,
     CWL_CLASS: str,
     CWL_BASE_COMMAND: str,
-    CWL_STDOUT: str,
     CWL_INPUTS: dict,
-    CWL_OUTPUTS: dict,
+    CWL_OUTPUTS: dict
+}
+
+VALID_STEP_OPTIONAL = {
+    CWL_STDOUT: str,
     CWL_ARGUMENTS: list,
     CWL_REQUIREMENTS: dict,
     CWL_HINTS: dict
 }
 
-VALID_SETTING = {
-    CWL_NAME: str,
+VALID_SETTING_MIN = {
+    CWL_NAME: str
+}
+
+VALID_SETTING_OPTIONAL = {
     CWL_VARIABLES: dict
 }
 

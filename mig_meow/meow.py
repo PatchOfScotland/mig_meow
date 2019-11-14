@@ -1,3 +1,4 @@
+import copy
 import re
 import os
 import nbformat
@@ -135,17 +136,17 @@ class Pattern:
         if isinstance(parameters, dict):
             is_valid_pattern_dict(parameters)
 
-            self.name = parameters[NAME]
+            self.name = copy.deepcopy(parameters[NAME])
 
             if PERSISTENCE_ID in parameters:
-                self.persistence_id = parameters[PERSISTENCE_ID]
+                self.persistence_id = copy.deepcopy(parameters[PERSISTENCE_ID])
 
-            self.trigger_paths = parameters[TRIGGER_PATHS]
+            self.trigger_paths = copy.deepcopy(parameters[TRIGGER_PATHS])
             self.recipes = []
             self.outputs = {}
             self.variables = {}
 
-            self.trigger_file = parameters[INPUT_FILE]
+            self.trigger_file = copy.deepcopy(parameters[INPUT_FILE])
 
             for trigger_id, trigger in parameters[TRIGGER_RECIPES].items():
                 for recipe_key, recipe in trigger.items():
@@ -165,7 +166,9 @@ class Pattern:
                     self.add_variable(name, value)
 
             if parameters[INPUT_FILE] not in self.variables:
-                self.add_variable(parameters[INPUT_FILE], parameters[INPUT_FILE])
+                self.add_variable(
+                    parameters[INPUT_FILE], parameters[INPUT_FILE]
+                )
 
             return
         raise TypeError(

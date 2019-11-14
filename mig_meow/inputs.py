@@ -2,9 +2,11 @@
 import os
 
 from .constants import CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_UPPERCASE, \
-    VALID_PATTERN, RECIPE_NAME, VALID_RECIPE, PATTERN_NAME, WORKFLOW_NAME, \
-    STEP_NAME, VARIABLES_NAME, MEOW_MODE, CWL_MODE, VALID_WORKFLOW, \
-    VALID_STEP, VALID_SETTING
+    VALID_PATTERN_MIN, RECIPE_NAME, VALID_RECIPE_MIN, PATTERN_NAME, \
+    WORKFLOW_NAME, STEP_NAME, VARIABLES_NAME, MEOW_MODE, CWL_MODE, \
+    VALID_WORKFLOW_MIN, VALID_STEP_MIN, VALID_SETTING_MIN, \
+    VALID_PATTERN_OPTIONAL, VALID_RECIPE_OPTIONAL, VALID_SETTING_OPTIONAL, \
+    VALID_STEP_OPTIONAL, VALID_WORKFLOW_OPTIONAL
 
 
 def check_input(variable, expected_type, name, or_none=False):
@@ -164,16 +166,18 @@ def valid_file_path(path, name, extensions=None):
             )
 
 
-def is_valid_dict(
-        to_test, required_args, name, paradigm, strict=False
-):
+def is_valid_dict(to_test, required_args, optional_args, name, paradigm, strict=False):
     """
     Validates that a given dict has the expected arguments.
 
     :param to_test: (dict) the dictionary whose arguments are to be checked.
 
     :param required_args: (dict) A dictionary of expected arguments and the
-    types of those arguments.
+    types of those arguments. Check will fail if all of these are not provided.
+
+    :param optional_args: (dict) A dictionary of possible arguments and the
+    types of those arguments. These will be type checked if provided, but are
+    not necessary for a 'to_test' dict to be valid.
 
     :param name: (str) The name of this dict type. Used for debugging messages.
 
@@ -182,7 +186,7 @@ def is_valid_dict(
 
     :param strict: (bool)[optional] Option to be strict about arguments. If
     True then any extra arguments that have been provided will fail. Default
-    is False
+    is False.
 
     :return: (Tuple(bool, str)) First value is boolean. True = to_test
     is valid, False = to_test is not valid. Second value is feedback
@@ -208,27 +212,45 @@ def is_valid_dict(
                 % (to_test[key], value, type(to_test[key]))
             return False, message
 
+    for key, value in optional_args.items():
+        if key in to_test and not isinstance(to_test[key], value):
+            message += \
+                ' %s is expected to have type %s but actually has %s. ' \
+                % (to_test[key], value, type(to_test[key]))
+            return False, message
+
     if strict:
         for key in to_test.keys():
-            if key not in required_args:
+            if key not in required_args and key not in optional_args:
                 message += ' contains extra key %s' % key
                 return False, message
     return True, ''
 
 
-def is_valid_pattern_dict(to_test):
+def is_valid_pattern_dict(to_test, strict=False):
     """
     Validates that the passed dictionary can be used to create a new Pattern
     object.
 
     :param: to_test: (dict) object to be tested.
 
+    :param strict: (bool)[optional] Option to be strict about arguments. If
+    True then any extra arguments that have been provided will fail. Default
+    is False.
+
     :return: (Tuple(bool, str))tuple. First value is boolean. True = to_test
     is Pattern, False = to_test is not Pattern. Second value is feedback
     string and will be empty if first value is True.
     """
 
-    valid, msg = is_valid_dict(to_test, VALID_PATTERN, PATTERN_NAME, MEOW_MODE)
+    valid, msg = is_valid_dict(
+        to_test,
+        VALID_PATTERN_MIN,
+        VALID_PATTERN_OPTIONAL,
+        PATTERN_NAME,
+        MEOW_MODE,
+        strict=strict
+    )
 
     if not valid:
         return False, msg
@@ -241,11 +263,15 @@ def is_valid_pattern_dict(to_test):
                "Trigger id's have not be stored in the correct format. " \
                "Expected dict but got %s." % type(to_test['trigger_recipes'])
 
-    for trigger_id in to_test['trigger_recipes'].values():
+    for trigger_id, trigger in to_test['trigger_recipes'].items():
         if not isinstance(trigger_id, str):
             return False, "Trigger id %s is a %s, not the expected str." \
                    % (str(trigger_id), type(trigger_id))
-        for id, recipe in to_test['trigger_recipes'][trigger_id].items():
+        if not isinstance(trigger, dict):
+            return False, "Trigger %s is a %s, not the expected dict." \
+                   % (str(trigger), type(trigger))
+
+        for id, recipe in trigger.items():
             if not isinstance(id, str):
                 return False, "Recipe id %s is a %s, not the expected str." \
                        % (str(id), type(id))
@@ -256,49 +282,93 @@ def is_valid_pattern_dict(to_test):
     return True, ''
 
 
-def is_valid_recipe_dict(to_test):
+def is_valid_recipe_dict(to_test, strict=False):
     """
     Validates that the passed dictionary expresses a meow recipe.
 
     :param to_test: (dict) A dictionary, hopefully expressing a meow recipe
 
+    :param strict: (bool)[optional] Option to be strict about arguments. If
+    True then any extra arguments that have been provided will fail. Default
+    is False.
+
     :return: (function call to 'is_valid_dict'). Returns a function call to
     'is_valid_dict'.
     """
-    return is_valid_dict(to_test, VALID_RECIPE, RECIPE_NAME, MEOW_MODE)
+    return is_valid_dict(
+        to_test,
+        VALID_RECIPE_MIN,
+        VALID_RECIPE_OPTIONAL,
+        RECIPE_NAME,
+        MEOW_MODE,
+        strict=strict
+    )
 
 
-def is_valid_workflow_dict(to_test):
+def is_valid_workflow_dict(to_test, strict=False):
     """
     Validates that the passed dictionary expresses a cwl workflow.
 
     :param to_test: (dict) A dictionary, hopefully expressing a cwl workflow
 
+    :param strict: (bool)[optional] Option to be strict about arguments. If
+    True then any extra arguments that have been provided will fail. Default
+    is False.
+
     :return: (function call to 'is_valid_dict'). Returns a function call to
     'is_valid_dict'.
     """
-    return is_valid_dict(to_test, VALID_WORKFLOW, WORKFLOW_NAME, CWL_MODE)
+    return is_valid_dict(
+        to_test,
+        VALID_WORKFLOW_MIN,
+        VALID_WORKFLOW_OPTIONAL,
+        WORKFLOW_NAME,
+        CWL_MODE,
+        strict=strict
+    )
 
 
-def is_valid_step_dict(to_test):
+def is_valid_step_dict(to_test, strict=False):
     """
     Validates that the passed dictionary expresses a cwl step.
 
     :param to_test: (dict) A dictionary, hopefully expressing a cwl step
 
+    :param strict: (bool)[optional] Option to be strict about arguments. If
+    True then any extra arguments that have been provided will fail. Default
+    is False.
+
     :return: (function call to 'is_valid_dict'). Returns a function call to
     'is_valid_dict'.
     """
-    return is_valid_dict(to_test, VALID_STEP, STEP_NAME, CWL_MODE)
+    return is_valid_dict(
+        to_test,
+        VALID_STEP_MIN,
+        VALID_STEP_OPTIONAL,
+        STEP_NAME,
+        CWL_MODE,
+        strict=strict
+    )
 
 
-def is_valid_setting_dict(to_test):
+def is_valid_setting_dict(to_test, strict=False):
     """
     Validates that the passed dictionary expresses cwl arguments.
 
     :param to_test: (dict) A dictionary, hopefully expressing cwl arguments
 
+    :param strict: (bool)[optional] Option to be strict about arguments. If
+    True then any extra arguments that have been provided will fail. Default
+    is False.
+
     :return: (function call to 'is_valid_dict'). Returns a function call to
     'is_valid_dict'.
     """
-    return is_valid_dict(to_test, VALID_SETTING, VARIABLES_NAME, CWL_MODE)
+    return is_valid_dict(
+        to_test,
+        VALID_SETTING_MIN,
+        VALID_SETTING_OPTIONAL,
+        VARIABLES_NAME,
+        CWL_MODE,
+        strict=strict
+    )
