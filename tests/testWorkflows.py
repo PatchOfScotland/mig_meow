@@ -24,6 +24,24 @@ from mig_meow.workflow_widget import WorkflowWidget
 
 EMPTY_NOTEBOOK = 'test_notebook.ipynb'
 ANOTHER_NOTEBOOK = 'another_notebook.ipynb'
+EXTENSIONLESS_NOTEBOOK = 'test_notebook'
+DOES_NOT_EXIST = 'does_not_exit.ipynb'
+
+REQUIRED_FILES = [
+    EMPTY_NOTEBOOK,
+    ANOTHER_NOTEBOOK,
+    EXTENSIONLESS_NOTEBOOK
+]
+
+REQUIRED_ABSENT_FILES = [
+    DOES_NOT_EXIST
+]
+
+NOTEBOOKS = [
+    EMPTY_NOTEBOOK,
+    ANOTHER_NOTEBOOK,
+    EXTENSIONLESS_NOTEBOOK
+]
 
 VALID_PATTERN_DICT = {
     NAME: 'test_pattern',
@@ -58,7 +76,7 @@ VALID_PATTERN_DICT = {
 
 VALID_RECIPE_DICT = {
     NAME: 'test_recipe',
-    SOURCE: 'test_notebook.ipynb',
+    SOURCE: EMPTY_NOTEBOOK,
     RECIPE: {
         'cells': [],
         'metadata': {},
@@ -152,33 +170,33 @@ VALID_PATTERN_FORM_VALUES = {
 
 VALID_RECIPE_FORM_VALUES = {
     NAME: 'test_recipe',
-    SOURCE: 'test_notebook.ipynb'
+    SOURCE: EMPTY_NOTEBOOK
 }
 
 
 class WorkflowTest(unittest.TestCase):
     def setUp(self):
-        if os.path.exists(EMPTY_NOTEBOOK):
-            raise Exception(
-                "Required test location '%s' is already in use"
-                % EMPTY_NOTEBOOK
-            )
-        if os.path.exists(ANOTHER_NOTEBOOK):
-            raise Exception(
-                "Required test location '%s' is already in use"
-                % ANOTHER_NOTEBOOK
-            )
+        for file in REQUIRED_FILES:
+            if os.path.exists(file):
+                raise Exception(
+                    "Required test location '%s' is already in use"
+                    % file
+                )
 
-        notebook = nbformat.v4.new_notebook()
-        nbformat.write(notebook, EMPTY_NOTEBOOK)
+        for file in REQUIRED_ABSENT_FILES:
+            if os.path.exists(file):
+                raise Exception(
+                    "Required test location '%s' is already in use"
+                    % file
+                )
 
-        notebook = nbformat.v4.new_notebook()
-        nbformat.write(notebook, ANOTHER_NOTEBOOK)
-
+        for file in NOTEBOOKS:
+            notebook = nbformat.v4.new_notebook()
+            nbformat.write(notebook, file)
 
     def tearDown(self):
-        os.remove(EMPTY_NOTEBOOK)
-        os.remove(ANOTHER_NOTEBOOK)
+        for file in REQUIRED_FILES:
+            os.remove(file)
 
     def testPatternDictCheck(self):
         # Test valid pattern dict is accepted
@@ -840,7 +858,7 @@ class WorkflowTest(unittest.TestCase):
 
         expected_dict = {
             NAME: 'test_recipe',
-            SOURCE: 'test_notebook.ipynb',
+            SOURCE: EMPTY_NOTEBOOK,
             RECIPE: {
                 'cells': [],
                 'metadata': {},
@@ -851,6 +869,11 @@ class WorkflowTest(unittest.TestCase):
 
         # Test that created recipe has expected values.
         self.assertTrue(recipe_dict == expected_dict)
+
+        # Test that created recipe is valid
+        valid, msg = is_valid_recipe_dict(recipe_dict)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
 
     def testRecipesDictCheck(self):
         recipe_one = copy.deepcopy(VALID_RECIPE_DICT)
@@ -1191,7 +1214,9 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(len(workflow_widget.meow[RECIPES]), 1)
         self.assertIn(VALID_RECIPE_DICT[NAME], workflow_widget.meow[RECIPES])
         self.assertEqual(len(workflow_widget.cwl[WORKFLOWS]), 1)
-        self.assertIn(VALID_WORKFLOW_DICT[NAME], workflow_widget.cwl[WORKFLOWS])
+        self.assertIn(
+            VALID_WORKFLOW_DICT[NAME], workflow_widget.cwl[WORKFLOWS]
+        )
         self.assertEqual(len(workflow_widget.cwl[STEPS]), 1)
         self.assertIn(VALID_STEP_DICT[NAME], workflow_widget.cwl[STEPS])
         self.assertEqual(len(workflow_widget.cwl[SETTINGS]), 1)
@@ -1445,6 +1470,20 @@ class WorkflowTest(unittest.TestCase):
         # Test that two recipes cannot be added with same name
         same_name_values = copy.deepcopy(VALID_RECIPE_FORM_VALUES)
         completed = workflow_widget.process_new_recipe(same_name_values)
+        self.assertFalse(completed)
+
+        sourceless_recipe = copy.deepcopy(VALID_RECIPE_FORM_VALUES)
+        sourceless_recipe[SOURCE] = DOES_NOT_EXIST
+
+        # Test that sourceless recipe is rejected.
+        completed = workflow_widget.process_new_recipe(sourceless_recipe)
+        self.assertFalse(completed)
+
+        extensionless_recipe = copy.deepcopy(VALID_RECIPE_FORM_VALUES)
+        extensionless_recipe[SOURCE] = EXTENSIONLESS_NOTEBOOK
+
+        # Test that extensionless recipe is rejected.
+        completed = workflow_widget.process_new_recipe(extensionless_recipe)
         self.assertFalse(completed)
 
         # Test that recipe with incomplete values is rejected.
