@@ -23,6 +23,7 @@ from mig_meow.meow import Pattern, check_patterns_dict, \
 from mig_meow.workflow_widget import WorkflowWidget
 
 EMPTY_NOTEBOOK = 'test_notebook.ipynb'
+ANOTHER_NOTEBOOK = 'another_notebook.ipynb'
 
 VALID_PATTERN_DICT = {
     NAME: 'test_pattern',
@@ -149,6 +150,11 @@ VALID_PATTERN_FORM_VALUES = {
     ]
 }
 
+VALID_RECIPE_FORM_VALUES = {
+    NAME: 'test_recipe',
+    SOURCE: 'test_notebook.ipynb'
+}
+
 
 class WorkflowTest(unittest.TestCase):
     def setUp(self):
@@ -157,11 +163,22 @@ class WorkflowTest(unittest.TestCase):
                 "Required test location '%s' is already in use"
                 % EMPTY_NOTEBOOK
             )
+        if os.path.exists(ANOTHER_NOTEBOOK):
+            raise Exception(
+                "Required test location '%s' is already in use"
+                % ANOTHER_NOTEBOOK
+            )
+
         notebook = nbformat.v4.new_notebook()
         nbformat.write(notebook, EMPTY_NOTEBOOK)
 
+        notebook = nbformat.v4.new_notebook()
+        nbformat.write(notebook, ANOTHER_NOTEBOOK)
+
+
     def tearDown(self):
         os.remove(EMPTY_NOTEBOOK)
+        os.remove(ANOTHER_NOTEBOOK)
 
     def testPatternDictCheck(self):
         # Test valid pattern dict is accepted
@@ -1272,9 +1289,8 @@ class WorkflowTest(unittest.TestCase):
 
         workflow_widget.construct_widget()
 
-        # Test that no patterns or recipes at setup.
+        # Test that no patterns at setup.
         self.assertEqual(workflow_widget.meow[PATTERNS], {})
-        self.assertEqual(workflow_widget.meow[RECIPES], {})
 
         # Test that valid pattern dict is accepted.
         completed = \
@@ -1333,7 +1349,10 @@ class WorkflowTest(unittest.TestCase):
             'string': "Word"
         }
 
-        workflow_widget.process_editing_pattern(updated_pattern_values)
+        # Test that edit completed
+        complete = \
+            workflow_widget.process_editing_pattern(updated_pattern_values)
+        self.assertTrue(complete)
 
         # Test that pattern is still present after update, and that it is the
         # only pattern.
@@ -1411,7 +1430,139 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(workflow_widget.meow[PATTERNS], {})
 
     def testWorkflowWidgetRecipeInteractions(self):
-        pass
+        workflow_widget = WorkflowWidget()
+
+        workflow_widget.construct_widget()
+
+        # Test that no recipes at setup.
+        self.assertEqual(workflow_widget.meow[RECIPES], {})
+
+        # Test that valid recipe dict is accepted.
+        completed = \
+            workflow_widget.process_new_recipe(VALID_RECIPE_FORM_VALUES)
+        self.assertTrue(completed)
+
+        # Test that two recipes cannot be added with same name
+        same_name_values = copy.deepcopy(VALID_RECIPE_FORM_VALUES)
+        completed = workflow_widget.process_new_recipe(same_name_values)
+        self.assertFalse(completed)
+
+        # Test that recipe with incomplete values is rejected.
+        incomplete_values = copy.deepcopy(VALID_RECIPE_FORM_VALUES)
+        incomplete_values.pop(SOURCE)
+        completed = workflow_widget.process_new_recipe(incomplete_values)
+        self.assertFalse(completed)
+
+        # Test that recipe has been recorded in widget database.
+        self.assertEqual(len(workflow_widget.meow[RECIPES]), 1)
+        self.assertIn(
+            VALID_RECIPE_FORM_VALUES[NAME],
+            workflow_widget.meow[RECIPES]
+        )
+
+        # Test that stored recipe is valid.
+        extracted_recipe = \
+            workflow_widget.meow[RECIPES][VALID_RECIPE_FORM_VALUES[NAME]]
+        valid, msg = is_valid_recipe_dict(extracted_recipe)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that baseline tester recipe is valid.
+        tester_recipe = copy.deepcopy(VALID_RECIPE_DICT)
+        valid, msg = is_valid_recipe_dict(tester_recipe)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that the stored recipe has the expected values.
+        self.assertTrue(tester_recipe == extracted_recipe)
+
+        updated_recipe_values = copy.deepcopy(VALID_RECIPE_FORM_VALUES)
+        updated_recipe_values[SOURCE] = ANOTHER_NOTEBOOK
+
+        updated_tester_recipe = copy.deepcopy(VALID_RECIPE_DICT)
+        updated_tester_recipe[SOURCE] = ANOTHER_NOTEBOOK
+
+        # Test that edit completed.
+        complete = \
+            workflow_widget.process_editing_recipe(updated_recipe_values)
+        self.assertTrue(complete)
+
+        # Test that recipe is still present after update, and that it is the
+        # only recipe.
+        self.assertEqual(len(workflow_widget.meow[RECIPES]), 1)
+        self.assertIn(
+            VALID_RECIPE_FORM_VALUES[NAME],
+            workflow_widget.meow[RECIPES]
+        )
+
+        # Test that updated recipe is still valid.
+        updated_recipe = \
+            workflow_widget.meow[RECIPES][VALID_RECIPE_FORM_VALUES[NAME]]
+        valid, msg = is_valid_recipe_dict(updated_recipe)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that baseline tester recipe is valid
+        valid, msg = is_valid_recipe_dict(updated_tester_recipe)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        print(updated_recipe)
+        print(updated_tester_recipe)
+
+        # Test that updated recipe has expected values.
+        self.assertTrue(updated_recipe == updated_tester_recipe)
+
+        # Test that updated recipe differs from its previous version.
+        self.assertFalse(extracted_recipe == updated_recipe)
+
+        # Test that updated base tester pattern differs from its previous
+        # version.
+        self.assertFalse(tester_recipe == updated_tester_recipe)
+
+        # Test that recipe is still only recipe in widget database.
+        self.assertEqual(len(workflow_widget.meow[RECIPES]), 1)
+        self.assertIn(
+            VALID_RECIPE_FORM_VALUES[NAME],
+            workflow_widget.meow[RECIPES]
+        )
+
+        # Test that editing recipe with incomplete values fails.
+        complete = workflow_widget.process_editing_recipe(incomplete_values)
+        self.assertFalse(complete)
+
+        # Test recipe is still valid and has not been updated by previous
+        # failed update.
+        self.assertEqual(len(workflow_widget.meow[RECIPES]), 1)
+        self.assertIn(
+            VALID_RECIPE_FORM_VALUES[NAME],
+            workflow_widget.meow[RECIPES]
+        )
+        updated_recipe = \
+            workflow_widget.meow[RECIPES][VALID_RECIPE_FORM_VALUES[NAME]]
+        valid, msg = is_valid_recipe_dict(updated_recipe)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+        self.assertTrue(updated_recipe == updated_tester_recipe)
+        self.assertFalse(extracted_recipe == updated_recipe)
+        self.assertFalse(tester_recipe == updated_tester_recipe)
+
+        # Test that recipe that has not been registered cannot be deleted,
+        # and that recipes that are registered are not deleted instead.
+        completed = workflow_widget.process_delete_recipe('unregistered_name')
+        self.assertFalse(completed)
+        self.assertEqual(len(workflow_widget.meow[RECIPES]), 1)
+        self.assertIn(
+            VALID_RECIPE_FORM_VALUES[NAME],
+            workflow_widget.meow[RECIPES]
+        )
+
+        # Test that registered recipe can be deleted.
+        completed = workflow_widget.process_delete_recipe(
+            VALID_RECIPE_FORM_VALUES[NAME]
+        )
+        self.assertTrue(completed)
+        self.assertEqual(workflow_widget.meow[RECIPES], {})
 
     # TODO come back to this once we've test creation and deleting.
     def testWorkflowWidgetButtonEnabling(self):

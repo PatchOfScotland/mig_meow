@@ -1208,7 +1208,7 @@ class WorkflowWidget:
                 RECIPE_FORM_INPUTS[FORM_RECIPE_SOURCE],
                 RECIPE_FORM_INPUTS[FORM_RECIPE_NAME]
             ],
-            self.__process_new_recipe,
+            self.process_new_recipe,
             RECIPE_NAME
         )
 
@@ -1226,9 +1226,9 @@ class WorkflowWidget:
             [
                 RECIPE_FORM_INPUTS[FORM_RECIPE_SOURCE]
             ],
-            self.__process_editing_recipe,
+            self.process_editing_recipe,
             RECIPE_NAME,
-            delete_func=self.__process_delete_recipe,
+            delete_func=self.process_delete_recipe,
             selector_key=NAME,
             selector_dict=self.meow[RECIPES]
         )
@@ -1296,7 +1296,7 @@ class WorkflowWidget:
                 WORKFLOW_FORM_INPUTS[FORM_WORKFLOW_STEPS],
                 WORKFLOW_FORM_INPUTS[FORM_WORKFLOW_REQUIREMENTS]
             ],
-            self.__process_new_workflow,
+            self.process_new_workflow,
             WORKFLOW_NAME
         )
 
@@ -1317,9 +1317,9 @@ class WorkflowWidget:
                 WORKFLOW_FORM_INPUTS[FORM_WORKFLOW_STEPS],
                 WORKFLOW_FORM_INPUTS[FORM_WORKFLOW_REQUIREMENTS]
             ],
-            self.__process_editing_workflow,
+            self.process_editing_workflow,
             WORKFLOW_NAME,
-            delete_func=self.__process_delete_workflow,
+            delete_func=self.process_delete_workflow,
             selector_key=CWL_NAME,
             selector_dict=self.cwl[WORKFLOWS]
         )
@@ -1345,7 +1345,7 @@ class WorkflowWidget:
                 STEP_FORM_INPUTS[FORM_STEP_HINTS],
                 STEP_FORM_INPUTS[FORM_STEP_STDOUT]
             ],
-            self.__process_new_step,
+            self.process_new_step,
             STEP_NAME
         )
 
@@ -1371,7 +1371,7 @@ class WorkflowWidget:
             ],
             self.__process_editing_step,
             STEP_NAME,
-            delete_func=self.__process_delete_step,
+            delete_func=self.process_delete_step,
             selector_key=NAME,
             selector_dict=self.cwl[STEPS]
         )
@@ -1391,7 +1391,7 @@ class WorkflowWidget:
                 VARIABLES_FORM_INPUTS[FORM_VARIABLES_NAME],
                 VARIABLES_FORM_INPUTS[FORM_VARIABLES_VARIABLES]
             ],
-            self.__process_new_variables,
+            self.process_new_variables,
             VARIABLES_NAME
         )
 
@@ -1409,9 +1409,9 @@ class WorkflowWidget:
             [
                 VARIABLES_FORM_INPUTS[FORM_VARIABLES_VARIABLES]
             ],
-            self.__process_editing_variables,
+            self.process_editing_variables,
             VARIABLES_NAME,
-            delete_func=self.__process_delete_variables,
+            delete_func=self.process_delete_variables,
             selector_key=NAME,
             selector_dict=self.cwl[VARIABLES],
         )
@@ -2667,7 +2667,7 @@ class WorkflowWidget:
             self.__set_feedback(msg)
             return False
 
-    def __process_new_recipe(self, values, editing=False):
+    def process_new_recipe(self, values, editing=False):
         """
         Attempts to construct a new MEOW Recipe dictionary from a dictionary of
         values. Will save resulting Recipe to internal database dictionary.
@@ -2744,7 +2744,7 @@ class WorkflowWidget:
             )
             return False
 
-    def __process_new_workflow(self, values, editing=False):
+    def process_new_workflow(self, values, editing=False):
         """
         Attempts to construct a new CWL Workflow dictionary from a dictionary
         of values. Will save resulting Workflow to internal database
@@ -2814,7 +2814,7 @@ class WorkflowWidget:
             )
             return False
 
-    def __process_new_step(self, values, editing=False):
+    def process_new_step(self, values, editing=False):
         """
         Attempts to construct a new CWL Step dictionary from a dictionary
         of values. Will save resulting Step to internal database
@@ -2895,7 +2895,7 @@ class WorkflowWidget:
             )
             return False
 
-    def __process_new_variables(self, values, editing=False):
+    def process_new_variables(self, values, editing=False):
         """
         Attempts to construct a new CWL Arguments dictionary from a dictionary
         of values. Will save resulting Arguments to internal database
@@ -2975,7 +2975,7 @@ class WorkflowWidget:
         else:
             return False
 
-    def __process_editing_recipe(self, values):
+    def process_editing_recipe(self, values):
         """
         Attempts to update values for an existing MEOW Recipe using the given
         values. This is done by processing the values as though it is a new
@@ -2987,13 +2987,16 @@ class WorkflowWidget:
 
         :param values: (dict) Arguments to use in updating the Recipe.
 
-        :return: No return.
+        :return: (bool) Returns True, if edit is applied and False if not.
         """
-        if self.__process_new_recipe(values, ignore_conflicts=True):
+        if self.process_new_recipe(values, editing=True):
             self.__update_workflow_visualisation()
             self.__close_form()
+            return True
+        else:
+            return False
 
-    def __process_editing_workflow(self, values):
+    def process_editing_workflow(self, values):
         """
         Attempts to update values for an existing CWl Workflow using the given
         values. This is done by processing the values as though it is a new
@@ -3005,11 +3008,14 @@ class WorkflowWidget:
 
         :param values: (dict) Arguments to use in updating the Workflow.
 
-        :return: No return.
+        :return: (bool) Returns True, if edit is applied and False if not.
         """
-        if self.__process_new_workflow(values, editing=True):
+        if self.process_new_workflow(values, editing=True):
             self.__update_workflow_visualisation()
             self.__close_form()
+            return True
+        else:
+            return False
 
     def __process_editing_step(self, values):
         """
@@ -3023,13 +3029,16 @@ class WorkflowWidget:
 
         :param values: (dict) Arguments to use in updating the Step.
 
-        :return: No return.
+        :return: (bool) Returns True, if edit is applied and False if not.
         """
-        if self.__process_new_step(values, editing=True):
+        if self.process_new_step(values, editing=True):
             self.__update_workflow_visualisation()
             self.__close_form()
+            return True
+        else:
+            return False
 
-    def __process_editing_variables(self, values):
+    def process_editing_variables(self, values):
         """
         Attempts to update values for existing MEOW Arguments using the given
         values. This is done by processing the values as though it is new
@@ -3041,12 +3050,15 @@ class WorkflowWidget:
 
         :param values: (dict) Parameters to use in updating Arguments.
 
-        :return: No return.
+        :return: (bool) Returns True, if edit is applied and False if not.
         """
 
-        if self.__process_new_variables(values, editing=True):
+        if self.process_new_variables(values, editing=True):
             self.__update_workflow_visualisation()
             self.__close_form()
+            return True
+        else:
+            return False
 
     def process_delete_pattern(self, to_delete):
         """
@@ -3068,65 +3080,86 @@ class WorkflowWidget:
             self.__close_form()
             return False
 
-    def __process_delete_recipe(self, to_delete):
+    def process_delete_recipe(self, to_delete):
         """
         Attempts to delete a given recipe. Will update the workflow
         visualisation and close the form.
 
         :param to_delete: (str) Name of Recipe to delete.
 
-        :return: No return.
+        :return: (bool). Will return True if recipe deleted and False
+        otherwise.
         """
         if to_delete in self.meow[RECIPES]:
             self.meow[RECIPES].pop(to_delete)
             self.__set_feedback("%s %s deleted. " % (PATTERN_NAME, to_delete))
             self.__update_workflow_visualisation()
-        self.__close_form()
+            self.__close_form()
+            return True
+        else:
+            self.__close_form()
+            return False
 
-    def __process_delete_workflow(self, to_delete):
+    def process_delete_workflow(self, to_delete):
         """
         Attempts to delete a given Workflow. Will update the workflow
         visualisation and close the form.
 
         :param to_delete: (str) Name of Workflow to delete.
 
-        :return: No return.
+        :return: (bool). Will return True if workflow deleted and False
+        otherwise.
         """
         if to_delete in self.cwl[WORKFLOWS]:
             self.cwl[WORKFLOWS].pop(to_delete)
             self.__set_feedback("%s %s deleted. " % (WORKFLOW_NAME, to_delete))
             self.__update_workflow_visualisation()
-        self.__close_form()
+            self.__close_form()
+            return True
+        else:
+            self.__close_form()
+            return False
 
-    def __process_delete_step(self, to_delete):
+    def process_delete_step(self, to_delete):
         """
         Attempts to delete a given Step. Will update the workflow
         visualisation and close the form.
 
         :param to_delete: (str) Name of Step to delete.
 
-        :return: No return.
+        :return: (bool). Will return True if step deleted and False
+        otherwise.
         """
         if to_delete in self.cwl[STEPS]:
             self.cwl[STEPS].pop(to_delete)
             self.__set_feedback("%s %s deleted. " % (STEP_NAME, to_delete))
             self.__update_workflow_visualisation()
-        self.__close_form()
+            self.__close_form()
+            return True
+        else:
+            self.__close_form()
+            return False
 
-    def __process_delete_variables(self, to_delete):
+    def process_delete_variables(self, to_delete):
         """
         Attempts to delete a given Arguments. Will update the workflow
         visualisation and close the form.
 
         :param to_delete: (str) Name of Arguments to delete.
 
-        :return: No return.
+        :return: (bool). Will return True if arguments deleted and False
+        otherwise.
         """
         if to_delete in self.cwl[SETTINGS]:
             self.cwl[SETTINGS].pop(to_delete)
-            self.__set_feedback("%s %s deleted. " % (VARIABLES_NAME, to_delete))
+            self.__set_feedback("%s %s deleted. "
+                                % (VARIABLES_NAME, to_delete))
             self.__update_workflow_visualisation()
-        self.__close_form()
+            self.__close_form()
+            return True
+        else:
+            self.__close_form()
+            return False
 
     def __import_from_vgrid(self, confirm=True):
         """
