@@ -333,8 +333,9 @@ def is_valid_workflow_dict(to_test, strict=False):
         return False, msg
 
     if to_test[CWL_CLASS] != CWL_CLASS_WORKFLOW:
-        return False, "%s class is '%s' not %s" \
-               % (WORKFLOW_NAME, to_test[CWL_CLASS], CWL_CLASS_WORKFLOW)
+        msg = "%s class is '%s' not %s" \
+              % (WORKFLOW_NAME, to_test[CWL_CLASS], CWL_CLASS_WORKFLOW)
+        return False, msg
 
     return True, ''
 

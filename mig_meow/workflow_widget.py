@@ -620,7 +620,8 @@ def list_to_dict(to_convert):
                 variables[VALUE_KEY])
         except (SyntaxError, ValueError):
             pass
-        if variables[NAME_KEY] and variables[VALUE_KEY]:
+        if variables[NAME_KEY] is not None \
+                and variables[VALUE_KEY] is not None:
             variables_dict[variables[NAME_KEY]] = variables[VALUE_KEY]
     return variables_dict
 
@@ -1096,7 +1097,7 @@ class WorkflowWidget:
                         "%s data detected, attempting to convert to %s "
                         "format. " % (MEOW_MODE, CWL_MODE)
                     )
-                    valid, buffer_cwl = self.__meow_to_cwl()
+                    valid, buffer_cwl = self.meow_to_cwl()
 
                     if valid:
                         self.__import_cwl(**buffer_cwl)
@@ -1369,7 +1370,7 @@ class WorkflowWidget:
                 STEP_FORM_INPUTS[FORM_STEP_HINTS],
                 STEP_FORM_INPUTS[FORM_STEP_STDOUT]
             ],
-            self.__process_editing_step,
+            self.process_editing_step,
             STEP_NAME,
             delete_func=self.process_delete_step,
             selector_key=NAME,
@@ -1430,7 +1431,7 @@ class WorkflowWidget:
         self.__close_form()
         self.__clear_feedback()
 
-        valid, buffer_cwl = self.__meow_to_cwl()
+        valid, buffer_cwl = self.meow_to_cwl()
 
         if valid:
             self.__add_to_feedback(
@@ -2770,6 +2771,7 @@ class WorkflowWidget:
             if not name:
                 msg = "%s name was not provided. " % WORKFLOW_NAME
                 self.__set_feedback(msg)
+                print(msg)
                 return False
 
             valid_string(name,
@@ -2785,6 +2787,7 @@ class WorkflowWidget:
                           "try again using a different name. " \
                           % (WORKFLOW_NAME, WORKFLOW_NAME)
                     self.__set_feedback(msg)
+                    print(msg)
                     return False
 
             inputs_dict = list_to_dict(inputs_list)
@@ -2808,10 +2811,10 @@ class WorkflowWidget:
             self.__close_form()
             return True
         except Exception as e:
-            self.__set_feedback(
-                "Something went wrong with %s generation. %s "
-                % (WORKFLOW_NAME, str(e))
-            )
+            msg = "Something went wrong with %s generation. %s " \
+                  % (WORKFLOW_NAME, str(e))
+            self.__set_feedback(msg)
+            print(msg)
             return False
 
     def process_new_step(self, values, editing=False):
@@ -3017,7 +3020,7 @@ class WorkflowWidget:
         else:
             return False
 
-    def __process_editing_step(self, values):
+    def process_editing_step(self, values):
         """
         Attempts to update values for an existing MEOW Step using the given
         values. This is done by processing the values as though it is a new
@@ -3543,7 +3546,7 @@ class WorkflowWidget:
                 self.__set_feedback(err)
         self.__close_form()
 
-    def __meow_to_cwl(self):
+    def meow_to_cwl(self):
         """
         Attempts to convert the existing definitions for MEOW Pattern and
         Recipes into CWL Workflow, Steps and Arguments. This is mostly

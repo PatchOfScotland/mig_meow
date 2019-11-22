@@ -94,9 +94,43 @@ VALID_WORKFLOW_DICT = {
     CWL_NAME: 'workflow_name',
     CWL_CWL_VERSION: 'v1.0',
     CWL_CLASS: 'Workflow',
-    CWL_INPUTS: {},
-    CWL_OUTPUTS: {},
-    CWL_STEPS: {},
+    CWL_INPUTS: {
+        'analysis_notebook': 'File',
+        'analysis_result': 'string',
+        'analysis_yaml_file': 'File',
+        'analysis_dssc': 'File',
+        'analysis_interim_yaml': 'string',
+        'plotting_notebook': 'File',
+        'plotting_result': 'string',
+    },
+    CWL_OUTPUTS: {
+        'final_plot': {
+            'type': 'File',
+            'outputSource': 'plot/result_notebook'
+        }
+    },
+    CWL_STEPS: {
+        'analysis': {
+            'run': 'data_analysis.cwl',
+            'in': {
+                'notebook': 'analysis_notebook',
+                'result': 'analysis_result',
+                'yaml_file': 'analysis_yaml_file',
+                'dssc_file': 'analysis_dssc',
+                'interim_yaml_title': 'analysis_interim_yaml'
+            },
+            'out': '[result_notebook, interim_yaml]'
+        },
+        'plot': {
+            'run': 'data_plotting.cwl',
+            'in': {
+                'notebook': 'plotting_notebook',
+                'result': 'plotting_result',
+                'yaml_file': 'analysis/interim_yaml'
+            },
+            'out': '[result_notebook]'
+        }
+    },
     CWL_REQUIREMENTS: {}
 }
 
@@ -106,16 +140,68 @@ VALID_STEP_DICT = {
     CWL_CLASS: 'CommandLineTool',
     CWL_BASE_COMMAND: 'papermill',
     CWL_STDOUT: '',
-    CWL_INPUTS: {},
-    CWL_OUTPUTS: {},
+    CWL_INPUTS: {
+        'notebook': {
+            'inputBinding': {
+                'position': 1
+            },
+            'type': 'File'
+        },
+        'result': {
+            'inputBinding': {
+                'position': 2
+            },
+            'type': 'string'
+        },
+        'yaml_file':{
+            'inputBinding': {
+                'prefix': '-f',
+                'position': 3
+            },
+            'type': 'File'
+        },
+        'dssc_file': {
+            'type': 'File'
+        },
+        'interim_yaml_title': {
+            'type': 'string'
+        }
+    },
+    CWL_OUTPUTS: {
+        'result_notebook': {
+            'outputBinding': {
+                'glob': '$(inputs.result)'
+            },
+            'type': 'File'
+        },
+        'interim_yaml': {
+            'outputBinding': {
+                'glob': '$(inputs.interim_yaml_title)'
+            },
+            'type': 'File'
+        }
+    },
     CWL_ARGUMENTS: [],
-    CWL_REQUIREMENTS: {},
+    CWL_REQUIREMENTS: {
+        'InitialWorkDirRequirement': {
+            'listing': '- $(inputs.dssc_file)'
+        }
+    },
     CWL_HINTS: {}
 }
 
 VALID_SETTINGS_DICT = {
-    CWL_NAME: 'variables_name',
-    CWL_VARIABLES: {}
+    CWL_NAME: 'settings_name',
+    CWL_VARIABLES: {
+        'int': 0,
+        'float': 3.5,
+        'array': [0, 1],
+        'dict': {1: 1, 2: 2},
+        'set': {1, 2},
+        'char': 'c',
+        'string': "String",
+        'boolean': True
+    }
 }
 
 VALID_PATTERN_FORM_VALUES = {
@@ -176,6 +262,160 @@ VALID_PATTERN_FORM_VALUES = {
 VALID_RECIPE_FORM_VALUES = {
     NAME: 'test_recipe',
     SOURCE: EMPTY_NOTEBOOK
+}
+
+VALID_WORKFLOW_FORM_VALUES = {
+    CWL_NAME: 'workflow_name',
+    CWL_INPUTS: [
+        {
+            'Name': 'analysis_notebook',
+            'Value': 'File'
+        },
+        {
+            'Name': 'analysis_result',
+            'Value': 'string'
+        },
+        {
+            'Name': 'analysis_yaml_file',
+            'Value': 'File'
+        },
+        {
+            'Name': 'analysis_dssc',
+            'Value': 'File'
+        },
+        {
+            'Name': 'analysis_interim_yaml',
+            'Value': 'string'
+        },
+        {
+            'Name': 'plotting_notebook',
+            'Value': 'File'
+        },
+        {
+            'Name': 'plotting_result',
+            'Value': 'string'
+        }
+    ],
+    CWL_OUTPUTS: [
+        {
+            'Name': 'final_plot',
+            'Value': "{'type': 'File','outputSource': 'plot/result_notebook'}"
+        }
+    ],
+    CWL_STEPS: [
+        {
+            'Name': 'analysis',
+            'Value': "{'run': 'data_analysis.cwl', 'in':{'notebook': "
+                     "'analysis_notebook', 'result': 'analysis_result', "
+                     "'yaml_file': 'analysis_yaml_file', 'dssc_file': "
+                     "'analysis_dssc', 'interim_yaml_title': "
+                     "'analysis_interim_yaml'},'out': '[result_notebook, "
+                     "interim_yaml]'}"
+        },
+        {
+            'Name': 'plot',
+            'Value': "{'run': 'data_plotting.cwl', 'in':{'notebook': "
+                     "'plotting_notebook', 'result': 'plotting_result', "
+                     "'yaml_file': 'analysis/interim_yaml'}, 'out': "
+                     "'[result_notebook]'}"
+        }
+    ],
+    CWL_REQUIREMENTS: {},
+}
+
+VALID_STEP_FORM_VALUES = {
+    CWL_NAME: 'step_name',
+    CWL_BASE_COMMAND: 'papermill',
+    CWL_STDOUT: '',
+    CWL_INPUTS: [
+        {
+            'Name': 'notebook',
+            'Value': "{'inputBinding': {'position': 1}, 'type': 'File'}"
+        },
+        {
+            'Name': 'result',
+            'Value': "{'inputBinding': {'position': 2}, 'type': 'string'}"
+        },
+        {
+            'Name': 'yaml_file',
+            'Value': "{'inputBinding': {'position': 3, 'prefix': '-f'}, "
+                     "'type': 'File'}"
+        },
+        {
+            'Name': 'dssc_file',
+            'Value': "{'type': 'File'}"
+        },
+        {
+            'Name': 'interim_yaml_title',
+            'Value': "{'type': 'string'}"
+        },
+    ],
+    CWL_OUTPUTS: [
+        {
+            'Name': 'result_notebook',
+            'Value': "{"
+                        "'outputBinding':{"
+                            "'glob': '$(inputs.result)'"
+                        "},"
+                        "'type': 'File'"
+                     "}"
+        },
+        {
+            'Name': 'interim_yaml',
+            'Value': "{"
+                        "'outputBinding':{"
+                            "'glob': '$(inputs.interim_yaml_title)'"
+                        "}, "
+                        "'type': 'File'"
+                     "}"
+        }
+    ],
+    CWL_ARGUMENTS: [],
+    CWL_REQUIREMENTS: [
+        {
+            'Name': 'InitialWorkDirRequirement',
+            'Value': "{'listing':'- $(inputs.dssc_file)'}"
+        }
+    ],
+    CWL_HINTS: []
+}
+
+VALID_SETTINGS_FORM_VALUES = {
+    CWL_NAME: 'settings_name',
+    CWL_VARIABLES: [
+        {
+            'Name': 'int',
+            'Value': 0
+        },
+        {
+            'Name': 'float',
+            'Value': 3.5
+        },
+        {
+            'Name': 'array',
+            'Value': [0, 1]
+        },
+        {
+            'Name': 'dict',
+            'Value': {1: 1, 2: 2}
+        },
+        {
+            'Name': 'set',
+            'Value': {1, 2}
+        },
+        {
+            'Name': 'char',
+            'Value': 'c'
+        },
+        {
+            'Name': 'string',
+            'Value': "String"
+        },
+        {
+            'Name': 'boolean',
+            'Value': True
+        }
+    ]
 }
 
 
@@ -1061,10 +1301,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertIsNotNone(msg)
 
     def testWorkflowCreation(self):
-        workflow_dict = make_workflow_dict(VALID_WORKFLOW_DICT[CWL_NAME])
-
-        # Test that created workflow has expected values.
-        self.assertTrue(workflow_dict == VALID_WORKFLOW_DICT)
+        workflow_dict = copy.deepcopy(VALID_WORKFLOW_DICT)
 
         # Test that created workflow is valid
         valid, msg = is_valid_workflow_dict(workflow_dict)
@@ -1295,13 +1532,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertIsNotNone(msg)
 
     def testStepCreation(self):
-        step_dict = make_step_dict(
-            VALID_STEP_DICT[CWL_NAME],
-            VALID_STEP_DICT[CWL_BASE_COMMAND]
-        )
-
-        # Test that created step has expected values.
-        self.assertTrue(step_dict == VALID_STEP_DICT)
+        step_dict = copy.deepcopy(VALID_STEP_DICT)
 
         # Test that created step is valid
         valid, msg = is_valid_step_dict(step_dict)
@@ -1406,13 +1637,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertIsNotNone(msg)
 
     def testSettingCreation(self):
-        setting_dict = make_settings_dict(
-            VALID_SETTINGS_DICT[CWL_NAME],
-            VALID_SETTINGS_DICT[CWL_VARIABLES]
-        )
-
-        # Test that created setting has expected values.
-        self.assertTrue(setting_dict == VALID_SETTINGS_DICT)
+        setting_dict = copy.deepcopy(VALID_SETTINGS_DICT)
 
         # Test that created setting is valid
         valid, msg = is_valid_setting_dict(setting_dict)
@@ -2088,9 +2313,6 @@ class WorkflowTest(unittest.TestCase):
         self.assertTrue(valid)
         self.assertEqual(msg, '')
 
-        print(updated_recipe)
-        print(updated_tester_recipe)
-
         # Test that updated recipe has expected values.
         self.assertTrue(updated_recipe == updated_tester_recipe)
 
@@ -2144,6 +2366,641 @@ class WorkflowTest(unittest.TestCase):
         )
         self.assertTrue(completed)
         self.assertEqual(workflow_widget.meow[RECIPES], {})
+
+    def testWorkflowWidgetWorkflowInteractions(self):
+        workflow_widget = WorkflowWidget()
+        workflow_widget.construct_widget()
+
+        # Test that no workflows at setup.
+        self.assertEqual(workflow_widget.cwl[WORKFLOWS], {})
+
+        # Test that valid workflow dict is accepted.
+        completed = \
+            workflow_widget.process_new_workflow(VALID_WORKFLOW_FORM_VALUES)
+        self.assertTrue(completed)
+
+        # Test that two workflows cannot be added with same name
+        same_name_values = copy.deepcopy(VALID_WORKFLOW_FORM_VALUES)
+        completed = workflow_widget.process_new_workflow(same_name_values)
+        self.assertFalse(completed)
+
+        # Test that workflow with incomplete values is rejected.
+        incomplete_values = copy.deepcopy(VALID_WORKFLOW_FORM_VALUES)
+        incomplete_values.pop(CWL_INPUTS)
+        completed = workflow_widget.process_new_workflow(incomplete_values)
+        self.assertFalse(completed)
+
+        # Test that workflow has been recorded in widget database.
+        self.assertEqual(len(workflow_widget.cwl[WORKFLOWS]), 1)
+        self.assertIn(
+            VALID_WORKFLOW_FORM_VALUES[CWL_NAME],
+            workflow_widget.cwl[WORKFLOWS]
+        )
+
+        # Test that stored workflow is valid.
+        extracted_workflow = \
+            workflow_widget.cwl[WORKFLOWS][VALID_WORKFLOW_FORM_VALUES[CWL_NAME]]
+        valid, msg = is_valid_workflow_dict(extracted_workflow)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that baseline tester workflow is valid.
+        tester_workflow = copy.deepcopy(VALID_WORKFLOW_DICT)
+        valid, msg = is_valid_workflow_dict(tester_workflow)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that the stored workflow has the expected values.
+        self.assertTrue(tester_workflow == extracted_workflow)
+
+        updated_workflow_values = copy.deepcopy(VALID_WORKFLOW_FORM_VALUES)
+        updated_workflow_values[CWL_OUTPUTS] = {}
+
+        updated_tester_workflow = copy.deepcopy(VALID_WORKFLOW_DICT)
+        updated_tester_workflow[CWL_OUTPUTS] = {}
+
+        # Test that edit completed.
+        complete = \
+            workflow_widget.process_editing_workflow(updated_workflow_values)
+        self.assertTrue(complete)
+
+        # Test that workflow is still present after update, and that it is the
+        # only workflow.
+        self.assertEqual(len(workflow_widget.cwl[WORKFLOWS]), 1)
+        self.assertIn(
+            VALID_WORKFLOW_FORM_VALUES[CWL_NAME],
+            workflow_widget.cwl[WORKFLOWS]
+        )
+
+        # Test that updated workflow is still valid.
+        updated_workflow = \
+            workflow_widget.cwl[WORKFLOWS][VALID_WORKFLOW_FORM_VALUES[CWL_NAME]]
+        valid, msg = is_valid_workflow_dict(updated_workflow)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that baseline tester workflow is valid
+        valid, msg = is_valid_workflow_dict(updated_tester_workflow)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that updated workflow has expected values.
+        self.assertTrue(updated_workflow == updated_tester_workflow)
+
+        # Test that updated workflow differs from its previous version.
+        self.assertFalse(extracted_workflow == updated_workflow)
+
+        # Test that updated base tester pattern differs from its previous
+        # version.
+        self.assertFalse(tester_workflow == updated_tester_workflow)
+
+        # Test that workflow is still only workflow in widget database.
+        self.assertEqual(len(workflow_widget.cwl[WORKFLOWS]), 1)
+        self.assertIn(
+            VALID_WORKFLOW_FORM_VALUES[CWL_NAME],
+            workflow_widget.cwl[WORKFLOWS]
+        )
+
+        # Test that editing workflow with incomplete values fails.
+        complete = workflow_widget.process_editing_workflow(incomplete_values)
+        self.assertFalse(complete)
+
+        # Test workflow is still valid and has not been updated by previous
+        # failed update.
+        self.assertEqual(len(workflow_widget.cwl[WORKFLOWS]), 1)
+        self.assertIn(
+            VALID_WORKFLOW_FORM_VALUES[CWL_NAME],
+            workflow_widget.cwl[WORKFLOWS]
+        )
+        updated_workflow = \
+            workflow_widget.cwl[WORKFLOWS][VALID_WORKFLOW_FORM_VALUES[CWL_NAME]]
+        valid, msg = is_valid_workflow_dict(updated_workflow)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+        self.assertTrue(updated_workflow == updated_tester_workflow)
+        self.assertFalse(extracted_workflow == updated_workflow)
+        self.assertFalse(tester_workflow == updated_tester_workflow)
+
+        # Test that workflow that has not been registered cannot be deleted,
+        # and that workflows that are registered are not deleted instead.
+        completed = workflow_widget.process_delete_workflow('unregistered_name')
+        self.assertFalse(completed)
+        self.assertEqual(len(workflow_widget.cwl[WORKFLOWS]), 1)
+        self.assertIn(
+            VALID_WORKFLOW_FORM_VALUES[CWL_NAME],
+            workflow_widget.cwl[WORKFLOWS]
+        )
+
+        # Test that registered workflow can be deleted.
+        completed = workflow_widget.process_delete_workflow(
+            VALID_WORKFLOW_FORM_VALUES[CWL_NAME]
+        )
+        self.assertTrue(completed)
+        self.assertEqual(workflow_widget.cwl[WORKFLOWS], {})
+
+    def testWorkflowWidgetStepInteractions(self):
+        workflow_widget = WorkflowWidget()
+        workflow_widget.construct_widget()
+
+        # Test that no steps at setup.
+        self.assertEqual(workflow_widget.cwl[STEPS], {})
+
+        # Test that valid step dict is accepted.
+        completed = \
+            workflow_widget.process_new_step(VALID_STEP_FORM_VALUES)
+        self.assertTrue(completed)
+
+        # Test that two steps cannot be added with same name
+        same_name_values = copy.deepcopy(VALID_STEP_FORM_VALUES)
+        completed = workflow_widget.process_new_step(same_name_values)
+        self.assertFalse(completed)
+
+        # Test that step with incomplete values is rejected.
+        incomplete_values = copy.deepcopy(VALID_STEP_FORM_VALUES)
+        incomplete_values.pop(CWL_INPUTS)
+        completed = workflow_widget.process_new_step(incomplete_values)
+        self.assertFalse(completed)
+
+        # Test that step has been recorded in widget database.
+        self.assertEqual(len(workflow_widget.cwl[STEPS]), 1)
+        self.assertIn(
+            VALID_STEP_FORM_VALUES[CWL_NAME],
+            workflow_widget.cwl[STEPS]
+        )
+
+        # Test that stored step is valid.
+        extracted_step = \
+            workflow_widget.cwl[STEPS][
+                VALID_STEP_FORM_VALUES[CWL_NAME]]
+        valid, msg = is_valid_step_dict(extracted_step)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that baseline tester step is valid.
+        tester_step = copy.deepcopy(VALID_STEP_DICT)
+        valid, msg = is_valid_step_dict(tester_step)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that the stored step has the expected values.
+        self.assertTrue(tester_step == extracted_step)
+
+        updated_step_values = copy.deepcopy(VALID_STEP_FORM_VALUES)
+        updated_step_values[CWL_OUTPUTS] = {}
+
+        updated_tester_step = copy.deepcopy(VALID_STEP_DICT)
+        updated_tester_step[CWL_OUTPUTS] = {}
+
+        # Test that edit completed.
+        complete = \
+            workflow_widget.process_editing_step(updated_step_values)
+        self.assertTrue(complete)
+
+        # Test that step is still present after update, and that it is the
+        # only step.
+        self.assertEqual(len(workflow_widget.cwl[STEPS]), 1)
+        self.assertIn(
+            VALID_STEP_FORM_VALUES[CWL_NAME],
+            workflow_widget.cwl[STEPS]
+        )
+
+        # Test that updated step is still valid.
+        updated_step = \
+            workflow_widget.cwl[STEPS][
+                VALID_STEP_FORM_VALUES[CWL_NAME]]
+        valid, msg = is_valid_step_dict(updated_step)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that baseline tester step is valid
+        valid, msg = is_valid_step_dict(updated_tester_step)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that updated step has expected values.
+        self.assertTrue(updated_step == updated_tester_step)
+
+        # Test that updated step differs from its previous version.
+        self.assertFalse(extracted_step == updated_step)
+
+        # Test that updated base tester pattern differs from its previous
+        # version.
+        self.assertFalse(tester_step == updated_tester_step)
+
+        # Test that step is still only step in widget database.
+        self.assertEqual(len(workflow_widget.cwl[STEPS]), 1)
+        self.assertIn(
+            VALID_STEP_FORM_VALUES[CWL_NAME],
+            workflow_widget.cwl[STEPS]
+        )
+
+        # Test that editing step with incomplete values fails.
+        complete = workflow_widget.process_editing_step(incomplete_values)
+        self.assertFalse(complete)
+
+        # Test step is still valid and has not been updated by previous
+        # failed update.
+        self.assertEqual(len(workflow_widget.cwl[STEPS]), 1)
+        self.assertIn(
+            VALID_STEP_FORM_VALUES[CWL_NAME],
+            workflow_widget.cwl[STEPS]
+        )
+        updated_step = \
+            workflow_widget.cwl[STEPS][
+                VALID_STEP_FORM_VALUES[CWL_NAME]]
+        valid, msg = is_valid_step_dict(updated_step)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+        self.assertTrue(updated_step == updated_tester_step)
+        self.assertFalse(extracted_step == updated_step)
+        self.assertFalse(tester_step == updated_tester_step)
+
+        # Test that step that has not been registered cannot be deleted,
+        # and that steps that are registered are not deleted instead.
+        completed = workflow_widget.process_delete_step(
+            'unregistered_name')
+        self.assertFalse(completed)
+        self.assertEqual(len(workflow_widget.cwl[STEPS]), 1)
+        self.assertIn(
+            VALID_STEP_FORM_VALUES[CWL_NAME],
+            workflow_widget.cwl[STEPS]
+        )
+
+        # Test that registered step can be deleted.
+        completed = workflow_widget.process_delete_step(
+            VALID_STEP_FORM_VALUES[CWL_NAME]
+        )
+        self.assertTrue(completed)
+        self.assertEqual(workflow_widget.cwl[STEPS], {})
+
+    def testWorkflowWidgetsSettingsInteractions(self):
+        workflow_widget = WorkflowWidget()
+        workflow_widget.construct_widget()
+
+        # Test that no settings at setup.
+        self.assertEqual(workflow_widget.cwl[SETTINGS], {})
+
+        # Test that valid setting dict is accepted.
+        completed = \
+            workflow_widget.process_new_variables(VALID_SETTINGS_FORM_VALUES)
+        self.assertTrue(completed)
+
+        # Test that two settings cannot be added with same name
+        same_name_values = copy.deepcopy(VALID_SETTINGS_FORM_VALUES)
+        completed = workflow_widget.process_new_variables(same_name_values)
+        self.assertFalse(completed)
+
+        # Test that setting with incomplete values is rejected.
+        incomplete_values = copy.deepcopy(VALID_SETTINGS_FORM_VALUES)
+        incomplete_values.pop(CWL_VARIABLES)
+        completed = workflow_widget.process_new_variables(incomplete_values)
+        self.assertFalse(completed)
+
+        # Test that setting has been recorded in widget database.
+        self.assertEqual(len(workflow_widget.cwl[SETTINGS]), 1)
+        self.assertIn(
+            VALID_SETTINGS_FORM_VALUES[CWL_NAME],
+            workflow_widget.cwl[SETTINGS]
+        )
+
+        # Test that stored setting is valid.
+        extracted_setting = \
+            workflow_widget.cwl[SETTINGS][
+                VALID_SETTINGS_FORM_VALUES[CWL_NAME]]
+        valid, msg = is_valid_setting_dict(extracted_setting)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that baseline tester setting is valid.
+        tester_setting = copy.deepcopy(VALID_SETTINGS_DICT)
+        valid, msg = is_valid_setting_dict(tester_setting)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        print(tester_setting)
+        print(extracted_setting)
+
+        # Test that the stored setting has the expected values.
+        self.assertTrue(tester_setting == extracted_setting)
+
+        updated_setting_values = copy.deepcopy(VALID_SETTINGS_FORM_VALUES)
+        updated_setting_values[CWL_VARIABLES] = {}
+
+        updated_tester_setting = copy.deepcopy(VALID_SETTINGS_DICT)
+        updated_tester_setting[CWL_VARIABLES] = {}
+
+        # Test that edit completed.
+        complete = \
+            workflow_widget.process_editing_variables(updated_setting_values)
+        self.assertTrue(complete)
+
+        # Test that setting is still present after update, and that it is the
+        # only setting.
+        self.assertEqual(len(workflow_widget.cwl[SETTINGS]), 1)
+        self.assertIn(
+            VALID_SETTINGS_FORM_VALUES[CWL_NAME],
+            workflow_widget.cwl[SETTINGS]
+        )
+
+        # Test that updated setting is still valid.
+        updated_setting = \
+            workflow_widget.cwl[SETTINGS][
+                VALID_SETTINGS_FORM_VALUES[CWL_NAME]]
+        valid, msg = is_valid_setting_dict(updated_setting)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that baseline tester setting is valid
+        valid, msg = is_valid_setting_dict(updated_tester_setting)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        # Test that updated setting has expected values.
+        self.assertTrue(updated_setting == updated_tester_setting)
+
+        # Test that updated setting differs from its previous version.
+        self.assertFalse(extracted_setting == updated_setting)
+
+        # Test that updated base tester pattern differs from its previous
+        # version.
+        self.assertFalse(tester_setting == updated_tester_setting)
+
+        # Test that setting is still only setting in widget database.
+        self.assertEqual(len(workflow_widget.cwl[SETTINGS]), 1)
+        self.assertIn(
+            VALID_SETTINGS_FORM_VALUES[CWL_NAME],
+            workflow_widget.cwl[SETTINGS]
+        )
+
+        # Test that editing setting with incomplete values fails.
+        complete = workflow_widget.process_editing_variables(incomplete_values)
+        self.assertFalse(complete)
+
+        # Test setting is still valid and has not been updated by previous
+        # failed update.
+        self.assertEqual(len(workflow_widget.cwl[SETTINGS]), 1)
+        self.assertIn(
+            VALID_SETTINGS_FORM_VALUES[CWL_NAME],
+            workflow_widget.cwl[SETTINGS]
+        )
+        updated_setting = \
+            workflow_widget.cwl[SETTINGS][
+                VALID_SETTINGS_FORM_VALUES[CWL_NAME]]
+        valid, msg = is_valid_setting_dict(updated_setting)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+        self.assertTrue(updated_setting == updated_tester_setting)
+        self.assertFalse(extracted_setting == updated_setting)
+        self.assertFalse(tester_setting == updated_tester_setting)
+
+        # Test that setting that has not been registered cannot be deleted,
+        # and that settings that are registered are not deleted instead.
+        completed = workflow_widget.process_delete_variables(
+            'unregistered_name')
+        self.assertFalse(completed)
+        self.assertEqual(len(workflow_widget.cwl[SETTINGS]), 1)
+        self.assertIn(
+            VALID_SETTINGS_FORM_VALUES[CWL_NAME],
+            workflow_widget.cwl[SETTINGS]
+        )
+
+        # Test that registered setting can be deleted.
+        completed = workflow_widget.process_delete_variables(
+            VALID_SETTINGS_FORM_VALUES[CWL_NAME]
+        )
+        self.assertTrue(completed)
+        self.assertEqual(workflow_widget.cwl[SETTINGS], {})
+
+    def testMEOWToCWLIndividuals(self):
+        workflow_widget = WorkflowWidget()
+        workflow_widget.construct_widget()
+
+        # Test that valid pattern dict is accepted.
+        completed = \
+            workflow_widget.process_new_pattern(VALID_PATTERN_FORM_VALUES)
+        self.assertTrue(completed)
+
+        # Test that only pattern present is one just created.
+        self.assertEqual(len(workflow_widget.meow[PATTERNS]), 1)
+        self.assertIn(
+            VALID_PATTERN_FORM_VALUES[NAME],
+            workflow_widget.meow[PATTERNS]
+        )
+
+        expected_feedback = {
+            'steps': {
+                'step_1': {
+                    'arguments': [],
+                    'baseCommand': 'papermill',
+                    'class': 'CommandLineTool',
+                    'cwlVersion': 'v1.0',
+                    'hints': {},
+                    'inputs': {
+                        'notebook': {
+                            'inputBinding': {
+                                'position': 1
+                            },
+                            'type': 'File'
+                        },
+                        'outfile_1_key': {
+                            'inputBinding': {
+                                'position': 7,
+                                'prefix': '-p'
+                            },
+                            'type': 'string'
+                        },
+                        'outfile_1_value': {
+                            'inputBinding': {
+                                'position': 8
+                            },
+                            'type': 'string'
+                        },
+                        'outfile_2_key': {
+                            'inputBinding': {
+                                'position': 9,
+                                'prefix': '-p'
+                            },
+                            'type': 'string'
+                        },
+                        'outfile_2_value': {
+                            'inputBinding': {
+                                'position': 10
+                            },
+                            'type': 'string'
+                        },
+                        'result': {
+                            'inputBinding': {
+                                'position': 2
+                            },
+                            'type': 'string'
+                        },
+                        'trigger_file_name_key': {
+                            'inputBinding': {
+                                'position': 5,
+                                'prefix': '-p'
+                            },
+                            'type': 'string'
+                        },
+                        'trigger_file_name_value': {
+                            'inputBinding': {
+                                'position': 6
+                            },
+                            'type': 'File'
+                        }
+                    },
+                    'name': 'step_1',
+                    'outputs': {
+                        'output_0': {
+                            'outputBinding': {
+                                'glob': '$(inputs.trigger_file_name_value)'
+                            },
+                            'type': 'File'
+                        },
+                        'output_1': {
+                            'outputBinding': {
+                                'glob': '$(inputs.wf_job)'
+                            },
+                            'type': 'File'
+                        },
+                        'output_2': {
+                            'outputBinding': {
+                                'glob': '$(inputs.outfile_1_value)'
+                            },
+                            'type': 'File'
+                        },
+                        'output_3': {
+                            'outputBinding': {
+                                'glob': '$(inputs.outfile_2_value)'
+                            },
+                            'type': 'File'
+                        }
+                    },
+                    'requirements': {},
+                    'stdout': ''
+                }
+            },
+            'variables': {
+                'workflow': {
+                    'arguments': {
+                        '1_notebook': {
+                            'class': 'File',
+                            'path': 'PLACEHOLDER'
+                        },
+                        '1_outfile_1_key': 'outfile_1',
+                        '1_outfile_1_value': 'out.path',
+                        '1_outfile_2_key': 'outfile_2',
+                        '1_outfile_2_value': 'out.path',
+                        '1_result': 'notebook/output.path',
+                        '1_trigger_file_name_key': 'trigger_file_name',
+                        '1_trigger_file_name_value': {
+                            'class': 'File',
+                            'path': 'literal.path'
+                        }
+                    },
+                    'name': 'workflow'
+                }
+            },
+            'workflows': {
+                'workflow': {
+                    'class': 'Workflow',
+                    'cwlVersion': 'v1.0',
+                    'inputs': {
+                        '1_notebook': 'File',
+                        '1_outfile_1_key': 'string',
+                        '1_outfile_1_value': 'string',
+                        '1_outfile_2_key': 'string',
+                        '1_outfile_2_value': 'string',
+                        '1_result': 'string',
+                        '1_trigger_file_name_key': 'string',
+                        '1_trigger_file_name_value': 'File'
+                    },
+                    'name': 'workflow',
+                    'outputs': {
+                        'output_step_1_output_0': {
+                            'outputSource': 'step_1/output_0',
+                            'type': 'File'
+                        },
+                        'output_step_1_output_1': {
+                            'outputSource': 'step_1/output_1',
+                            'type': 'File'
+                        },
+                        'output_step_1_output_2': {
+                            'outputSource': 'step_1/output_2',
+                            'type': 'File'
+                        },
+                        'output_step_1_output_3': {
+                            'outputSource': 'step_1/output_3',
+                            'type': 'File'
+                        }
+                    },
+                    'requirements': {},
+                    'steps': {
+                        'step_1': {
+                            'in': {
+                                'notebook': '1_notebook',
+                                'outfile_1_key': '1_outfile_1_key',
+                                'outfile_1_value': '1_outfile_1_value',
+                                'outfile_2_key': '1_outfile_2_key',
+                                'outfile_2_value': '1_outfile_2_value',
+                                'result': '1_result',
+                                'trigger_file_name_key':
+                                    '1_trigger_file_name_key',
+                                'trigger_file_name_value':
+                                    '1_trigger_file_name_value'
+                            },
+                            'out': '[output_0, output_1, output_2, output_3]',
+                            'run': 'step_1.cwl'
+                        }
+                    }
+                }
+            }
+        }
+
+        # Test that MEOW to CWL conversion has completed without issue.
+        valid, cwl = workflow_widget.meow_to_cwl()
+        self.assertTrue(valid)
+        self.assertTrue(cwl == expected_feedback)
+
+        # Test that workflow is valid
+        for workflow in cwl[WORKFLOWS].values():
+            valid, msg = is_valid_workflow_dict(workflow)
+            self.assertTrue(valid)
+            self.assertEqual(msg, '')
+
+        # Test that step is valid
+        for step in cwl[STEPS].values():
+            valid, msg = is_valid_step_dict(step)
+            self.assertTrue(valid)
+            self.assertEqual(msg, '')
+
+        # Test that settings are valid
+        for setting in cwl[SETTINGS].values():
+            valid, msg = is_valid_setting_dict(setting)
+            self.assertTrue(valid)
+            self.assertEqual(msg, '')
+
+        # Test that valid recipe dict is accepted.
+        completed = \
+            workflow_widget.process_new_recipe(VALID_RECIPE_FORM_VALUES)
+        self.assertTrue(completed)
+
+        expected_feedback['variables']['workflow']['arguments'][
+            '1_notebook']['path'] = VALID_RECIPE_FORM_VALUES[SOURCE]
+
+        # Test that MEOW to CWL conversion with relevant recipe has completed
+        # without issue.
+        valid, cwl = workflow_widget.meow_to_cwl()
+        self.assertTrue(valid)
+        self.assertTrue(cwl == expected_feedback)
+
+    def testMEOWToCWLWorkflows(self):
+        pass
+
+    def testCWLToMEOWIndividuals(self):
+        pass
+
+    def testCWLToMEOWWorkflows(self):
+        pass
 
     # TODO come back to this once cwl testing done.
     def testWorkflowWidgetMeowButtonEnabling(self):

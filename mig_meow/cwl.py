@@ -53,7 +53,7 @@ def make_workflow_dict(name):
     """
     Creates a new dict defining a base CWL workflow.
 
-    :param name: (str) Name of CWL workflow.
+    :param name: (str or dict) Name of CWL workflow.
 
     :return: (dict) Dictionary defining CWL workflow. Format is:
     {
