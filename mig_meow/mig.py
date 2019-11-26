@@ -213,29 +213,23 @@ def __vgrid_json_call(operation, workflow_type, attributes, print_feedback=True)
     'object_type' and footer contains 'text' and 'object_type'.
     """
 
-    url = \
-        'https://sid.migrid.test/cgi-sid/workflowsjsoninterface.py?output_' \
-        'format=json'
-    session_id = \
-        "00d4d60cfe7523334ccce3a014ca31c6350fdb907d063ed97e02f1a887228933"
-    # TODO use this during deployment
-    # try:
-    #     url = os.environ['URL']
-    # except KeyError:
-    #     raise EnvironmentError(
-    #         'Migrid URL was not specified in the local environment. This '
-    #         'should be created automatically as part of the Notebook creation '
-    #         'if the Notebook was created on IDMC. '
-    #     )
-    # try:
-    #     session_id = os.environ['SESSION_ID']
-    # except KeyError:
-    #     raise EnvironmentError(
-    #         'Migrid SESSION_ID was not specified in the local environment. '
-    #         'This should be created automatically as part of the Notebook '
-    #         'creation if the Notebook was created on IDMC. Currently this is '
-    #         'the only supported way to interact with a VGrid. '
-    #     )
+    try:
+        url = os.environ['URL']
+    except KeyError:
+        raise EnvironmentError(
+            'Migrid URL was not specified in the local environment. This '
+            'should be created automatically as part of the Notebook creation '
+            'if the Notebook was created on IDMC. '
+        )
+    try:
+        session_id = os.environ['SESSION_ID']
+    except KeyError:
+        raise EnvironmentError(
+            'Migrid SESSION_ID was not specified in the local environment. '
+            'This should be created automatically as part of the Notebook '
+            'creation if the Notebook was created on IDMC. Currently this is '
+            'the only supported way to interact with a VGrid. '
+        )
 
     data = {
         'workflowsessionid': session_id,

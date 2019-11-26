@@ -2996,11 +2996,195 @@ class WorkflowTest(unittest.TestCase):
     def testMEOWToCWLWorkflows(self):
         pass
 
-    def testCWLToMEOWIndividuals(self):
-        pass
+    def testCWLToMEOW(self):
+        analysis_step_dict = {
+            CWL_NAME: 'data_analysis',
+            CWL_CWL_VERSION: 'v1.0',
+            CWL_CLASS: 'CommandLineTool',
+            CWL_BASE_COMMAND: 'papermill',
+            CWL_STDOUT: '',
+            CWL_INPUTS: {
+                'notebook': {
+                    'inputBinding': {
+                        'position': 1
+                    },
+                    'type': 'File'
+                },
+                'result': {
+                    'inputBinding': {
+                        'position': 2
+                    },
+                    'type': 'string'
+                },
+                'yaml_file': {
+                    'inputBinding': {
+                        'prefix': '-f',
+                        'position': 3
+                    },
+                    'type': 'File'
+                },
+                'dssc_file': {
+                    'type': 'File'
+                },
+                'interim_yaml_title': {
+                    'type': 'string'
+                }
+            },
+            CWL_OUTPUTS: {
+                'result_notebook': {
+                    'outputBinding': {
+                        'glob': '$(inputs.result)'
+                    },
+                    'type': 'File'
+                },
+                'interim_yaml': {
+                    'outputBinding': {
+                        'glob': '$(inputs.interim_yaml_title)'
+                    },
+                    'type': 'File'
+                }
+            },
+            CWL_ARGUMENTS: [],
+            CWL_REQUIREMENTS: {
+                'InitialWorkDirRequirement': {
+                    'listing': '- $(inputs.dssc_file)'
+                }
+            },
+            CWL_HINTS: {}
+        }
+        plotting_step_dict = {
+            CWL_NAME: 'data_plotting',
+            CWL_CWL_VERSION: 'v1.0',
+            CWL_CLASS: 'CommandLineTool',
+            CWL_BASE_COMMAND: 'papermill',
+            CWL_STDOUT: '',
+            CWL_INPUTS: {
+                'notebook': {
+                    'inputBinding': {
+                        'position': 1
+                    },
+                    'type': 'File'
+                },
+                'result': {
+                    'inputBinding': {
+                        'position': 2
+                    },
+                    'type': 'string'
+                },
+                'yaml_file': {
+                    'inputBinding': {
+                        'prefix': '-f',
+                        'position': 3
+                    },
+                    'type': 'File'
+                }
+            },
+            CWL_OUTPUTS: {
+                'result_notebook': {
+                    'outputBinding': {
+                        'glob': '$(inputs.result)'
+                    },
+                    'type': 'File'
+                }
+            },
+            CWL_ARGUMENTS: [],
+            CWL_REQUIREMENTS: {},
+            CWL_HINTS: {}
+        }
+        workflow_dict = {
+            CWL_NAME: 'workflow',
+            CWL_CWL_VERSION: 'v1.0',
+            CWL_CLASS: 'Workflow',
+            CWL_INPUTS: {
+                'analysis_notebook': 'File',
+                'analysis_result': 'string',
+                'analysis_yaml_file': 'File',
+                'analysis_dssc': 'File',
+                'analysis_interim_yaml': 'string',
+                'plotting_notebook': 'File',
+                'plotting_result': 'string',
+            },
+            CWL_OUTPUTS: {
+                'final_plot': {
+                    'type': 'File',
+                    'outputSource': 'plot/result_notebook'
+                }
+            },
+            CWL_STEPS: {
+                'analysis': {
+                    'run': 'data_analysis.cwl',
+                    'in': {
+                        'notebook': 'analysis_notebook',
+                        'result': 'analysis_result',
+                        'yaml_file': 'analysis_yaml_file',
+                        'dssc_file': 'analysis_dssc',
+                        'interim_yaml_title': 'analysis_interim_yaml'
+                    },
+                    'out': '[result_notebook, interim_yaml]'
+                },
+                'plot': {
+                    'run': 'data_plotting.cwl',
+                    'in': {
+                        'notebook': 'plotting_notebook',
+                        'result': 'plotting_result',
+                        'yaml_file': 'analysis/interim_yaml'
+                    },
+                    'out': '[result_notebook]'
+                }
+            },
+            CWL_REQUIREMENTS: {}
+        }
+        settings_dict = {
+            CWL_NAME: 'settings_name',
+            CWL_VARIABLES: {
+                'analysis_notebook': {
+                    'class': 'File',
+                    'path': 'data_analysis.ipynb'
+                },
+                'analysis_result': 'data_analysis_result.ipynb',
+                'analysis_yaml_file': {
+                    'class': 'File',
+                    'path': 'initial_params.yaml'
+                },
+                'analysis_dssc': {
+                    'class': 'File',
+                    'path': 'dssc.py'
+                },
+                'analysis_interim_yaml': 'interim.yaml',
+                'plotting_notebook': {
+                    'class': 'File',
+                    'path': 'data_plotting.ipynb'
+                },
+                'plotting_result': 'data_plotting_result.ipynb'
+            }
+        }
 
-    def testCWLToMEOWWorkflows(self):
-        pass
+        args = {
+            WORKFLOWS: {
+                workflow_dict[CWL_NAME]: workflow_dict
+            },
+            STEPS: {
+                analysis_step_dict[CWL_NAME]: analysis_step_dict,
+                plotting_step_dict[CWL_NAME]: plotting_step_dict
+            },
+            SETTINGS: {
+                settings_dict[CWL_NAME]: settings_dict
+            },
+        }
+
+        workflow_widget = WorkflowWidget(**args)
+        workflow_widget.construct_widget()
+
+        # Test that args have imported correctly
+        self.assertEqual(len(workflow_widget.cwl[WORKFLOWS]), 1)
+        self.assertIn(workflow_dict[CWL_NAME], workflow_widget.cwl[WORKFLOWS])
+        self.assertEqual(len(workflow_widget.cwl[STEPS]), 2)
+        self.assertIn(analysis_step_dict[CWL_NAME], workflow_widget.cwl[STEPS])
+        self.assertIn(plotting_step_dict[CWL_NAME], workflow_widget.cwl[STEPS])
+        self.assertEqual(len(workflow_widget.cwl[SETTINGS]), 1)
+        self.assertIn(settings_dict[CWL_NAME], workflow_widget.cwl[SETTINGS])
+
+        # TODO complete me
 
     # TODO come back to this once cwl testing done.
     def testWorkflowWidgetMeowButtonEnabling(self):
