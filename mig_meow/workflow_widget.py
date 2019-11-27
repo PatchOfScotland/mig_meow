@@ -3502,7 +3502,7 @@ class WorkflowWidget:
                 )
 
                 msg = 'Unexpected feedback received'
-                if 'text' in response:
+                if response['object_type'] != 'error_text':
                     if operation == VGRID_CREATE:
                         persistence_id = response['text']
                         if object_type == VGRID_PATTERN_OBJECT_TYPE:
@@ -3540,9 +3540,8 @@ class WorkflowWidget:
                         elif object_type == VGRID_RECIPE_OBJECT_TYPE:
                             msg = "Deleted %s '%s'. " \
                                   % (RECIPE_NAME, args[NAME])
-
-                if 'error_text' in response:
-                    feedback = response['error_text'].replace('\n', '<br/>')
+                else:
+                    feedback = response['text'].replace('\n', '<br/>')
                     msg = feedback
                 self.__add_to_feedback(msg)
 
@@ -4350,6 +4349,7 @@ class WorkflowWidget:
         """
 
         pattern_display = []
+        phantom_nodes = {}
 
         for pattern in workflow.keys():
             pattern_display.append(
@@ -4368,30 +4368,51 @@ class WorkflowWidget:
                 colour_display[pattern_index] = GREEN
             else:
                 colour_display[pattern_index] = RED
-            for file, input in pattern_dict[WORKFLOW_INPUTS].items():
-                pattern_display.append(
-                    self.__set_phantom_meow_node_dict(input)
-                )
-                colour_display.append(WHITE)
-                node_index = len(pattern_display) - 1
-                node_name = "%s_input_%s" % (pattern, file)
-                path_nodes[node_name] = node_index
-                link_display.append({
-                    'source': node_index,
-                    'target': pattern_index
-                })
-            for file, output in pattern_dict[WORKFLOW_OUTPUTS].items():
-                pattern_display.append(
-                    self.__set_phantom_meow_node_dict(output)
-                )
-                colour_display.append(WHITE)
-                node_index = len(pattern_display) - 1
-                node_name = "%s_output_%s" % (pattern, file)
-                path_nodes[node_name] = node_index
-                link_display.append({
-                    'source': pattern_index,
-                    'target': node_index
-                })
+            for file, input_files in pattern_dict[WORKFLOW_INPUTS].items():
+                for input_file in input_files:
+                    if input_file not in phantom_nodes.keys():
+                        pattern_display.append(
+                            self.__set_phantom_meow_node_dict(input_file)
+                        )
+                        colour_display.append(WHITE)
+                        node_index = len(pattern_display) - 1
+                        phantom_nodes[input_file] = node_index
+                        node_name = "%s_input_%s" % (pattern, file)
+                        path_nodes[node_name] = node_index
+                        link_display.append({
+                            'source': node_index,
+                            'target': pattern_index
+                        })
+                    else:
+                        node_index = phantom_nodes[input_file]
+                        node_name = "%s_input_%s" % (pattern, file)
+                        path_nodes[node_name] = node_index
+                        link_display.append({
+                            'source': node_index,
+                            'target': pattern_index
+                        })
+            for file, output_file in pattern_dict[WORKFLOW_OUTPUTS].items():
+                if output_file not in phantom_nodes.keys():
+                    pattern_display.append(
+                        self.__set_phantom_meow_node_dict(output_file)
+                    )
+                    colour_display.append(WHITE)
+                    node_index = len(pattern_display) - 1
+                    phantom_nodes[output_file] = node_index
+                    node_name = "%s_output_%s" % (pattern, file)
+                    path_nodes[node_name] = node_index
+                    link_display.append({
+                        'source': pattern_index,
+                        'target': node_index
+                    })
+                else:
+                    node_index = phantom_nodes[output_file]
+                    node_name = "%s_input_%s" % (pattern, file)
+                    path_nodes[node_name] = node_index
+                    link_display.append({
+                        'source': node_index,
+                        'target': pattern_index
+                    })
 
         # Do this second as we need to make sure all patterns have been set
         # up before we can link them
