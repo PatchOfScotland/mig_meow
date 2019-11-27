@@ -214,21 +214,22 @@ def __vgrid_json_call(operation, workflow_type, attributes, print_feedback=True)
     """
 
     try:
-        url = os.environ['URL']
+        url = os.environ['WORKFLOWS_URL']
     except KeyError:
         raise EnvironmentError(
-            'Migrid URL was not specified in the local environment. This '
-            'should be created automatically as part of the Notebook creation '
-            'if the Notebook was created on IDMC. '
-        )
-    try:
-        session_id = os.environ['SESSION_ID']
-    except KeyError:
-        raise EnvironmentError(
-            'Migrid SESSION_ID was not specified in the local environment. '
+            'Migrid WORKFLOWS_URL was not specified in the local environment. '
             'This should be created automatically as part of the Notebook '
             'creation if the Notebook was created on IDMC. Currently this is '
             'the only supported way to interact with a VGrid. '
+        )
+    try:
+        session_id = os.environ['WORKFLOWS_SESSION_ID']
+    except KeyError:
+        raise EnvironmentError(
+            'Migrid WORKFLOWS_SESSION_ID was not specified in the local '
+            'environment. This should be created automatically as part of the '
+            'Notebook creation if the Notebook was created on IDMC. Currently '
+            'this is the only supported way to interact with a VGrid. '
         )
 
     data = {

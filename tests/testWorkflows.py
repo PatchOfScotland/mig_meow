@@ -29,13 +29,25 @@ from mig_meow.workflow_widget import WorkflowWidget
 
 EMPTY_NOTEBOOK = 'test_notebook.ipynb'
 ANOTHER_NOTEBOOK = 'another_notebook.ipynb'
+ANALYSIS_NOTEBOOK = os.path.join(
+    DEFAULT_CWL_IMPORT_EXPORT_DIR,
+    DEFAULT_WORKFLOW_TITLE,
+    'data_analysis.ipynb'
+)
+PLOTTING_NOTEBOOK = os.path.join(
+    DEFAULT_CWL_IMPORT_EXPORT_DIR,
+    DEFAULT_WORKFLOW_TITLE,
+    'data_plotting.ipynb'
+)
 EXTENSIONLESS_NOTEBOOK = 'test_notebook'
 DOES_NOT_EXIST = 'does_not_exit.ipynb'
 
 REQUIRED_FILES = [
     EMPTY_NOTEBOOK,
     ANOTHER_NOTEBOOK,
-    EXTENSIONLESS_NOTEBOOK
+    EXTENSIONLESS_NOTEBOOK,
+    ANALYSIS_NOTEBOOK,
+    PLOTTING_NOTEBOOK
 ]
 
 REQUIRED_ABSENT_FILES = [
@@ -45,7 +57,9 @@ REQUIRED_ABSENT_FILES = [
 NOTEBOOKS = [
     EMPTY_NOTEBOOK,
     ANOTHER_NOTEBOOK,
-    EXTENSIONLESS_NOTEBOOK
+    EXTENSIONLESS_NOTEBOOK,
+    ANALYSIS_NOTEBOOK,
+    PLOTTING_NOTEBOOK
 ]
 
 VALID_PATTERN_DICT = {
@@ -436,6 +450,14 @@ class WorkflowTest(unittest.TestCase):
                 )
 
         for file in NOTEBOOKS:
+            if os.path.sep in file:
+                dirs_list = file.split(os.path.sep)
+                current_path = ''
+                for dir in range(len(dirs_list) - 1):
+                    current_path += dirs_list[dir]
+                    if not os.path.exists(current_path):
+                        os.mkdir(current_path)
+                    current_path += os.path.sep
             notebook = nbformat.v4.new_notebook()
             nbformat.write(notebook, file)
 
@@ -3092,7 +3114,7 @@ class WorkflowTest(unittest.TestCase):
             CWL_HINTS: {}
         }
         workflow_dict = {
-            CWL_NAME: 'workflow',
+            CWL_NAME: DEFAULT_WORKFLOW_TITLE,
             CWL_CWL_VERSION: 'v1.0',
             CWL_CLASS: 'Workflow',
             CWL_INPUTS: {
@@ -3135,7 +3157,7 @@ class WorkflowTest(unittest.TestCase):
             CWL_REQUIREMENTS: {}
         }
         settings_dict = {
-            CWL_NAME: 'settings_name',
+            CWL_NAME: DEFAULT_WORKFLOW_TITLE,
             CWL_VARIABLES: {
                 'analysis_notebook': {
                     'class': 'File',
@@ -3186,8 +3208,8 @@ class WorkflowTest(unittest.TestCase):
 
         # TODO complete me
         valid, meow = workflow_widget.cwl_to_meow()
-        self.assertTrue(valid)
         print(meow)
+        self.assertTrue(valid)
 
     # TODO come back to this once cwl testing done.
     def testWorkflowWidgetMeowButtonEnabling(self):

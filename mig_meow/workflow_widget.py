@@ -2543,6 +2543,7 @@ class WorkflowWidget:
 
             :return: No return.
             """
+            self.form_area.clear_output()
             confirmation_function(**confirmation_args)
 
         confirm_button.on_click(confirm_button_click)
@@ -3481,7 +3482,10 @@ class WorkflowWidget:
 
         :return: No return.
         """
-        self.__clear_feedback()
+        self.__set_feedback(
+            'Exporting to VGrid. This may take several seconds to complete. '
+            'A feedback message will be presented for each individual item. '
+        )
         calls = kwargs.get('calls', None)
         for call in calls:
             try:
