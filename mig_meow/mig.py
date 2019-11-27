@@ -193,7 +193,7 @@ def __vgrid_json_call(
     """
     Makes JSON call to MiG. Will pull url and session_id from local
     environment variables, as setup by MiG notebook spawner. Will raise
-    EnviromentError if these are not present.
+    EnvironmentError if these are not present.
 
     :param operation: (str) The operation type to be performed by the MiG based
     JSON API. Valid operations are 'create', 'read', 'update' and 'delete'.
@@ -218,7 +218,7 @@ def __vgrid_json_call(
         url = os.environ['WORKFLOWS_URL']
     except KeyError:
         raise EnvironmentError(
-            'Migrid WORKFLOWS_URL was not specified in the local environment. '
+            'MiGrid WORKFLOWS_URL was not specified in the local environment. '
             'This should be created automatically as part of the Notebook '
             'creation if the Notebook was created on IDMC. Currently this is '
             'the only supported way to interact with a VGrid. '
@@ -227,7 +227,7 @@ def __vgrid_json_call(
         session_id = os.environ['WORKFLOWS_SESSION_ID']
     except KeyError:
         raise EnvironmentError(
-            'Migrid WORKFLOWS_SESSION_ID was not specified in the local '
+            'MiGrid WORKFLOWS_SESSION_ID was not specified in the local '
             'environment. This should be created automatically as part of the '
             'Notebook creation if the Notebook was created on IDMC. Currently '
             'this is the only supported way to interact with a VGrid. '
