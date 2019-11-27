@@ -82,8 +82,7 @@ def export_recipe_to_vgrid(vgrid, recipe, print_feedback=True):
                         "as expected" % (recipe, type(recipe)))
     status, msg = is_valid_recipe_dict(recipe)
     if not status:
-        raise ValueError('The provided recipe is not valid. '
-                        '%s' % msg)
+        raise ValueError('The provided recipe is not valid. %s' % msg)
 
     return vgrid_workflow_json_call(vgrid,
                                     VGRID_CREATE,
@@ -188,7 +187,9 @@ def vgrid_job_json_call(vgrid, operation, workflow_type, attributes,
     )
 
 
-def __vgrid_json_call(operation, workflow_type, attributes, print_feedback=True):
+def __vgrid_json_call(
+        operation, workflow_type, attributes, print_feedback=True
+):
     """
     Makes JSON call to MiG. Will pull url and session_id from local
     environment variables, as setup by MiG notebook spawner. Will raise
