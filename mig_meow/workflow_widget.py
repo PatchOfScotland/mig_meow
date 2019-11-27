@@ -1028,7 +1028,7 @@ class WorkflowWidget:
                         "%s data detected, attempting to convert to %s "
                         "format. " % (CWL_MODE, MEOW_MODE)
                     )
-                    valid, buffer_meow = self.__cwl_to_meow()
+                    valid, buffer_meow = self.cwl_to_meow()
 
                     if valid:
                         self.__import_meow_workflow(**buffer_meow)
@@ -1246,7 +1246,7 @@ class WorkflowWidget:
         self.__close_form()
         self.__clear_feedback()
 
-        valid, buffer_meow = self.__cwl_to_meow()
+        valid, buffer_meow = self.cwl_to_meow()
 
         # TODO should be a confirmation here
 
@@ -3846,7 +3846,7 @@ class WorkflowWidget:
 
         return True, buffer_cwl
 
-    def __cwl_to_meow(self):
+    def cwl_to_meow(self):
         """
         Attempts to convert existing CWL Workflows, Steps and Arguments into
         MEOW Patterns and Recipes. Not all MEOW necessary information is

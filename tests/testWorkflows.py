@@ -3185,6 +3185,9 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn(settings_dict[CWL_NAME], workflow_widget.cwl[SETTINGS])
 
         # TODO complete me
+        valid, meow = workflow_widget.cwl_to_meow()
+        self.assertTrue(valid)
+        print(meow)
 
     # TODO come back to this once cwl testing done.
     def testWorkflowWidgetMeowButtonEnabling(self):

@@ -19,7 +19,7 @@ setup(name=module_name,
       install_requires=[
             'pillow',
             'graphviz',
-            'bqplot',
+            'bqplot==0.11.7',
             'IPython',
             'requests',
             'ipywidgets',
