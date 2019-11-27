@@ -18,8 +18,7 @@ from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
     CWL_INPUTS, CWL_OUTPUTS, CWL_STEPS, CWL_STDOUT, CWL_ARGUMENTS, CWL_HINTS, \
     CWL_VARIABLES, TRIGGER_OUTPUT, NOTEBOOK_OUTPUT, CWL_CLASS_WORKFLOW, \
     CWL_CLASS_COMMAND_LINE_TOOL
-from mig_meow.cwl import make_workflow_dict, make_step_dict, \
-    make_settings_dict, check_workflows_dict, check_steps_dict, \
+from mig_meow.cwl import check_workflows_dict, check_steps_dict, \
     check_settings_dict
 from mig_meow.inputs import is_valid_recipe_dict, is_valid_pattern_dict, \
     is_valid_workflow_dict, is_valid_step_dict, is_valid_setting_dict
@@ -167,7 +166,7 @@ VALID_STEP_DICT = {
             },
             'type': 'string'
         },
-        'yaml_file':{
+        'yaml_file': {
             'inputBinding': {
                 'prefix': '-f',
                 'position': 3
@@ -453,8 +452,8 @@ class WorkflowTest(unittest.TestCase):
             if os.path.sep in file:
                 dirs_list = file.split(os.path.sep)
                 current_path = ''
-                for dir in range(len(dirs_list) - 1):
-                    current_path += dirs_list[dir]
+                for directory in range(len(dirs_list) - 1):
+                    current_path += dirs_list[directory]
                     if not os.path.exists(current_path):
                         os.mkdir(current_path)
                     current_path += os.path.sep
@@ -513,14 +512,14 @@ class WorkflowTest(unittest.TestCase):
 
         # Test invalid 'input_file' type is rejected
         incorrect_file_dict = copy.deepcopy(VALID_PATTERN_DICT)
-        incorrect_file_dict[INPUT_FILE] =1
+        incorrect_file_dict[INPUT_FILE] = 1
         valid, msg = is_valid_pattern_dict(incorrect_file_dict)
         self.assertFalse(valid)
         self.assertIsNotNone(msg)
 
         # Test invalid 'output' type is rejected.
         incorrect_output_dict = copy.deepcopy(VALID_PATTERN_DICT)
-        incorrect_output_dict[OUTPUT] =1
+        incorrect_output_dict[OUTPUT] = 1
         valid, msg = is_valid_pattern_dict(incorrect_output_dict)
         self.assertFalse(valid)
         self.assertIsNotNone(msg)
@@ -2421,7 +2420,8 @@ class WorkflowTest(unittest.TestCase):
 
         # Test that stored workflow is valid.
         extracted_workflow = \
-            workflow_widget.cwl[WORKFLOWS][VALID_WORKFLOW_FORM_VALUES[CWL_NAME]]
+            workflow_widget.cwl[
+                WORKFLOWS][VALID_WORKFLOW_FORM_VALUES[CWL_NAME]]
         valid, msg = is_valid_workflow_dict(extracted_workflow)
         self.assertTrue(valid)
         self.assertEqual(msg, '')
@@ -2456,7 +2456,8 @@ class WorkflowTest(unittest.TestCase):
 
         # Test that updated workflow is still valid.
         updated_workflow = \
-            workflow_widget.cwl[WORKFLOWS][VALID_WORKFLOW_FORM_VALUES[CWL_NAME]]
+            workflow_widget.cwl[
+                WORKFLOWS][VALID_WORKFLOW_FORM_VALUES[CWL_NAME]]
         valid, msg = is_valid_workflow_dict(updated_workflow)
         self.assertTrue(valid)
         self.assertEqual(msg, '')
@@ -2495,7 +2496,8 @@ class WorkflowTest(unittest.TestCase):
             workflow_widget.cwl[WORKFLOWS]
         )
         updated_workflow = \
-            workflow_widget.cwl[WORKFLOWS][VALID_WORKFLOW_FORM_VALUES[CWL_NAME]]
+            workflow_widget.cwl[
+                WORKFLOWS][VALID_WORKFLOW_FORM_VALUES[CWL_NAME]]
         valid, msg = is_valid_workflow_dict(updated_workflow)
         self.assertTrue(valid)
         self.assertEqual(msg, '')
@@ -2505,7 +2507,8 @@ class WorkflowTest(unittest.TestCase):
 
         # Test that workflow that has not been registered cannot be deleted,
         # and that workflows that are registered are not deleted instead.
-        completed = workflow_widget.process_delete_workflow('unregistered_name')
+        completed = \
+            workflow_widget.process_delete_workflow('unregistered_name')
         self.assertFalse(completed)
         self.assertEqual(len(workflow_widget.cwl[WORKFLOWS]), 1)
         self.assertIn(
