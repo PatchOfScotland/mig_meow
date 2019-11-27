@@ -3548,6 +3548,9 @@ class WorkflowWidget:
 
             except Exception as err:
                 self.__set_feedback(err)
+        self.__add_to_feedback(
+            'All VGrid interactions have completed. '
+        )
         self.__close_form()
 
     def meow_to_cwl(self):
