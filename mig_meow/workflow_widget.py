@@ -3277,8 +3277,10 @@ class WorkflowWidget:
 
         :return: No return.
         """
+
         if not self.vgrid:
             self.__set_feedback(NO_VGRID_MSG)
+            self.__write_to_log("__export_to_vgrid: %s" % NO_VGRID_MSG)
             return
 
         calls = []
@@ -3388,11 +3390,11 @@ class WorkflowWidget:
         self.__enable_top_buttons()
 
         if not calls:
-            self.__set_feedback(
-                "No %ss or %ss have been created, updated or "
-                "deleted so there is nothing to export to the Vgrid"
-                % (PATTERN_NAME, RECIPE_NAME)
-            )
+            msg = "No %ss or %ss have been created, updated or deleted so " \
+                  "there is nothing to export to the Vgrid" \
+                  % (PATTERN_NAME, RECIPE_NAME)
+            self.__set_feedback(msg)
+            self.__write_to_log("__export_to_vgrid: %s" % msg)
             return
 
         operation_combinations = [
@@ -3403,6 +3405,10 @@ class WorkflowWidget:
             (VGRID_DELETE, VGRID_PATTERN_OBJECT_TYPE),
             (VGRID_DELETE, VGRID_RECIPE_OBJECT_TYPE),
         ]
+
+        self.__write_to_log(
+            "__export_to_vgrid: exporting with calls: %s" % calls
+        )
 
         for operation in operation_combinations:
             relevant_calls = count_calls(calls, operation[0], operation[1])
