@@ -5,6 +5,7 @@ import yaml
 from bqplot import *
 from bqplot.marks import Graph
 from copy import deepcopy
+from datetime import datetime
 from shutil import copyfile
 
 from IPython.display import display
@@ -49,6 +50,9 @@ YAML_EXTENSIONS = [
 CWL_EXTENSIONS = [
     '.cwl'
 ]
+
+LOGGING_DIR = 'ww_logs'
+LOGFILE_NAME = 'workfow_widget.log'
 
 CWL_INPUT_TYPE = 'type'
 CWL_INPUT_BINDING = 'inputBinding'
@@ -690,6 +694,8 @@ class WorkflowWidget:
         workflows created by converting MEOW definitions. Default is
         'workflow'.
         """
+
+        self.logfile = self.__create_logfile()
 
         check_input_args(kwargs, SUPPORTED_ARGS)
 
@@ -3265,6 +3271,8 @@ class WorkflowWidget:
 
         :return: No return.
         """
+        self.__write_to_log("__import_meow_workflow(%s)" % kwargs)
+
         response_patterns = kwargs.get(PATTERNS, None)
         response_recipes = kwargs.get(RECIPES, None)
 
@@ -4757,3 +4765,19 @@ class WorkflowWidget:
         :return: No return.
         """
         self.feedback_area.value = ""
+
+    def __create_logfile(self):
+        # TODO improve this
+        time = str(datetime.now())
+        if not os.path.exists(LOGGING_DIR):
+            os.mkdir(LOGGING_DIR)
+        log_filename = \
+            os.path.join(LOGGING_DIR, "%s_%s" % (time, LOGFILE_NAME))
+        with open(log_filename, 'w') as logfile:
+            logfile.write('Start of workflow widget log at %s\n' % time)
+        return log_filename
+
+    def __write_to_log(self, log):
+        time = str(datetime.now())
+        with open(self.logfile, 'a') as logfile:
+            logfile.write("%s: %s\n" % (time, log))
