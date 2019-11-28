@@ -51,7 +51,7 @@ CWL_EXTENSIONS = [
     '.cwl'
 ]
 
-LOGGING_DIR = 'ww_logs'
+LOGGING_DIR = 'workflow_widget_logs'
 LOGFILE_NAME = 'workfow_widget.log'
 
 CWL_INPUT_TYPE = 'type'
@@ -80,6 +80,7 @@ MODE = 'mode'
 AUTO_IMPORT = 'auto_import'
 WORKFLOW_TITLE_ARG = "export_name"
 CWL_IMPORT_EXPORT_DIR_ARG = 'cwl_dir'
+DEBUG_MODE = 'debug'
 
 SUPPORTED_ARGS = {
     MODE: str,
@@ -91,7 +92,8 @@ SUPPORTED_ARGS = {
     VGRID: str,
     AUTO_IMPORT: bool,
     CWL_IMPORT_EXPORT_DIR_ARG: str,
-    WORKFLOW_TITLE_ARG: str
+    WORKFLOW_TITLE_ARG: str,
+    DEBUG_MODE: str
 }
 
 FORM_RECIPE_SOURCE = 'Source'
@@ -655,11 +657,15 @@ class WorkflowWidget:
         :param export_name: (str)[optional] Workflow name used for CWL
         workflows created by converting MEOW definitions. Default is
         'workflow'.
+
+        :param debug: (bool)[optional] Flag for if the widget is running in
+        debug mode. Default value is True.
         """
+        check_input_args(kwargs, SUPPORTED_ARGS)
+
+        self.debug_mode = kwargs.get(DEBUG_MODE, True)
 
         self.logfile = self.__create_logfile()
-
-        check_input_args(kwargs, SUPPORTED_ARGS)
 
         self.mode = kwargs.get(MODE, None)
         if not self.mode:
@@ -4712,16 +4718,18 @@ class WorkflowWidget:
 
     def __create_logfile(self):
         # TODO improve this
-        time = str(datetime.now())
-        if not os.path.exists(LOGGING_DIR):
-            os.mkdir(LOGGING_DIR)
-        log_filename = \
-            os.path.join(LOGGING_DIR, "%s_%s" % (time, LOGFILE_NAME))
-        with open(log_filename, 'w') as logfile:
-            logfile.write('Start of workflow widget log at %s\n' % time)
-        return log_filename
+        if self.debug_mode:
+            time = str(datetime.now())
+            if not os.path.exists(LOGGING_DIR):
+                os.mkdir(LOGGING_DIR)
+            log_filename = \
+                os.path.join(LOGGING_DIR, "%s_%s" % (time, LOGFILE_NAME))
+            with open(log_filename, 'w') as logfile:
+                logfile.write('Start of workflow widget log at %s\n' % time)
+            return log_filename
 
     def __write_to_log(self, log):
-        time = str(datetime.now())
-        with open(self.logfile, 'a') as logfile:
-            logfile.write("%s: %s\n" % (time, log))
+        if self.debug_mode:
+            time = str(datetime.now())
+            with open(self.logfile, 'a') as logfile:
+                logfile.write("%s: %s\n" % (time, log))
