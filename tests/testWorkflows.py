@@ -16,7 +16,7 @@ from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
     TRIGGER_RECIPES, OUTPUT, VARIABLES, SOURCE, RECIPE, CWL_NAME, \
     CWL_REQUIREMENTS, CWL_CWL_VERSION, CWL_CLASS, CWL_BASE_COMMAND, \
     CWL_INPUTS, CWL_OUTPUTS, CWL_STEPS, CWL_STDOUT, CWL_ARGUMENTS, CWL_HINTS, \
-    CWL_VARIABLES, TRIGGER_OUTPUT, NOTEBOOK_OUTPUT, CWL_CLASS_WORKFLOW, \
+    CWL_VARIABLES, CWL_CLASS_WORKFLOW, \
     CWL_CLASS_COMMAND_LINE_TOOL
 from mig_meow.cwl import check_workflows_dict, check_steps_dict, \
     check_settings_dict
@@ -76,9 +76,7 @@ VALID_PATTERN_DICT = {
     INPUT_FILE: 'trigger_file_name',
     OUTPUT: {
         'outfile_1': 'dir_1/out.path',
-        'outfile_2': 'dir_2/out.path',
-        DEFAULT_JOB_NAME: 'notebook/output.path',
-        'trigger_file_name': 'trigger/file/output.path'
+        'outfile_2': 'dir_2/out.path'
     },
     VARIABLES: {
         'int': 0,
@@ -224,8 +222,6 @@ VALID_PATTERN_FORM_VALUES = {
         'test_recipe'
     ],
     INPUT_FILE: 'trigger_file_name',
-    TRIGGER_OUTPUT: 'trigger/file/output.path',
-    NOTEBOOK_OUTPUT: 'notebook/output.path',
     OUTPUT: [
         {
             'Name': 'outfile_1',
