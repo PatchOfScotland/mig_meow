@@ -2696,7 +2696,7 @@ class WorkflowWidget:
             )
             if os.path.sep in source:
                 filename = \
-                    source[source.index('/') + 1:source.index('.')]
+                    source[source.rfind('/') + 1:source.index('.')]
             else:
                 filename = source[:source.index('.')]
             if not name:
