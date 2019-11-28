@@ -89,8 +89,6 @@ VGRID = 'vgrid'
 SOURCE = 'source'
 PATTERNS = 'patterns'
 TRIGGER_RECIPES = 'trigger_recipes'
-TRIGGER_OUTPUT = "trigger_output"
-NOTEBOOK_OUTPUT = "notebook_output"
 
 CWL_CLASS_COMMAND_LINE_TOOL = 'CommandLineTool'
 CWL_CLASS_WORKFLOW = 'Workflow'

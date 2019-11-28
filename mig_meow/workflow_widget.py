@@ -20,7 +20,7 @@ from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
     VGRID_ERROR_TYPE, VGRID_TEXT_TYPE, PERSISTENCE_ID, VGRID_CREATE, \
     VGRID_UPDATE, PATTERNS, RECIPE, VGRID_DELETE, \
     VGRID, VGRID_READ, WORKFLOW_INPUTS, WORKFLOW_OUTPUTS, WHITE, ANCESTORS, \
-    TRIGGER_OUTPUT, NOTEBOOK_OUTPUT, TRIGGER_PATHS, CWL_INPUTS, \
+    TRIGGER_PATHS, CWL_INPUTS, \
     CWL_NAME, CWL_OUTPUTS, CWL_BASE_COMMAND, CWL_ARGUMENTS, CWL_REQUIREMENTS, \
     CWL_STDOUT, CWL_HINTS, CWL_STEPS, CWL_OUTPUT_TYPE, \
     CWL_OUTPUT_BINDING, CWL_OUTPUT_SOURCE, CWL_OUTPUT_GLOB, CWL_YAML_CLASS, \
@@ -101,8 +101,6 @@ FORM_PATTERN_NAME = 'Name'
 FORM_PATTERN_TRIGGER_PATH = 'Trigger path'
 FORM_PATTERN_RECIPES = 'Recipes'
 FORM_PATTERN_TRIGGER_FILE = 'Input file'
-FORM_PATTERN_TRIGGER_OUTPUT = 'Trigger output'
-FORM_PATTERN_NOTEBOOK_OUTPUT = 'Notebook output'
 FORM_PATTERN_OUTPUT = 'Output'
 FORM_PATTERN_VARIABLES = 'Variables'
 
@@ -237,42 +235,6 @@ PATTERN_FORM_INPUTS = {
             "'input_file'. This can then be opened or manipulated as "
             "necessary by the job processing.",
         INPUT_OPTIONAL: False
-    },
-    FORM_PATTERN_TRIGGER_OUTPUT: {
-        INPUT_KEY: TRIGGER_OUTPUT,
-        INPUT_TYPE: FORM_SINGLE_INPUT,
-        INPUT_NAME: FORM_PATTERN_TRIGGER_OUTPUT,
-        INPUT_HELP:
-            "Trigger output is an optional parameter used to define if the "
-            "triggering file is returned. This is defined by the path for the "
-            "file to be copied to at job completion. If it is not provided "
-            "then any changes made to it are lost, but other output may still "
-            "be saved if defined in the output parameter."
-            "<br/>"
-            "Example: <b>dir/*_output.txt</b>"
-            "<br/>"
-            "In this example data file is saved within the 'dir' directory. "
-            "If the job was triggered on 'test.txt' then the output file "
-            "would be called 'test_output.txt",
-        INPUT_OPTIONAL: True
-    },
-    FORM_PATTERN_NOTEBOOK_OUTPUT: {
-        INPUT_KEY: NOTEBOOK_OUTPUT,
-        INPUT_TYPE: FORM_SINGLE_INPUT,
-        INPUT_NAME: FORM_PATTERN_NOTEBOOK_OUTPUT,
-        INPUT_HELP:
-            "Notebook output is an optional parameter used to define if the "
-            "notebook used for job processing is returned. This is defined as "
-            "a path for the notebook to be copied to at job completion. If it "
-            "is not provided then the notebook is destroyed, but other output "
-            "may still be saved if defined in the output parameter."
-            "<br/>"
-            "Example: <b>dir/*_output.ipynb</b>"
-            "<br/>"
-            "In this example the job notebook is saved within the 'dir' "
-            "directory. If the job was triggered on 'test.txt' then the "
-            "output notebook would be called 'test_output.ipynb",
-        INPUT_OPTIONAL: True
     },
     FORM_PATTERN_OUTPUT: {
         INPUT_KEY: OUTPUT,
@@ -1164,8 +1126,6 @@ class WorkflowWidget:
                 PATTERN_FORM_INPUTS[FORM_PATTERN_TRIGGER_PATH],
                 PATTERN_FORM_INPUTS[FORM_PATTERN_RECIPES],
                 PATTERN_FORM_INPUTS[FORM_PATTERN_TRIGGER_FILE],
-                PATTERN_FORM_INPUTS[FORM_PATTERN_TRIGGER_OUTPUT],
-                PATTERN_FORM_INPUTS[FORM_PATTERN_NOTEBOOK_OUTPUT],
                 PATTERN_FORM_INPUTS[FORM_PATTERN_OUTPUT],
                 PATTERN_FORM_INPUTS[FORM_PATTERN_VARIABLES]
             ],
@@ -1188,8 +1148,6 @@ class WorkflowWidget:
                 PATTERN_FORM_INPUTS[FORM_PATTERN_TRIGGER_PATH],
                 PATTERN_FORM_INPUTS[FORM_PATTERN_RECIPES],
                 PATTERN_FORM_INPUTS[FORM_PATTERN_TRIGGER_FILE],
-                PATTERN_FORM_INPUTS[FORM_PATTERN_TRIGGER_OUTPUT],
-                PATTERN_FORM_INPUTS[FORM_PATTERN_NOTEBOOK_OUTPUT],
                 PATTERN_FORM_INPUTS[FORM_PATTERN_OUTPUT],
                 PATTERN_FORM_INPUTS[FORM_PATTERN_VARIABLES]
             ],
@@ -2613,26 +2571,12 @@ class WorkflowWidget:
                     return False
             file_name = values[INPUT_FILE]
             trigger_paths = values[TRIGGER_PATHS]
-            trigger_output = values[TRIGGER_OUTPUT]
             if len(trigger_paths) == 1:
-                if trigger_output:
-                    pattern.add_single_input(file_name,
-                                             trigger_paths[0],
-                                             output_path=trigger_output)
-                else:
-                    pattern.add_single_input(file_name, trigger_paths[0])
+                pattern.add_single_input(file_name, trigger_paths[0])
             else:
                 # TODO Currently ignores any additional trigger paths.
                 #  fix this once mig formatting complete.
-                if trigger_output:
-                    pattern.add_single_input(file_name,
-                                             trigger_paths[0],
-                                             output_path=trigger_output)
-                else:
-                    pattern.add_single_input(file_name, trigger_paths[0])
-            notebook_return = values[NOTEBOOK_OUTPUT]
-            if notebook_return:
-                pattern.return_notebook(notebook_return)
+                pattern.add_single_input(file_name, trigger_paths[0])
             for recipe in values[RECIPES]:
                 pattern.add_recipe(recipe)
             for variable in values[VARIABLES]:

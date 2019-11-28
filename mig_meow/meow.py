@@ -9,10 +9,9 @@ from .constants import DESCENDANTS, WORKFLOW_INPUTS, \
     WORKFLOW_OUTPUTS, ANCESTORS, DEFAULT_JOB_NAME, NAME, INPUT_FILE, \
     TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, CHAR_UPPERCASE, \
     CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, PERSISTENCE_ID, \
-    TRIGGER_OUTPUT, NOTEBOOK_OUTPUT, PLACEHOLDER, TRIGGER_RECIPES, \
-    SOURCE, RECIPE, PATTERN_NAME, RECIPE_NAME, NO_OUTPUT_SET_WARNING, \
-    NO_INPUT_FILE_SET_ERROR, NO_INPUT_PATH_SET_ERROR, NO_NAME_SET_ERROR, \
-    NO_RECIPES_SET_ERROR, PLACEHOLDER_ERROR, \
+    PLACEHOLDER, TRIGGER_RECIPES, SOURCE, RECIPE, PATTERN_NAME, RECIPE_NAME, \
+    NO_OUTPUT_SET_WARNING, NO_INPUT_FILE_SET_ERROR, NO_INPUT_PATH_SET_ERROR, \
+    NO_NAME_SET_ERROR, NO_RECIPES_SET_ERROR, PLACEHOLDER_ERROR, \
     TRIGGER_NOT_VARIABLE_ERROR, OUTPUT_NOT_VARIABLE_ERROR, \
     INVALID_INPUT_PATH_ERROR
 
@@ -543,9 +542,7 @@ class Pattern:
             TRIGGER_PATHS: self.trigger_paths,
             RECIPES: self.recipes,
             OUTPUT: {},
-            VARIABLES: {},
-            TRIGGER_OUTPUT: '',
-            NOTEBOOK_OUTPUT: ''
+            VARIABLES: {}
         }
 
         for key, value in self.variables.items():
@@ -557,10 +554,6 @@ class Pattern:
             if key != self.trigger_file and key != DEFAULT_JOB_NAME:
                 display_dict[OUTPUT][key] = value
 
-        if self.trigger_file in self.outputs:
-            display_dict[TRIGGER_OUTPUT] = self.outputs[self.trigger_file]
-        if DEFAULT_JOB_NAME in self.outputs:
-            display_dict[NOTEBOOK_OUTPUT] = self.outputs[DEFAULT_JOB_NAME]
         return display_dict
 
 
