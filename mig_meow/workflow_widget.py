@@ -2724,7 +2724,6 @@ class WorkflowWidget:
             if not name:
                 msg = "%s name was not provided. " % WORKFLOW_NAME
                 self.__set_feedback(msg)
-                print(msg)
                 return False
 
             valid_string(name,
@@ -2740,7 +2739,6 @@ class WorkflowWidget:
                           "try again using a different name. " \
                           % (WORKFLOW_NAME, WORKFLOW_NAME)
                     self.__set_feedback(msg)
-                    print(msg)
                     return False
 
             inputs_dict = list_to_dict(inputs_list)
@@ -2767,7 +2765,6 @@ class WorkflowWidget:
             msg = "Something went wrong with %s generation. %s " \
                   % (WORKFLOW_NAME, str(e))
             self.__set_feedback(msg)
-            print(msg)
             return False
 
     def process_new_step(self, values, editing=False):
@@ -3140,8 +3137,7 @@ class WorkflowWidget:
                 self.vgrid,
                 VGRID_READ,
                 VGRID_ANY_OBJECT_TYPE,
-                {},
-                print_feedback=False
+                {}
             )
         except LookupError as error:
             self.__set_feedback(error)
@@ -3217,7 +3213,7 @@ class WorkflowWidget:
 
         :return: No return.
         """
-        write_to_log(self.logfile, "__import_meow_workflow(%s)" % kwargs)
+        write_to_log(self.logfile, "__import_meow_workflow", kwargs)
 
         response_patterns = kwargs.get(PATTERNS, None)
         response_recipes = kwargs.get(RECIPES, None)
@@ -3276,7 +3272,7 @@ class WorkflowWidget:
 
         if not self.vgrid:
             self.__set_feedback(NO_VGRID_MSG)
-            write_to_log(self.logfile, "__export_to_vgrid: %s" % NO_VGRID_MSG)
+            write_to_log(self.logfile, "__export_to_vgrid", NO_VGRID_MSG)
             return
 
         calls = []
@@ -3311,7 +3307,6 @@ class WorkflowWidget:
                             operation,
                             VGRID_PATTERN_OBJECT_TYPE,
                             attributes,
-                            False,
                             pattern
                         )
                     )
@@ -3346,7 +3341,6 @@ class WorkflowWidget:
                             operation,
                             VGRID_RECIPE_OBJECT_TYPE,
                             attributes,
-                            False,
                             recipe
                         )
                     )
@@ -3366,7 +3360,6 @@ class WorkflowWidget:
                         operation,
                         VGRID_PATTERN_OBJECT_TYPE,
                         attributes,
-                        False
                     )
                 )
         for id, recipe in self.mig_imports[RECIPES].items():
@@ -3380,7 +3373,6 @@ class WorkflowWidget:
                         operation,
                         VGRID_RECIPE_OBJECT_TYPE,
                         attributes,
-                        False
                     )
                 )
         self.__enable_top_buttons()
@@ -3390,7 +3382,7 @@ class WorkflowWidget:
                   "there is nothing to export to the Vgrid" \
                   % (PATTERN_NAME, RECIPE_NAME)
             self.__set_feedback(msg)
-            write_to_log(self.logfile, "__export_to_vgrid: %s" % msg)
+            write_to_log(self.logfile, "__export_to_vgrid", msg)
             return
 
         operation_combinations = [
@@ -3404,16 +3396,19 @@ class WorkflowWidget:
 
         write_to_log(
             self.logfile,
-            "__export_to_vgrid: exporting with calls: %s" % calls
+            "__export_to_vgrid",
+            "exporting with calls: %s" % calls
         )
 
         for operation in operation_combinations:
             relevant_calls = count_calls(calls, operation[0], operation[1])
 
             if relevant_calls:
-                self.__add_to_feedback("Will %s %s %s: %s. "
-                                       % (operation[0], len(relevant_calls),
-                                          operation[1], relevant_calls))
+                self.__add_to_feedback(
+                    "Will %s %s %s: %s. "
+                    % (operation[0], len(relevant_calls), operation[1],
+                       relevant_calls)
+                )
 
         # Strip names from delete calls. They were only included for feedback
         # purposes and may complicate mig operations
@@ -3458,8 +3453,7 @@ class WorkflowWidget:
                     self.vgrid,
                     operation,
                     object_type,
-                    args,
-                    print_feedback=call[3]
+                    args
                 )
 
                 msg = 'Unexpected feedback received'
@@ -3467,14 +3461,14 @@ class WorkflowWidget:
                     if operation == VGRID_CREATE:
                         persistence_id = response['text']
                         if object_type == VGRID_PATTERN_OBJECT_TYPE:
-                            pattern = call[4]
+                            pattern = call[3]
                             pattern.persistence_id = persistence_id
                             self.mig_imports[PATTERNS][persistence_id] = \
                                 pattern
                             msg = "Created %s '%s'. " \
                                   % (PATTERN_NAME, pattern.name)
                         elif object_type == VGRID_RECIPE_OBJECT_TYPE:
-                            recipe = call[4]
+                            recipe = call[3]
                             recipe[PERSISTENCE_ID] = persistence_id
                             self.mig_imports[RECIPES][persistence_id] = recipe
                             msg = "Created %s '%s'. " \
@@ -3482,13 +3476,13 @@ class WorkflowWidget:
 
                     if operation == VGRID_UPDATE:
                         if object_type == VGRID_PATTERN_OBJECT_TYPE:
-                            pattern = call[4]
+                            pattern = call[3]
                             self.mig_imports[PATTERNS][
                                 pattern.persistence_id] = pattern
                             msg = "Updated %s '%s'. " \
                                   % (PATTERN_NAME, pattern.name)
                         elif object_type == VGRID_RECIPE_OBJECT_TYPE:
-                            recipe = call[4]
+                            recipe = call[3]
                             self.mig_imports[RECIPES][
                                 recipe[PERSISTENCE_ID]] = recipe
                             msg = "Updated %s '%s'. " \

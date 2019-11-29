@@ -41,7 +41,7 @@ def create_workflow_logfile(debug_mode=None):
     Creates a new logfile for a workflow widget.
 
     :param debug_mode: (boolean)[optional] flag for widget debug mode. If True
-    then a log is created. If false it is not.
+    then a log is created. If false it is not. Default is None.
 
     :return: (function call to __create_logfile)
     """
@@ -53,20 +53,24 @@ def create_monitor_logfile(debug_mode=None):
     Creates a new logfile for a monitor widget.
 
     :param debug_mode: (boolean)[optional] flag for widget debug mode. If True
-    then a log is created. If false it is not.
+    then a log is created. If false it is not. Default is None.
 
     :return: (function call to __create_logfile)
     """
     return __create_logfile(debug_mode, MONITOR_LOGFILE_NAME)
 
 
-def write_to_log(log, entry):
+def write_to_log(log, anchor, entry):
     """
     Writes a new entry to a logfile.
 
     :param log: (str or None) Path to a logfile to write in. If no log is
     provided because the widget is not in debug mode then the entry is not
     written.
+
+    :param anchor: (str) A string to help locate where this log message
+    originated from. Should usually be the name of the function calling this
+    function.
 
     :param entry: (str) Line to write to logfile.
 
@@ -75,4 +79,4 @@ def write_to_log(log, entry):
     if log:
         time = str(datetime.now())
         with open(log, 'a') as logfile:
-            logfile.write("%s: %s\n" % (time, entry))
+            logfile.write("%s: %s - %s\n" % (time, anchor, entry))
