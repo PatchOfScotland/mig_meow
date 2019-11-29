@@ -660,9 +660,8 @@ class WorkflowWidget:
         """
         check_input_args(kwargs, SUPPORTED_ARGS)
 
-        self.debug_mode = kwargs.get(DEBUG_MODE, True)
-
-        self.logfile = create_workflow_logfile()
+        debug_mode = kwargs.get(DEBUG_MODE, True)
+        self.logfile = create_workflow_logfile(debug_mode)
 
         self.mode = kwargs.get(MODE, None)
         if not self.mode:

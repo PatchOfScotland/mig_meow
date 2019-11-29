@@ -122,6 +122,10 @@ class MonitorWidget:
         page. Default is 30.
         """
 
+        # TODO get this from args
+        debug_mode = True
+        self.logfile = create_monitor_logfile(debug_mode)
+
         check_input(vgrid, str, 'vgrid')
         self.vgrid = vgrid
         check_input(timer, int, 'timer')

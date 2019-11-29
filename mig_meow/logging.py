@@ -6,9 +6,12 @@ from datetime import datetime
 from .constants import LOGGING_DIR, WORKFLOW_LOGFILE_NAME, MONITOR_LOGFILE_NAME
 
 
-def __create_logfile(title):
+def __create_logfile(mode, title):
     """
     Creates a new logfile within the logging directory.
+
+    :param mode: (boolean) Flag for if logfile is required. If false then a
+    log is not created and None is returned.
 
     :param title: (str) The logfile to be created.
 
@@ -16,6 +19,10 @@ def __create_logfile(title):
     returned. If it could not be created then None is returned.
     """
     # TODO improve this
+
+    if not mode:
+        return False
+
     try:
         time = str(datetime.now())
         if not os.path.exists(LOGGING_DIR):
@@ -29,22 +36,28 @@ def __create_logfile(title):
         return None
 
 
-def create_workflow_logfile():
+def create_workflow_logfile(debug_mode=None):
     """
     Creates a new logfile for a workflow widget.
 
+    :param debug_mode: (boolean)[optional] flag for widget debug mode. If True
+    then a log is created. If false it is not.
+
     :return: (function call to __create_logfile)
     """
-    return __create_logfile(WORKFLOW_LOGFILE_NAME)
+    return __create_logfile(debug_mode, WORKFLOW_LOGFILE_NAME)
 
 
-def create_monitor_logfile():
+def create_monitor_logfile(debug_mode=None):
     """
     Creates a new logfile for a monitor widget.
 
+    :param debug_mode: (boolean)[optional] flag for widget debug mode. If True
+    then a log is created. If false it is not.
+
     :return: (function call to __create_logfile)
     """
-    return __create_logfile(MONITOR_LOGFILE_NAME)
+    return __create_logfile(debug_mode, MONITOR_LOGFILE_NAME)
 
 
 def write_to_log(log, entry):
