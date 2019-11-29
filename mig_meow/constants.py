@@ -227,3 +227,7 @@ MEOW_EDIT_RECIPE_BUTTON = 'meow_edit_recipe_button'
 MEOW_IMPORT_CWL_BUTTON = 'meow_import_cwl_button'
 MEOW_IMPORT_VGRID_BUTTON = 'meow_import_vgrid_button'
 MEOW_EXPORT_VGRID_BUTTON = 'meow_export_vgrid_button'
+
+LOGGING_DIR = 'workflow_widget_logs'
+WORKFLOW_LOGFILE_NAME = 'workfow_widget'
+MONITOR_LOGFILE_NAME = 'monitor_widget'

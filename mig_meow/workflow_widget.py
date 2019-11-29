@@ -5,7 +5,6 @@ import yaml
 from bqplot import *
 from bqplot.marks import Graph
 from copy import deepcopy
-from datetime import datetime
 from shutil import copyfile
 
 from IPython.display import display
@@ -20,8 +19,8 @@ from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
     VGRID_ERROR_TYPE, VGRID_TEXT_TYPE, PERSISTENCE_ID, VGRID_CREATE, \
     VGRID_UPDATE, PATTERNS, RECIPE, VGRID_DELETE, \
     VGRID, VGRID_READ, WORKFLOW_INPUTS, WORKFLOW_OUTPUTS, WHITE, ANCESTORS, \
-    TRIGGER_PATHS, CWL_INPUTS, \
-    CWL_NAME, CWL_OUTPUTS, CWL_BASE_COMMAND, CWL_ARGUMENTS, CWL_REQUIREMENTS, \
+    TRIGGER_PATHS, CWL_INPUTS, CWL_NAME, CWL_OUTPUTS, CWL_BASE_COMMAND, \
+    CWL_ARGUMENTS, CWL_REQUIREMENTS, \
     CWL_STDOUT, CWL_HINTS, CWL_STEPS, CWL_OUTPUT_TYPE, \
     CWL_OUTPUT_BINDING, CWL_OUTPUT_SOURCE, CWL_OUTPUT_GLOB, CWL_YAML_CLASS, \
     CWL_YAML_PATH, CWL_WORKFLOW_RUN, CWL_WORKFLOW_IN, CWL_WORKFLOW_OUT, \
@@ -38,6 +37,7 @@ from .cwl import make_step_dict, make_workflow_dict, get_linked_workflow, \
     get_glob_value, get_glob_entry_keys, get_step_name_from_title, \
     get_output_lookup, check_workflows_dict, check_steps_dict, \
     check_settings_dict
+from .logging import create_workflow_logfile, write_to_log
 from .mig import vgrid_workflow_json_call
 from .meow import build_workflow_object, pattern_has_recipes, Pattern, \
     create_recipe_dict, check_patterns_dict, check_recipes_dict
@@ -50,9 +50,6 @@ YAML_EXTENSIONS = [
 CWL_EXTENSIONS = [
     '.cwl'
 ]
-
-LOGGING_DIR = 'workflow_widget_logs'
-LOGFILE_NAME = 'workfow_widget.log'
 
 CWL_INPUT_TYPE = 'type'
 CWL_INPUT_BINDING = 'inputBinding'
@@ -665,7 +662,7 @@ class WorkflowWidget:
 
         self.debug_mode = kwargs.get(DEBUG_MODE, True)
 
-        self.logfile = self.__create_logfile()
+        self.logfile = create_workflow_logfile()
 
         self.mode = kwargs.get(MODE, None)
         if not self.mode:
@@ -2491,7 +2488,7 @@ class WorkflowWidget:
         :param confirm_tooltip: (str) Tooltip text to be displayed on
         confirmation button.
 
-        :param cancel_toolip: (str) Tooltip text to be displayed on cancel
+        :param cancel_tooltip: (str) Tooltip text to be displayed on cancel
         button.
 
         :return: No return.
@@ -3221,7 +3218,7 @@ class WorkflowWidget:
 
         :return: No return.
         """
-        self.__write_to_log("__import_meow_workflow(%s)" % kwargs)
+        write_to_log(self.logfile, "__import_meow_workflow(%s)" % kwargs)
 
         response_patterns = kwargs.get(PATTERNS, None)
         response_recipes = kwargs.get(RECIPES, None)
@@ -3280,7 +3277,7 @@ class WorkflowWidget:
 
         if not self.vgrid:
             self.__set_feedback(NO_VGRID_MSG)
-            self.__write_to_log("__export_to_vgrid: %s" % NO_VGRID_MSG)
+            write_to_log(self.logfile, "__export_to_vgrid: %s" % NO_VGRID_MSG)
             return
 
         calls = []
@@ -3394,7 +3391,7 @@ class WorkflowWidget:
                   "there is nothing to export to the Vgrid" \
                   % (PATTERN_NAME, RECIPE_NAME)
             self.__set_feedback(msg)
-            self.__write_to_log("__export_to_vgrid: %s" % msg)
+            write_to_log(self.logfile, "__export_to_vgrid: %s" % msg)
             return
 
         operation_combinations = [
@@ -3406,7 +3403,8 @@ class WorkflowWidget:
             (VGRID_DELETE, VGRID_RECIPE_OBJECT_TYPE),
         ]
 
-        self.__write_to_log(
+        write_to_log(
+            self.logfile,
             "__export_to_vgrid: exporting with calls: %s" % calls
         )
 
@@ -4721,21 +4719,3 @@ class WorkflowWidget:
         :return: No return.
         """
         self.feedback_area.value = ""
-
-    def __create_logfile(self):
-        # TODO improve this
-        if self.debug_mode:
-            time = str(datetime.now())
-            if not os.path.exists(LOGGING_DIR):
-                os.mkdir(LOGGING_DIR)
-            log_filename = \
-                os.path.join(LOGGING_DIR, "%s_%s" % (time, LOGFILE_NAME))
-            with open(log_filename, 'w') as logfile:
-                logfile.write('Start of workflow widget log at %s\n' % time)
-            return log_filename
-
-    def __write_to_log(self, log):
-        if self.debug_mode:
-            time = str(datetime.now())
-            with open(self.logfile, 'a') as logfile:
-                logfile.write("%s: %s\n" % (time, log))

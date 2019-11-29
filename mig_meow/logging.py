@@ -1,0 +1,65 @@
+
+import os
+
+from datetime import datetime
+
+from .constants import LOGGING_DIR, WORKFLOW_LOGFILE_NAME, MONITOR_LOGFILE_NAME
+
+
+def __create_logfile(title):
+    """
+    Creates a new logfile within the logging directory.
+
+    :param title: (str) The logfile to be created.
+
+    :return: (str or None) If the logfile is created the path of said file is
+    returned. If it could not be created then None is returned.
+    """
+    # TODO improve this
+    try:
+        time = str(datetime.now())
+        if not os.path.exists(LOGGING_DIR):
+            os.mkdir(LOGGING_DIR)
+        log_filename = \
+            os.path.join(LOGGING_DIR, "%s_%s.log" % (time, title))
+        with open(log_filename, 'w') as logfile:
+            logfile.write('Start of %s log at %s\n' % (title, time))
+        return log_filename
+    except Exception:
+        return None
+
+
+def create_workflow_logfile():
+    """
+    Creates a new logfile for a workflow widget.
+
+    :return: (function call to __create_logfile)
+    """
+    return __create_logfile(WORKFLOW_LOGFILE_NAME)
+
+
+def create_monitor_logfile():
+    """
+    Creates a new logfile for a monitor widget.
+
+    :return: (function call to __create_logfile)
+    """
+    return __create_logfile(MONITOR_LOGFILE_NAME)
+
+
+def write_to_log(log, entry):
+    """
+    Writes a new entry to a logfile.
+
+    :param log: (str or None) Path to a logfile to write in. If no log is
+    provided because the widget is not in debug mode then the entry is not
+    written.
+
+    :param entry: (str) Line to write to logfile.
+
+    :return: No return.
+    """
+    if log:
+        time = str(datetime.now())
+        with open(log, 'a') as logfile:
+            logfile.write("%s: %s\n" % (time, entry))
