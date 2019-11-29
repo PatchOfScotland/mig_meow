@@ -3137,7 +3137,8 @@ class WorkflowWidget:
                 self.vgrid,
                 VGRID_READ,
                 VGRID_ANY_OBJECT_TYPE,
-                {}
+                {},
+                logfile=self.logfile
             )
         except LookupError as error:
             self.__set_feedback(error)
@@ -3453,7 +3454,8 @@ class WorkflowWidget:
                     self.vgrid,
                     operation,
                     object_type,
-                    args
+                    args,
+                    logfile=self.logfile
                 )
 
                 msg = 'Unexpected feedback received'
