@@ -193,8 +193,7 @@ class MonitorWidget:
             self.vgrid,
             VGRID_READ,
             VGRID_QUEUE_OBJECT_TYPE,
-            attributes,
-            print_feedback=False
+            attributes
         )
 
         if 'workflows' in response:
@@ -202,7 +201,13 @@ class MonitorWidget:
 
             return True, jobs
         else:
-            return False, 'something went wrong with retrieving the queue'
+            msg = 'something went wrong with retrieving the queue'
+            write_to_log(
+                self.logfile,
+                'get_vgrid_queue',
+                '%s: %s' % (msg, response)
+            )
+            return False, msg
 
     def __display_job_queue(self, *args):
         """
@@ -494,8 +499,7 @@ class MonitorWidget:
             self.vgrid,
             VGRID_CREATE,
             CANCEL_JOB,
-            attributes,
-            print_feedback=False
+            attributes
         )
 
         print(response)
