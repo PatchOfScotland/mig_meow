@@ -109,7 +109,7 @@ class MonitorWidget:
     such as cancelling or resubmitting can also be performed. Will update
     periodically.
     """
-    def __init__(self, vgrid, timer=60, displayed_jobs=30):
+    def __init__(self, vgrid, timer=60, displayed_jobs=30, debug=True):
         """
         Constructor for MonitorWidget.
 
@@ -120,11 +120,12 @@ class MonitorWidget:
 
         :param displayed_jobs: (int)[optional] How many jobs to display per
         page. Default is 30.
+
+        :param debug: (bool)[optional] Flag for if the widget is running in
+        debug mode. Default value is True.
         """
 
-        # TODO get this from args
-        debug_mode = True
-        self.logfile = create_monitor_logfile(debug_mode)
+        self.logfile = create_monitor_logfile(debug)
 
         check_input(vgrid, str, 'vgrid')
         self.vgrid = vgrid
