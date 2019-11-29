@@ -194,7 +194,8 @@ class MonitorWidget:
             self.vgrid,
             VGRID_READ,
             VGRID_QUEUE_OBJECT_TYPE,
-            attributes
+            attributes,
+            logfile=self.logfile
         )
 
         if 'workflows' in response:

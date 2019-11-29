@@ -121,7 +121,7 @@ def vgrid_workflow_json_call(
         logfile,
         'vgrid_workflow_json_call',
         'A vgrid call has been requested. vgrid=%s, workflow_type=%s, '
-        'attributes=%s'
+        'attributes=%s' % (vgrid, workflow_type, attributes)
     )
 
     if operation not in VALID_OPERATIONS:
@@ -181,7 +181,7 @@ def vgrid_job_json_call(
         logfile,
         'vgrid_job_json_call',
         'A vgrid call has been requested. vgrid=%s, workflow_type=%s, '
-        'attributes=%s'
+        'attributes=%s' % (vgrid, workflow_type, attributes)
     )
 
     if operation not in VALID_OPERATIONS:
@@ -274,13 +274,13 @@ def __vgrid_json_call(operation, workflow_type, attributes, logfile=None):
     write_to_log(
         logfile,
         '__vgrid_json_call',
-        'got response: %s' % response
+        'got response: %s' % str(response)
     )
 
     try:
         json_response = response.json()
     except json.JSONDecodeError as err:
-        msg = 'No feedback from MiG. %s' % err
+        msg = 'Unexpected feedback from MiG. %s' % err
         write_to_log(logfile, '__vgrid_json_call', msg)
         raise Exception(msg)
 
