@@ -117,6 +117,18 @@ def vgrid_workflow_json_call(
     check_input(workflow_type, str, 'workflow_type')
     check_input(attributes, dict, 'attributes', or_none=True)
 
+    try:
+        url = os.environ['WORKFLOWS_URL']
+    except KeyError:
+        msg = \
+            'MiGrid WORKFLOWS_URL was not specified in the local ' \
+            'environment. This should be created automatically as part of ' \
+            'the Notebook creation if the Notebook was created on IDMC. ' \
+            'Currently this is the only supported way to interact with a ' \
+            'VGrid. '
+        write_to_log(logfile, '__vgrid_json_call', msg)
+        raise EnvironmentError(msg)
+
     write_to_log(
         logfile,
         'vgrid_workflow_json_call',
@@ -144,6 +156,7 @@ def vgrid_workflow_json_call(
         operation,
         workflow_type,
         attributes,
+        url,
         logfile=logfile
     )
 
@@ -177,6 +190,18 @@ def vgrid_job_json_call(
     check_input(workflow_type, str, 'workflow_type')
     check_input(attributes, dict, 'attributes', or_none=True)
 
+    try:
+        url = os.environ['JOBS_URL']
+    except KeyError:
+        msg = \
+            'MiGrid JOBS_URL was not specified in the local ' \
+            'environment. This should be created automatically as part of ' \
+            'the Notebook creation if the Notebook was created on IDMC. ' \
+            'Currently this is the only supported way to interact with a ' \
+            'VGrid. '
+        write_to_log(logfile, '__vgrid_json_call', msg)
+        raise EnvironmentError(msg)
+
     write_to_log(
         logfile,
         'vgrid_job_json_call',
@@ -198,17 +223,18 @@ def vgrid_job_json_call(
         write_to_log(logfile, 'vgrid_job_json_call', msg)
         raise ValueError(msg)
 
-    attributes[MRSL_VGRID] = [vgrid]
+    attributes[VGRID] = vgrid
 
     return __vgrid_json_call(
         operation,
         workflow_type,
         attributes,
+        url,
         logfile=logfile
     )
 
 
-def __vgrid_json_call(operation, workflow_type, attributes, logfile=None):
+def __vgrid_json_call(operation, workflow_type, attributes, url, logfile=None):
     """
     Makes JSON call to MiG. Will pull url and session_id from local
     environment variables, as setup by MiG notebook spawner. Will raise
@@ -224,6 +250,8 @@ def __vgrid_json_call(operation, workflow_type, attributes, logfile=None):
     :param attributes: (dict) A dictionary of arguments defining the specifics
     of the requested operation.
 
+    :param url: (str) The url to send JSON call to.
+
     :param logfile: (str)[optional] Path to a logfile. If provided logs are
     recorded in this file. Default is None.
 
@@ -233,17 +261,6 @@ def __vgrid_json_call(operation, workflow_type, attributes, logfile=None):
     'object_type' and footer contains 'text' and 'object_type'.
     """
 
-    try:
-        url = os.environ['WORKFLOWS_URL']
-    except KeyError:
-        msg = \
-            'MiGrid WORKFLOWS_URL was not specified in the local ' \
-            'environment. This should be created automatically as part of ' \
-            'the Notebook creation if the Notebook was created on IDMC. ' \
-            'Currently this is the only supported way to interact with a ' \
-            'VGrid. '
-        write_to_log(logfile, '__vgrid_json_call', msg)
-        raise EnvironmentError(msg)
     try:
         session_id = os.environ['WORKFLOWS_SESSION_ID']
     except KeyError:
@@ -266,7 +283,7 @@ def __vgrid_json_call(operation, workflow_type, attributes, logfile=None):
     write_to_log(
         logfile,
         '__vgrid_json_call',
-        'sending request with data: %s' % data
+        'sending request to  %s with data: %s' % (url, data)
     )
 
     response = requests.post(url, json=data, verify=False)

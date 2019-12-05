@@ -198,17 +198,19 @@ class MonitorWidget:
             logfile=self.logfile
         )
 
-        if 'workflows' in response:
-            jobs = response['workflows']
-
+        if response['object_type'] == 'job_dict':
+            jobs = response['jobs']
             return True, jobs
         else:
-            msg = 'something went wrong with retrieving the queue'
+            msg = 'something went wrong with retrieving the queue. '
             write_to_log(
                 self.logfile,
                 'get_vgrid_queue',
                 '%s: %s' % (msg, response)
             )
+            if self.logfile:
+                msg += \
+                    "You can check the logfile '%s' for details" % self.logfile
             return False, msg
 
     def __display_job_queue(self, *args):
