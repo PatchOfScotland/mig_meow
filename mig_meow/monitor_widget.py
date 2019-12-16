@@ -6,7 +6,8 @@ from IPython.display import display
 
 from .inputs import check_input
 from .constants import VGRID, VGRID_READ, VGRID_QUEUE_OBJECT_TYPE,\
-    CANCEL_JOB, VGRID_CREATE
+    CANCEL_JOB, VGRID_CREATE, VGRID_UPDATE, VGRID_JOB_OBJECT_TYPE, \
+    OBJECT_TYPE
 from .logging import create_monitor_logfile, write_to_log
 from .mig import vgrid_job_json_call
 
@@ -20,29 +21,29 @@ MRSL_JOB_EXECUTE = 'EXECUTE'
 MRSL_JOB_EXECUTABLES = 'EXECUTABLES'
 MRSL_JOB_INPUTFILES = 'INPUTFILES'
 MRSL_JOB_OUTPUTFILES = 'OUTPUTFILES'
-# MRSL_JOB_NAME = 'JOBNAME'
-# MRSL_JOB_RETRIES = 'RETRIES'
-# MRSL_JOB_RUNTIMEENVIROMENT = 'RUNTIMEENVIRONMENT'
-# MRSL_JOB_ENVIROMENT = 'ENVIRONMENT'
-# MRSL_JOB_VERIFYFILES = 'VERIFYFILES'
-# MRSL_JOB_DISK = 'DISK'
-# MRSL_JOB_JOBTYPE = 'JOBTYPE'
-# MRSL_JOB_RESOURCE = 'RESOURCE'
-# MRSL_JOB_CPUTIME = 'CPUTIME'
-# MRSL_JOB_PLATFORM = 'PLATFORM'
-# MRSL_JOB_USERCERT = 'USER_CERT'
-# MRSL_JOB_MAXFILL = 'MAXFILL'
-# MRSL_JOB_MOUNT = 'MOUNT'
-# MRSL_JOB_MAXPRICE = 'MAXPRICE'
-# MRSL_JOB_PROJECT = 'PROJECT'
-# MRSL_JOB_SANDBOX = 'SANDBOX'
-# MRSL_JOB_CPUCOUNT = 'CPUCOUNT'
-# MRSL_JOB_NOTIFY = 'NOTIFY'
-# MRSL_JOB_NODECOUNT = 'NODECOUNT'
-# MRSL_JOB_ARCHITECTURE = 'ARCHITECTURE'
-# MRSL_JOB_MEMORY = 'MEMORY'
-# MRSL_JOB_QUEUED_TIME = 'QUEUED_TIMESTAMP'
-# MRSL_JOB_CANCELED_TIME = 'CANCELED_TIMESTAMP'
+MRSL_JOB_NAME = 'JOBNAME'
+MRSL_JOB_RETRIES = 'RETRIES'
+MRSL_JOB_RUNTIMEENVIROMENT = 'RUNTIMEENVIRONMENT'
+MRSL_JOB_ENVIROMENT = 'ENVIRONMENT'
+MRSL_JOB_VERIFYFILES = 'VERIFYFILES'
+MRSL_JOB_DISK = 'DISK'
+MRSL_JOB_JOBTYPE = 'JOBTYPE'
+MRSL_JOB_RESOURCE = 'RESOURCE'
+MRSL_JOB_CPUTIME = 'CPUTIME'
+MRSL_JOB_PLATFORM = 'PLATFORM'
+MRSL_JOB_USERCERT = 'USER_CERT'
+MRSL_JOB_MAXFILL = 'MAXFILL'
+MRSL_JOB_MOUNT = 'MOUNT'
+MRSL_JOB_MAXPRICE = 'MAXPRICE'
+MRSL_JOB_PROJECT = 'PROJECT'
+MRSL_JOB_SANDBOX = 'SANDBOX'
+MRSL_JOB_CPUCOUNT = 'CPUCOUNT'
+MRSL_JOB_NOTIFY = 'NOTIFY'
+MRSL_JOB_NODECOUNT = 'NODECOUNT'
+MRSL_JOB_ARCHITECTURE = 'ARCHITECTURE'
+MRSL_JOB_MEMORY = 'MEMORY'
+MRSL_JOB_QUEUED_TIME = 'QUEUED_TIMESTAMP'
+MRSL_JOB_CANCELED_TIME = 'CANCELED_TIMESTAMP'
 
 JOB_QUEUE_KEYS = {
     MRSL_JOB_ID: 'Job ID',
@@ -60,6 +61,69 @@ JOB_CORE_DISPLAY_KEYS = {
     MRSL_JOB_EXECUTABLES: 'Executable files',
     MRSL_JOB_OUTPUTFILES: 'Output files',
 }
+
+JOB_KEYS = [
+    MRSL_JOB_ID,
+    MRSL_JOB_STATUS,
+    MRSL_JOB_RECEIVED_TIME,
+    MRSL_JOB_VGRID,
+    MRSL_JOB_EXECUTE,
+    MRSL_JOB_EXECUTABLES,
+    MRSL_JOB_INPUTFILES,
+    MRSL_JOB_OUTPUTFILES,
+    MRSL_JOB_NAME,
+    MRSL_JOB_RETRIES,
+    MRSL_JOB_RUNTIMEENVIROMENT,
+    MRSL_JOB_ENVIROMENT,
+    MRSL_JOB_VERIFYFILES,
+    MRSL_JOB_DISK,
+    MRSL_JOB_JOBTYPE,
+    MRSL_JOB_RESOURCE,
+    MRSL_JOB_CPUTIME,
+    MRSL_JOB_PLATFORM,
+    MRSL_JOB_USERCERT,
+    MRSL_JOB_MAXFILL,
+    MRSL_JOB_MOUNT,
+    MRSL_JOB_MAXPRICE,
+    MRSL_JOB_PROJECT,
+    MRSL_JOB_SANDBOX,
+    MRSL_JOB_CPUCOUNT,
+    MRSL_JOB_NOTIFY,
+    MRSL_JOB_NODECOUNT,
+    MRSL_JOB_ARCHITECTURE,
+    MRSL_JOB_MEMORY,
+    MRSL_JOB_QUEUED_TIME,
+    MRSL_JOB_CANCELED_TIME
+]
+
+SUBMISSION_JOB_KEYS = [
+    MRSL_JOB_VGRID,
+    MRSL_JOB_EXECUTE,
+    MRSL_JOB_EXECUTABLES,
+    MRSL_JOB_INPUTFILES,
+    MRSL_JOB_OUTPUTFILES,
+    MRSL_JOB_NAME,
+    MRSL_JOB_RETRIES,
+    MRSL_JOB_RUNTIMEENVIROMENT,
+    MRSL_JOB_ENVIROMENT,
+    MRSL_JOB_VERIFYFILES,
+    MRSL_JOB_DISK,
+    MRSL_JOB_JOBTYPE,
+    MRSL_JOB_RESOURCE,
+    MRSL_JOB_CPUTIME,
+    MRSL_JOB_PLATFORM,
+    MRSL_JOB_USERCERT,
+    MRSL_JOB_MAXFILL,
+    MRSL_JOB_MOUNT,
+    MRSL_JOB_MAXPRICE,
+    MRSL_JOB_PROJECT,
+    MRSL_JOB_SANDBOX,
+    MRSL_JOB_CPUCOUNT,
+    MRSL_JOB_NOTIFY,
+    MRSL_JOB_NODECOUNT,
+    MRSL_JOB_ARCHITECTURE,
+    MRSL_JOB_MEMORY
+]
 
 SELECTION_START = 'START'
 SELECTION_END = 'END'
@@ -142,9 +206,9 @@ class MonitorWidget:
         self.widgets = {}
 
         self.__stop_polling = threading.Event()
-        self.__start_queue_display()
+        self.__start_queue_display(None)
 
-    def __start_queue_display(self):
+    def __start_queue_display(self, button):
         """
         Starts displaying queue information. Creates and starts a
         PollingThread to keep the display updating automatically.
@@ -474,7 +538,8 @@ class MonitorWidget:
 
     def __resubmit_func(self, button, job_id):
         """
-        'Resubmit Job' button clicked event handler. Currently not implemented.
+        'Resubmit Job' button clicked event handler. Sends a JSON request to
+        the MiG VGrid for the job to be ressubmitted.
 
         :param button: (widgets.Button) The button object.
 
@@ -482,7 +547,29 @@ class MonitorWidget:
 
         :return: No return.
         """
-        print('resubmit func for %s' % job_id)
+
+        job = self.jobs[job_id]
+
+        attributes = {}
+        for key, value in job.items():
+            if key in SUBMISSION_JOB_KEYS and value:
+                updated_values = []
+                if isinstance(value, list):
+                    for element in value:
+                        if isinstance(element, list):
+                            updated_values.append("%s=%s"
+                                                  % (element[0], element[1]))
+                if updated_values:
+                    attributes[key] = updated_values
+                else:
+                    attributes[key] = value
+
+        _, response, _ = vgrid_job_json_call(
+            self.vgrid,
+            VGRID_CREATE,
+            VGRID_JOB_OBJECT_TYPE,
+            attributes
+        )
 
     def __cancel_func(self, button, job_id):
         """
@@ -497,16 +584,17 @@ class MonitorWidget:
         """
         attributes = {
             MRSL_JOB_ID: job_id,
-            VGRID: self.vgrid
+            MRSL_JOB_STATUS: 'CANCELED'
         }
         _, response, _ = vgrid_job_json_call(
             self.vgrid,
-            VGRID_CREATE,
-            CANCEL_JOB,
+            VGRID_UPDATE,
+            VGRID_JOB_OBJECT_TYPE,
             attributes
         )
 
-        print(response)
+        if OBJECT_TYPE in response and response[OBJECT_TYPE] == 'text':
+            self.jobs[job_id][MRSL_JOB_STATUS] = 'CANCELED'
 
     def display_widget(self):
         """
