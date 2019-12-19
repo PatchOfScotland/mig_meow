@@ -10,7 +10,7 @@ from shutil import copyfile
 from IPython.display import display
 
 from .inputs import valid_file_path, valid_string, check_input_args, \
-    check_input, valid_dir_path
+    check_input, valid_dir_path, is_valid_recipe_dict
 from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
     DEFAULT_JOB_NAME, SOURCE, OBJECT_TYPE, \
     VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
@@ -27,11 +27,7 @@ from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
     CWL_VARIABLES, PLACEHOLDER, WORKFLOW_NAME, STEP_NAME, VARIABLES_NAME, \
     WORKFLOWS, STEPS, SETTINGS, CWL_CLASS, PATTERN_NAME, RECIPE_NAME, \
     CWL_CLASS_WORKFLOW, CWL_CLASS_COMMAND_LINE_TOOL, VGRID_ANY_OBJECT_TYPE, \
-    MEOW_MODE, CWL_MODE, WIDGET_MODES, DEFAULT_WORKFLOW_TITLE, \
-    DEFAULT_CWL_IMPORT_EXPORT_DIR, MEOW_IMPORT_CWL_BUTTON, \
-    MEOW_NEW_PATTERN_BUTTON, MEOW_EXPORT_VGRID_BUTTON, \
-    MEOW_IMPORT_VGRID_BUTTON, MEOW_EDIT_PATTERN_BUTTON, \
-    MEOW_EDIT_RECIPE_BUTTON, MEOW_NEW_RECIPE_BUTTON
+    MEOW_MODE, CWL_MODE, WIDGET_MODES
 from .cwl import make_step_dict, make_workflow_dict, get_linked_workflow, \
     make_settings_dict, check_workflow_is_valid, check_step_is_valid, \
     get_glob_value, get_glob_entry_keys, get_step_name_from_title, \
@@ -51,10 +47,24 @@ CWL_EXTENSIONS = [
     '.cwl'
 ]
 
+DEFAULT_WORKFLOW_TITLE = 'workflow'
+DEFAULT_MEOW_IMPORT_EXPORT_DIR = 'meow_directory'
+DEFAULT_CWL_IMPORT_EXPORT_DIR = 'cwl_directory'
+
 CWL_INPUT_TYPE = 'type'
 CWL_INPUT_BINDING = 'inputBinding'
 CWL_INPUT_POSITION = 'position'
 CWL_INPUT_PREFIX = 'prefix'
+
+MEOW_NEW_PATTERN_BUTTON = 'meow_new_pattern_button'
+MEOW_EDIT_PATTERN_BUTTON = 'meow_edit_pattern_button'
+MEOW_NEW_RECIPE_BUTTON = 'meow_new_recipe_button'
+MEOW_EDIT_RECIPE_BUTTON = 'meow_edit_recipe_button'
+MEOW_IMPORT_CWL_BUTTON = 'meow_import_cwl_button'
+MEOW_IMPORT_VGRID_BUTTON = 'meow_import_vgrid_button'
+MEOW_EXPORT_VGRID_BUTTON = 'meow_export_vgrid_button'
+MEOW_IMPORT_DIR_BUTTON = 'meow_import_dir_button'
+MEOW_EXPORT_DIR_BUTTON = 'meow_export_dir_button'
 
 CWL_NEW_WORKFLOW_BUTTON = 'cwl_new_workflow_button'
 CWL_EDIT_WORKFLOW_BUTTON = 'cwl_edit_workflow_button'
@@ -76,6 +86,7 @@ CWL_WORK_DIR_REQ = 'InitialWorkDirRequirement'
 MODE = 'mode'
 AUTO_IMPORT = 'auto_import'
 WORKFLOW_TITLE_ARG = "export_name"
+MEOW_IMPORT_EXPORT_DIR_ARG = 'meow_dir'
 CWL_IMPORT_EXPORT_DIR_ARG = 'cwl_dir'
 DEBUG_MODE = 'debug'
 
@@ -88,6 +99,7 @@ SUPPORTED_ARGS = {
     SETTINGS: dict,
     VGRID: str,
     AUTO_IMPORT: bool,
+    MEOW_IMPORT_EXPORT_DIR_ARG: str,
     CWL_IMPORT_EXPORT_DIR_ARG: str,
     WORKFLOW_TITLE_ARG: str,
     DEBUG_MODE: str
@@ -648,6 +660,9 @@ class WorkflowWidget:
         attempt to connect to a VGrid and import data. If in CWL mode will
         attempt to read 'cwl_dir' location. Default is False.
 
+        :param meow_dir: (str)[optional] Directory path where MEOW data will be
+        exported or imported to/from. Default value 'meow_directory'.
+
         :param cwl_dir: (str)[optional] Directory path where CWL data will be
         exported or imported to/from. Default value 'cwl_directory'.
 
@@ -679,6 +694,14 @@ class WorkflowWidget:
             self.cwl_import_export_dir = cwl_dir
         else:
             self.cwl_import_export_dir = DEFAULT_CWL_IMPORT_EXPORT_DIR
+
+        meow_dir = kwargs.get(MEOW_IMPORT_EXPORT_DIR_ARG, None)
+        if meow_dir:
+            check_input(meow_dir, str, MEOW_IMPORT_EXPORT_DIR_ARG)
+            valid_dir_path(meow_dir, MEOW_IMPORT_EXPORT_DIR_ARG)
+            self.meow_import_export_dir = meow_dir
+        else:
+            self.meow_import_export_dir = DEFAULT_MEOW_IMPORT_EXPORT_DIR
 
         workflow_title = kwargs.get(WORKFLOW_TITLE_ARG, None)
         if workflow_title:
@@ -804,14 +827,24 @@ class WorkflowWidget:
                         'MEOW format. '
                 },
                 MEOW_IMPORT_VGRID_BUTTON: {
-                    BUTTON_ON_CLICK: self.import_from_vgrid_clicked,
+                    BUTTON_ON_CLICK: self.import_meow_from_vgrid_clicked,
                     BUTTON_DESC: "Read VGrid",
                     BUTTON_TOOLTIP: 'Import data from Vgrid. '
                 },
                 MEOW_EXPORT_VGRID_BUTTON: {
-                    BUTTON_ON_CLICK: self.export_to_vgrid_clicked,
+                    BUTTON_ON_CLICK: self.export_meow_to_vgrid_clicked,
                     BUTTON_DESC: "Export to Vgrid",
                     BUTTON_TOOLTIP: 'Exports data to Vgrid. '
+                },
+                MEOW_IMPORT_DIR_BUTTON: {
+                    BUTTON_ON_CLICK: self.import_meow_from_dir_clicked,
+                    BUTTON_DESC: "Read directory",
+                    BUTTON_TOOLTIP: 'Import data from a directory. '
+                },
+                MEOW_EXPORT_DIR_BUTTON: {
+                    BUTTON_ON_CLICK: self.export_meow_to_dir_clicked,
+                    BUTTON_DESC: "Export to directory",
+                    BUTTON_TOOLTIP: 'Exports data to a directory. '
                 }
             },
             CWL_MODE: {
@@ -852,12 +885,12 @@ class WorkflowWidget:
                         "Convert existing MEOW definitions into CWL"
                 },
                 CWL_IMPORT_DIR_BUTTON: {
-                    BUTTON_ON_CLICK: self.import_from_dir_clicked,
+                    BUTTON_ON_CLICK: self.import_cwl_from_dir_clicked,
                     BUTTON_DESC: "Read directory",
                     BUTTON_TOOLTIP: 'Imports CWL data from a given directory. '
                 },
                 CWL_EXPORT_DIR_BUTTON: {
-                    BUTTON_ON_CLICK: self.export_to_dir_clicked,
+                    BUTTON_ON_CLICK: self.export_cwl_to_dir_clicked,
                     BUTTON_DESC: "Export to directory",
                     BUTTON_TOOLTIP: 'Exports CWL data to a given directory. '
                 }
@@ -1073,7 +1106,7 @@ class WorkflowWidget:
                         self.__import_cwl(**buffer_cwl)
                     self.__enable_top_buttons()
                 else:
-                    status, feedback = self.__import_from_dir()
+                    status, feedback = self.__import_from_cwl_dir()
 
                     if status:
                         self.cwl[WORKFLOWS] = feedback[WORKFLOWS]
@@ -1219,7 +1252,7 @@ class WorkflowWidget:
         if valid:
             self.__import_meow_workflow(**buffer_meow)
 
-    def import_from_vgrid_clicked(self, button):
+    def import_meow_from_vgrid_clicked(self, button):
         """
         Event handler for 'Import from VGrid' button clicked. Will attempt to
         import Patterns and Recipes from MiG VGrid.
@@ -1232,7 +1265,7 @@ class WorkflowWidget:
         self.__clear_feedback()
         self.__import_from_vgrid()
 
-    def export_to_vgrid_clicked(self, button):
+    def export_meow_to_vgrid_clicked(self, button):
         """
         Event handler for 'Export to Vgrid' button clicked. Will attempt to
         export existing Patterns and Recipes to a MiG Vgrid.
@@ -1244,6 +1277,125 @@ class WorkflowWidget:
         self.__close_form()
         self.__clear_feedback()
         self.__export_to_vgrid()
+
+    def import_meow_from_dir_clicked(self, button):
+        """
+        Event handler for 'Import From Directory' button clicked. Will attempt
+        to import MEOW Patterns and Recipes from the defined MEOW
+        import/export dir as defined by 'meow_dir'.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
+
+        self.__close_form()
+        self.__clear_feedback()
+
+        status, feedback = self.__import_from_meow_dir()
+
+        if not status:
+            self.__set_feedback(feedback)
+            self.__enable_top_buttons()
+            return
+
+        if feedback[PATTERNS] or feedback[RECIPES]:
+            self.__add_to_feedback(
+                "%s(s) %s, and %s(s) %s have been identified for "
+                "import. Any currently registered %s(s), and %s(s) "
+                "will be overwritten. "
+                % (
+                    PATTERN_NAME,
+                    str(list(feedback[PATTERNS].keys())),
+                    RECIPE_NAME,
+                    str(list(feedback[RECIPES].keys())),
+                    PATTERN_NAME,
+                    RECIPE_NAME
+                )
+            )
+
+            self.__create_confirmation_buttons(
+                self.__import_meow_workflow,
+                feedback,
+                "Confirm Import",
+                "Cancel Import",
+                "Import canceled. No local data has been changed. ",
+                "Confirm Import of the shown data. ",
+                "Cancel Import. No local data will be changed. "
+            )
+        else:
+            self.__add_to_feedback("No MEOW inputs were found")
+        self.__enable_top_buttons()
+
+    def export_meow_to_dir_clicked(self, button):
+        """
+        Event handler for 'Export To Directory' button clicked. Will attempt
+        to export existing MEOW Patterns and Recipes to the defined
+        MEOW import/export dir as defined by 'meow_dir'.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
+        self.__close_form()
+        self.__clear_feedback()
+
+        patterns_path = os.path.join(self.meow_import_export_dir, PATTERNS)
+        recipes_path = os.path.join(self.meow_import_export_dir, RECIPES)
+        if not os.path.exists(self.meow_import_export_dir):
+            os.mkdir(self.meow_import_export_dir)
+        if not os.path.exists(patterns_path):
+            os.mkdir(patterns_path)
+        if not os.path.exists(recipes_path):
+            os.mkdir(recipes_path)
+
+        for pattern_name, pattern in self.meow[PATTERNS].items():
+            valid, feedback = pattern.integrity_check()
+
+            if not valid:
+                self.__add_to_feedback(
+                    "Could not export %s %s. %s"
+                    % (PATTERN_NAME, pattern_name, feedback)
+                )
+                break
+
+            pattern_file_path = os.path.join(patterns_path, pattern_name)
+
+            with open(pattern_file_path, 'w') as pattern_file:
+                yaml.dump(
+                    pattern,
+                    pattern_file,
+                    default_flow_style=False
+                )
+
+            self.__add_to_feedback(
+                "Exported %s %s successfully to %s. "
+                % (PATTERN_NAME, pattern_name, pattern_file_path)
+            )
+
+        for recipe_name, recipe in self.meow[RECIPES].items():
+            valid, feedback = is_valid_recipe_dict(recipe)
+
+            if not valid:
+                self.__add_to_feedback(
+                    "Could not export %s %s. %s"
+                    % (RECIPE_NAME, recipe_name, feedback)
+                )
+                break
+
+            recipe_file_path = os.path.join(recipes_path, recipe_name)
+
+            with open(recipe_file_path, 'w') as recipe_file:
+                yaml.dump(
+                    recipe,
+                    recipe_file,
+                    default_flow_style=False
+                )
+
+            self.__add_to_feedback(
+                "Exported %s %s successfully to %s. "
+                % (RECIPE_NAME, recipe_name, recipe_file_path)
+            )
 
     def new_workflow_clicked(self, button):
         """
@@ -1428,7 +1580,7 @@ class WorkflowWidget:
             )
         self.__enable_top_buttons()
 
-    def import_from_dir_clicked(self, button):
+    def import_cwl_from_dir_clicked(self, button):
         """
         Event handler for 'Import From Directory' button clicked. Will attempt
         to import CWL Workflows, Steps and Arguments from the defined cwl
@@ -1442,7 +1594,7 @@ class WorkflowWidget:
         self.__close_form()
         self.__clear_feedback()
 
-        status, feedback = self.__import_from_dir()
+        status, feedback = self.__import_from_cwl_dir()
 
         if not status:
             self.__set_feedback(feedback)
@@ -1480,7 +1632,7 @@ class WorkflowWidget:
             self.__add_to_feedback("No CWL inputs were found")
         self.__enable_top_buttons()
 
-    def export_to_dir_clicked(self, button):
+    def export_cwl_to_dir_clicked(self, button):
         """
         Event handler for 'Export To Directory' button clicked. Will attempt
         to export existing CWL Workflows, Steps and Arguments to the defined
@@ -1668,6 +1820,8 @@ class WorkflowWidget:
                     self.button_elements[MEOW_EXPORT_VGRID_BUTTON].tooltip = \
                         "Export is not available as VGrid has not been " \
                         "specified. "
+                self.button_elements[MEOW_EXPORT_DIR_BUTTON].disabled = False
+                self.button_elements[MEOW_IMPORT_DIR_BUTTON].disabled = False
 
             elif self.mode == CWL_MODE:
                 self.button_elements[CWL_NEW_WORKFLOW_BUTTON].disabled = False
@@ -4105,7 +4259,7 @@ class WorkflowWidget:
 
         return True, buffer_meow
 
-    def __import_from_dir(self):
+    def __import_from_cwl_dir(self):
         """
         Attempts to read in CWL data from files in a directory. No data is
         saved to the internal CWL database, to allow for a user confirmation
@@ -4191,6 +4345,69 @@ class WorkflowWidget:
                                 step[CWL_STDOUT] = yaml_dict[CWL_STDOUT]
                             buffer_cwl[STEPS][filename] = step
         return True, buffer_cwl
+
+    def __import_from_meow_dir(self):
+        """
+        Attempts to read in MEOW data from files in a directory. No data is
+        saved to the internal MEOW database, to allow for a user confirmation
+        before import is completed.
+
+        :return: (Tuple (bool, string or dict)) If import is not possible then
+        returns a tuple with first value False, and an explanatory error
+        message in the second value. If it is possible then a tuple is
+        returned with first value True, and the identified MEOW definitions in
+        a dict as the second value.
+        """
+        buffer_meow = {
+            PATTERNS: {},
+            RECIPES: {}
+        }
+
+        patterns_path = os.path.join(self.meow_import_export_dir, PATTERNS)
+        recipes_path = os.path.join(self.meow_import_export_dir, RECIPES)
+        if not os.path.exists(self.meow_import_export_dir):
+            msg = "Cannot import from directory %s as it does not exist. If " \
+                  "you intended to import from another directory it can be " \
+                  "set during widget creation using the parameter '%s'. " \
+                  % (self.meow_import_export_dir, MEOW_IMPORT_EXPORT_DIR_ARG)
+            return False, msg
+
+        pattern_files = [
+            f for f in os.listdir(patterns_path)
+            if os.path.isfile(os.path.join(patterns_path, f))
+        ]
+
+        for patttern_file in pattern_files:
+            try:
+                with open(os.path.join(patterns_path, patttern_file), 'r') \
+                        as yaml_file:
+                    yaml_dict = yaml.full_load(yaml_file)
+                    if '.' in patttern_file:
+                        patttern_file = patttern_file[:patttern_file.index('.')]
+                    buffer_meow[PATTERNS][patttern_file] = yaml_dict
+            except Exception as ex:
+                self.__add_to_feedback(
+                    "Tried to import %s but could not. %s" % (PATTERN_NAME, ex)
+                )
+        recipe_files = [
+            f for f in os.listdir(recipes_path)
+            if os.path.isfile(os.path.join(recipes_path, f))
+        ]
+
+        for recipe_file in recipe_files:
+            try:
+                with open(os.path.join(recipes_path, recipe_file), 'r') \
+                        as yaml_file:
+                    yaml_dict = yaml.full_load(yaml_file)
+                    if '.' in recipe_file:
+                        recipe_file = recipe_file[:recipe_file.index('.')]
+                    buffer_meow[RECIPES][recipe_file] = yaml_dict
+            except Exception as ex:
+                self.__add_to_feedback(
+                    "Tried to import %s but could not. %s" % (RECIPE_NAME, ex)
+                )
+
+        return True, buffer_meow
 
     def __import_cwl(self, **kwargs):
         """

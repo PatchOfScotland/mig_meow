@@ -217,17 +217,6 @@ WIDGET_MODES = [
     CWL_MODE
 ]
 
-DEFAULT_WORKFLOW_TITLE = 'workflow'
-DEFAULT_CWL_IMPORT_EXPORT_DIR = 'cwl_directory'
-
-MEOW_NEW_PATTERN_BUTTON = 'meow_new_pattern_button'
-MEOW_EDIT_PATTERN_BUTTON = 'meow_edit_pattern_button'
-MEOW_NEW_RECIPE_BUTTON = 'meow_new_recipe_button'
-MEOW_EDIT_RECIPE_BUTTON = 'meow_edit_recipe_button'
-MEOW_IMPORT_CWL_BUTTON = 'meow_import_cwl_button'
-MEOW_IMPORT_VGRID_BUTTON = 'meow_import_vgrid_button'
-MEOW_EXPORT_VGRID_BUTTON = 'meow_export_vgrid_button'
-
 LOGGING_DIR = 'mig_meow_widget_logs'
 WORKFLOW_LOGFILE_NAME = 'workfow_widget'
 MONITOR_LOGFILE_NAME = 'monitor_widget'
