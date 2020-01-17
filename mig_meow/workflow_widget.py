@@ -741,7 +741,7 @@ class WorkflowWidget:
             description='Mode:',
             disabled=False,
             button_style='',
-            tooltips= [
+            tooltips=[
                 "Construct workflows as defined by %s. Attempts will be made "
                 "to convert any existing objects to the %s paradigm. " % (i, i)
                 for i in WIDGET_MODES if isinstance(i, str)
@@ -3329,8 +3329,8 @@ class WorkflowWidget:
                 )
                 self.__add_to_feedback(
                     "Found %s %s(s) from Vgrid %s: %s "
-                   % (len(response_recipes), RECIPE_NAME, self.vgrid,
-                      list(response_recipes.keys())))
+                    % (len(response_recipes), RECIPE_NAME, self.vgrid,
+                       list(response_recipes.keys())))
 
                 self.__add_to_feedback(
                     "Import these %s(s) and %s(s) into local memory? This "
@@ -3522,10 +3522,10 @@ class WorkflowWidget:
                         attributes,
                     )
                 )
-        for id, recipe in self.mig_imports[RECIPES].items():
-            if id not in recipe_ids:
+        for recipe_id, recipe in self.mig_imports[RECIPES].items():
+            if recipe_id not in recipe_ids:
                 attributes = {
-                    PERSISTENCE_ID: id,
+                    PERSISTENCE_ID: recipe_id,
                     NAME: recipe[NAME]
                 }
                 calls.append(
