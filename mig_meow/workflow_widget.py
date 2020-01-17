@@ -807,7 +807,8 @@ class WorkflowWidget:
                 MEOW_EDIT_PATTERN_BUTTON: {
                     BUTTON_ON_CLICK: self.edit_pattern_clicked,
                     BUTTON_DESC: "Edit %s" % PATTERN_NAME,
-                    BUTTON_TOOLTIP: 'Edit or delete an existing %s. ' % PATTERN_NAME
+                    BUTTON_TOOLTIP: 'Edit or delete an existing %s. '
+                                    % PATTERN_NAME
                 },
                 MEOW_NEW_RECIPE_BUTTON: {
                     BUTTON_ON_CLICK: self.new_recipe_clicked,
@@ -817,7 +818,8 @@ class WorkflowWidget:
                 MEOW_EDIT_RECIPE_BUTTON: {
                     BUTTON_ON_CLICK: self.edit_recipe_clicked,
                     BUTTON_DESC: "Edit %s" % RECIPE_NAME,
-                    BUTTON_TOOLTIP: 'Edit or delete an existing %s. ' % RECIPE_NAME
+                    BUTTON_TOOLTIP: 'Edit or delete an existing %s. '
+                                    % RECIPE_NAME
                 },
                 MEOW_IMPORT_CWL_BUTTON: {
                     BUTTON_ON_CLICK: self.import_from_cwl_clicked,
