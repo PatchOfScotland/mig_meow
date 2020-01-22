@@ -27,7 +27,15 @@ from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
     CWL_VARIABLES, PLACEHOLDER, WORKFLOW_NAME, STEP_NAME, VARIABLES_NAME, \
     WORKFLOWS, STEPS, SETTINGS, CWL_CLASS, PATTERN_NAME, RECIPE_NAME, \
     CWL_CLASS_WORKFLOW, CWL_CLASS_COMMAND_LINE_TOOL, VGRID_ANY_OBJECT_TYPE, \
-    MEOW_MODE, CWL_MODE, WIDGET_MODES
+    MEOW_MODE, CWL_MODE, WIDGET_MODES, DEFAULT_WORKFLOW_TITLE, \
+    DEFAULT_MEOW_IMPORT_EXPORT_DIR, DEFAULT_CWL_IMPORT_EXPORT_DIR, \
+    MEOW_NEW_PATTERN_BUTTON, MEOW_EDIT_PATTERN_BUTTON, \
+    MEOW_NEW_RECIPE_BUTTON, MEOW_EDIT_RECIPE_BUTTON, MEOW_IMPORT_CWL_BUTTON, \
+    MEOW_IMPORT_VGRID_BUTTON, MEOW_EXPORT_VGRID_BUTTON, \
+    MEOW_IMPORT_DIR_BUTTON, MEOW_EXPORT_DIR_BUTTON, CWL_NEW_WORKFLOW_BUTTON, \
+    CWL_EDIT_WORKFLOW_BUTTON, CWL_NEW_STEP_BUTTON, CWL_EDIT_STEP_BUTTON, \
+    CWL_NEW_VARIABLES_BUTTON, CWL_EDIT_VARIABLES_BUTTON, \
+    CWL_IMPORT_DIR_BUTTON, CWL_EXPORT_DIR_BUTTON, CWL_IMPORT_MEOW_BUTTON
 from .cwl import make_step_dict, make_workflow_dict, get_linked_workflow, \
     make_settings_dict, check_workflow_is_valid, check_step_is_valid, \
     get_glob_value, get_glob_entry_keys, get_step_name_from_title, \
@@ -47,34 +55,10 @@ CWL_EXTENSIONS = [
     '.cwl'
 ]
 
-DEFAULT_WORKFLOW_TITLE = 'workflow'
-DEFAULT_MEOW_IMPORT_EXPORT_DIR = 'meow_directory'
-DEFAULT_CWL_IMPORT_EXPORT_DIR = 'cwl_directory'
-
 CWL_INPUT_TYPE = 'type'
 CWL_INPUT_BINDING = 'inputBinding'
 CWL_INPUT_POSITION = 'position'
 CWL_INPUT_PREFIX = 'prefix'
-
-MEOW_NEW_PATTERN_BUTTON = 'meow_new_pattern_button'
-MEOW_EDIT_PATTERN_BUTTON = 'meow_edit_pattern_button'
-MEOW_NEW_RECIPE_BUTTON = 'meow_new_recipe_button'
-MEOW_EDIT_RECIPE_BUTTON = 'meow_edit_recipe_button'
-MEOW_IMPORT_CWL_BUTTON = 'meow_import_cwl_button'
-MEOW_IMPORT_VGRID_BUTTON = 'meow_import_vgrid_button'
-MEOW_EXPORT_VGRID_BUTTON = 'meow_export_vgrid_button'
-MEOW_IMPORT_DIR_BUTTON = 'meow_import_dir_button'
-MEOW_EXPORT_DIR_BUTTON = 'meow_export_dir_button'
-
-CWL_NEW_WORKFLOW_BUTTON = 'cwl_new_workflow_button'
-CWL_EDIT_WORKFLOW_BUTTON = 'cwl_edit_workflow_button'
-CWL_NEW_STEP_BUTTON = 'cwl_new_step_button'
-CWL_EDIT_STEP_BUTTON = 'cwl_edit_step_button'
-CWL_NEW_VARIABLES_BUTTON = 'cwl_new_variables_button'
-CWL_EDIT_VARIABLES_BUTTON = 'cwl_edit_variables_button'
-CWL_IMPORT_MEOW_BUTTON = 'cwl_import_meow_button'
-CWL_IMPORT_DIR_BUTTON = 'cwl_import_dir_button'
-CWL_EXPORT_DIR_BUTTON = 'cwl_export_dir_button'
 
 DEFAULT_RESULT_NOTEBOOKS = [
     DEFAULT_JOB_NAME,
@@ -102,7 +86,7 @@ SUPPORTED_ARGS = {
     MEOW_IMPORT_EXPORT_DIR_ARG: str,
     CWL_IMPORT_EXPORT_DIR_ARG: str,
     WORKFLOW_TITLE_ARG: str,
-    DEBUG_MODE: str
+    DEBUG_MODE: bool
 }
 
 FORM_RECIPE_SOURCE = 'Source'
@@ -678,6 +662,12 @@ class WorkflowWidget:
         debug_mode = kwargs.get(DEBUG_MODE, True)
         self.logfile = create_workflow_logfile(debug_mode)
 
+        write_to_log(
+            self.logfile,
+            "WorkflowWidget.__init__",
+            "Creating new WorkflowWidget with kwargs: '%s'" % kwargs
+        )
+
         self.mode = kwargs.get(MODE, None)
         if not self.mode:
             self.mode = MEOW_MODE
@@ -735,6 +725,25 @@ class WorkflowWidget:
         auto_import = kwargs.get(AUTO_IMPORT, False)
         check_input(auto_import, bool, AUTO_IMPORT)
         self.auto_import = auto_import
+
+        if self.logfile:
+            write_to_log(
+                self.logfile,
+                "WorkflowWidget.__init__",
+                "WorkflowWidget has starting parameters ~ ["
+                + DEBUG_MODE + ": " + str(debug_mode) + "], ["
+                + MODE + ": " + self.mode + "], ["
+                + CWL_IMPORT_EXPORT_DIR_ARG + ": " + self.cwl_import_export_dir + "], ["
+                + MEOW_IMPORT_EXPORT_DIR_ARG + ": " + self.meow_import_export_dir + "], ["
+                + WORKFLOW_TITLE_ARG + ": " + self.workflow_title + "], ["
+                + VGRID + ": " + str(self.vgrid) + "], ["
+                + PATTERNS + ": " + str(patterns) + "], ["
+                + RECIPES + ": " + str(recipes) + "], ["
+                + WORKFLOWS + ": " + str(workflows) + "], ["
+                + STEPS + ": " + str(steps) + "], ["
+                + SETTINGS + ": " + str(settings) + "], ["
+                + AUTO_IMPORT + ": " + str(self.auto_import) + "]"
+            )
 
         self.mode_toggle = widgets.ToggleButtons(
             options=[i for i in WIDGET_MODES if isinstance(i, str)],
@@ -3598,11 +3607,17 @@ class WorkflowWidget:
 
         :return: No return.
         """
+        calls = kwargs.get('calls', None)
+        if not calls:
+            self.__set_feedback(
+                'There is currently nothing to export to the VGrid.'
+            )
+
         self.__set_feedback(
             'Exporting to VGrid. This may take several seconds to complete. '
             'A feedback message will be presented for each individual item. '
         )
-        calls = kwargs.get('calls', None)
+
         for call in calls:
             try:
                 operation = call[0]
@@ -3635,7 +3650,7 @@ class WorkflowWidget:
                             msg = "Created %s '%s'. " \
                                   % (RECIPE_NAME, recipe[NAME])
 
-                    if operation == VGRID_UPDATE:
+                    elif operation == VGRID_UPDATE:
                         if object_type == VGRID_PATTERN_OBJECT_TYPE:
                             pattern = call[3]
                             self.mig_imports[PATTERNS][
@@ -3649,13 +3664,16 @@ class WorkflowWidget:
                             msg = "Updated %s '%s'. " \
                                   % (RECIPE_NAME, recipe[NAME])
 
-                    if operation == VGRID_DELETE:
+                    elif operation == VGRID_DELETE:
                         if object_type == VGRID_PATTERN_OBJECT_TYPE:
                             msg = "Deleted %s '%s'. " \
                                   % (PATTERN_NAME, args[NAME])
                         elif object_type == VGRID_RECIPE_OBJECT_TYPE:
                             msg = "Deleted %s '%s'. " \
                                   % (RECIPE_NAME, args[NAME])
+
+                    else:
+                        msg = "Unknown operation '%s'" % operation
                 else:
                     feedback = response['text'].replace('\n', '<br/>')
                     msg = feedback

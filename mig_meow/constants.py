@@ -4,9 +4,34 @@
 # is clearer to group them here with appropriate variables.
 # Variables may also need to be saved here if needed for testing.
 
+DEFAULT_JSON_TIMEOUT = 15
+DEFAULT_WORKFLOW_TITLE = 'workflow'
+DEFAULT_MEOW_IMPORT_EXPORT_DIR = 'meow_directory'
+DEFAULT_CWL_IMPORT_EXPORT_DIR = 'cwl_directory'
+
 WORKFLOWS = 'workflows'
 STEPS = 'steps'
 SETTINGS = 'variables'
+
+MEOW_NEW_PATTERN_BUTTON = 'meow_new_pattern_button'
+MEOW_EDIT_PATTERN_BUTTON = 'meow_edit_pattern_button'
+MEOW_NEW_RECIPE_BUTTON = 'meow_new_recipe_button'
+MEOW_EDIT_RECIPE_BUTTON = 'meow_edit_recipe_button'
+MEOW_IMPORT_CWL_BUTTON = 'meow_import_cwl_button'
+MEOW_IMPORT_VGRID_BUTTON = 'meow_import_vgrid_button'
+MEOW_EXPORT_VGRID_BUTTON = 'meow_export_vgrid_button'
+MEOW_IMPORT_DIR_BUTTON = 'meow_import_dir_button'
+MEOW_EXPORT_DIR_BUTTON = 'meow_export_dir_button'
+
+CWL_NEW_WORKFLOW_BUTTON = 'cwl_new_workflow_button'
+CWL_EDIT_WORKFLOW_BUTTON = 'cwl_edit_workflow_button'
+CWL_NEW_STEP_BUTTON = 'cwl_new_step_button'
+CWL_EDIT_STEP_BUTTON = 'cwl_edit_step_button'
+CWL_NEW_VARIABLES_BUTTON = 'cwl_new_variables_button'
+CWL_EDIT_VARIABLES_BUTTON = 'cwl_edit_variables_button'
+CWL_IMPORT_MEOW_BUTTON = 'cwl_import_meow_button'
+CWL_IMPORT_DIR_BUTTON = 'cwl_import_dir_button'
+CWL_EXPORT_DIR_BUTTON = 'cwl_export_dir_button'
 
 CWL_NAME = 'name'
 CWL_CWL_VERSION = 'cwlVersion'
@@ -186,8 +211,8 @@ COLOURS = [
 ]
 
 NO_OUTPUT_SET_WARNING = \
-    'No output has been set, meaning no resulting data will be copied back ' \
-    'into the vgrid. ANY OUTPUT WILL BE LOST. '
+    'No output has been set. The recipe may still output data but for the ' \
+    'visualisation to be correct it should be told if this is so. '
 NO_NAME_SET_ERROR = "A pattern name must be defined. "
 NO_INPUT_FILE_SET_ERROR = \
     "An input file must be defined. This is the file that is used to " \

@@ -1,11 +1,13 @@
 import requests
 import json
+import traceback
 import os
 
 from .constants import VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
     NAME, INPUT_FILE, TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, \
     VGRID_CREATE, VGRID, \
-    VALID_OPERATIONS, VALID_WORKFLOW_TYPES, VALID_JOB_TYPES
+    VALID_OPERATIONS, VALID_WORKFLOW_TYPES, VALID_JOB_TYPES, \
+    DEFAULT_JSON_TIMEOUT
 from .inputs import check_input
 from .logging import write_to_log
 from .meow import Pattern, is_valid_recipe_dict
@@ -286,13 +288,33 @@ def __vgrid_json_call(operation, workflow_type, attributes, url, logfile=None):
         'sending request to  %s with data: %s' % (url, data)
     )
 
-    response = requests.post(url, json=data, verify=False)
+    try:
+        response = requests.post(
+            url,
+            json=data,
+            verify=False,
+            timeout=DEFAULT_JSON_TIMEOUT
+        )
 
-    write_to_log(
-        logfile,
-        '__vgrid_json_call',
-        'got response: %s' % str(response)
-    )
+        write_to_log(
+            logfile,
+            '__vgrid_json_call',
+            'got response: %s' % str(response)
+        )
+    except requests.Timeout:
+        msg = 'Connection to MiG has timed out. '
+        write_to_log(logfile, '__vgrid_json_call', msg)
+        write_to_log(logfile, '__vgrid_json_call', traceback.format_exc())
+        msg += 'Please check that the MiG is still online. If the problem ' \
+               'persists contact an admin. '
+        raise Exception(msg)
+    except requests.ConnectionError :
+        msg = 'Connection could not be established. '
+        write_to_log(logfile, '__vgrid_json_call', msg)
+        write_to_log(logfile, '__vgrid_json_call', traceback.format_exc())
+        msg += 'Please check that the MiG is still online. If the problem ' \
+               'persists contact an admin. '
+        raise Exception(msg)
 
     try:
         json_response = response.json()
