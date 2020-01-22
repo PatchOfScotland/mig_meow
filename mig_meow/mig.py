@@ -296,11 +296,6 @@ def __vgrid_json_call(operation, workflow_type, attributes, url, logfile=None):
             timeout=DEFAULT_JSON_TIMEOUT
         )
 
-        write_to_log(
-            logfile,
-            '__vgrid_json_call',
-            'got response: %s' % str(response)
-        )
     except requests.Timeout:
         msg = 'Connection to MiG has timed out. '
         write_to_log(logfile, '__vgrid_json_call', msg)
@@ -318,6 +313,12 @@ def __vgrid_json_call(operation, workflow_type, attributes, url, logfile=None):
 
     try:
         json_response = response.json()
+
+        write_to_log(
+            logfile,
+            '__vgrid_json_call',
+            'got response: %s' % str(json_response)
+        )
     except json.JSONDecodeError as err:
         msg = 'Unexpected feedback from MiG. %s' % err
         write_to_log(logfile, '__vgrid_json_call', msg)

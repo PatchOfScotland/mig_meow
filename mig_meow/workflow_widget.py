@@ -3668,9 +3668,18 @@ class WorkflowWidget:
                         if object_type == VGRID_PATTERN_OBJECT_TYPE:
                             msg = "Deleted %s '%s'. " \
                                   % (PATTERN_NAME, args[NAME])
+                            if PERSISTENCE_ID in args:
+                                pid = args[PERSISTENCE_ID]
+                                if pid in self.mig_imports[PATTERNS]:
+                                    self.mig_imports[PATTERNS].pop(pid)
+
                         elif object_type == VGRID_RECIPE_OBJECT_TYPE:
                             msg = "Deleted %s '%s'. " \
                                   % (RECIPE_NAME, args[NAME])
+                            if PERSISTENCE_ID in args:
+                                pid = args[PERSISTENCE_ID]
+                                if pid in self.mig_imports[RECIPES]:
+                                    self.mig_imports[RECIPES].pop(pid)
 
                     else:
                         msg = "Unknown operation '%s'" % operation
