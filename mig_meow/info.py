@@ -18,5 +18,3 @@ def info():
               'implementation available at the University of Copenhagen. ' \
               % (module_version, module_name, module_fullname)
     print(message)
-
-    return message
