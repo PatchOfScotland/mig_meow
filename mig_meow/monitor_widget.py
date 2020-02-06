@@ -441,7 +441,7 @@ class MonitorWidget:
 
         disable_cancel = False
         cancel_tooltip = 'Cancel job'
-        if job[MRSL_JOB_STATUS] in ['CANCELED', 'FINISHED']:
+        if job[MRSL_JOB_STATUS] in ['CANCELED', 'FINISHED', 'FAILED']:
             disable_cancel = True
             cancel_tooltip = 'Cannot cancel job with status  %s' % \
                              job[MRSL_JOB_STATUS].lower()
