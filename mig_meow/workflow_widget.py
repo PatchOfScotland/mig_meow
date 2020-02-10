@@ -37,7 +37,7 @@ from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
     CWL_EDIT_WORKFLOW_BUTTON, CWL_NEW_STEP_BUTTON, CWL_EDIT_STEP_BUTTON, \
     CWL_NEW_VARIABLES_BUTTON, CWL_EDIT_VARIABLES_BUTTON, \
     CWL_IMPORT_DIR_BUTTON, CWL_EXPORT_DIR_BUTTON, CWL_IMPORT_MEOW_BUTTON, \
-    MEOW_SAVE_SVG_BUTTON
+    MEOW_SAVE_SVG_BUTTON, CWL_SAVE_SVG_BUTTON
 from .cwl import make_step_dict, make_workflow_dict, get_linked_workflow, \
     make_settings_dict, check_workflow_is_valid, check_step_is_valid, \
     get_glob_value, get_glob_entry_keys, get_step_name_from_title, \
@@ -881,68 +881,74 @@ class WorkflowWidget:
                     BUTTON_TOOLTIP:
                         "Saves a copy of the current visualisation",
                     BUTTON_ICON: 'save'
-                },
-
+                }
             },
             CWL_MODE: {
                 CWL_NEW_WORKFLOW_BUTTON: {
                     BUTTON_ON_CLICK: self.new_workflow_clicked,
-                    BUTTON_DESC: "New %s" % WORKFLOW_NAME,
+                    BUTTON_DESC: WORKFLOW_NAME,
                     BUTTON_TOOLTIP: 'Define a new %s. ' % WORKFLOW_NAME,
-                    BUTTON_ICON: ''
+                    BUTTON_ICON: 'plus'
                 },
                 CWL_EDIT_WORKFLOW_BUTTON: {
                     BUTTON_ON_CLICK: self.edit_workflow_clicked,
-                    BUTTON_DESC: "Edit %s" % WORKFLOW_NAME,
+                    BUTTON_DESC: WORKFLOW_NAME,
                     BUTTON_TOOLTIP: 'Edit or delete an existing %s. '
                                     % WORKFLOW_NAME,
-                    BUTTON_ICON: ''
+                    BUTTON_ICON: 'file'
                 },
                 CWL_NEW_STEP_BUTTON: {
                     BUTTON_ON_CLICK: self.new_step_clicked,
-                    BUTTON_DESC: "New %s" % STEP_NAME,
+                    BUTTON_DESC: STEP_NAME,
                     BUTTON_TOOLTIP: 'Define a new %s. ' % STEP_NAME,
-                    BUTTON_ICON: ''
+                    BUTTON_ICON: 'plus'
                 },
                 CWL_EDIT_STEP_BUTTON: {
                     BUTTON_ON_CLICK: self.edit_step_clicked,
-                    BUTTON_DESC: "Edit %s" % STEP_NAME,
+                    BUTTON_DESC: STEP_NAME,
                     BUTTON_TOOLTIP: 'Edit or delete an existing %s. '
                                     % STEP_NAME,
-                    BUTTON_ICON: ''
+                    BUTTON_ICON: 'file'
                 },
                 CWL_NEW_VARIABLES_BUTTON: {
                     BUTTON_ON_CLICK: self.new_variables_clicked,
-                    BUTTON_DESC: "Add %s" % VARIABLES_NAME,
+                    BUTTON_DESC: VARIABLES_NAME,
                     BUTTON_TOOLTIP: 'Define new %s. ' % VARIABLES_NAME,
-                    BUTTON_ICON: ''
+                    BUTTON_ICON: 'plus'
                 },
                 CWL_EDIT_VARIABLES_BUTTON: {
                     BUTTON_ON_CLICK: self.edit_variables_clicked,
-                    BUTTON_DESC: "Edit %s" % VARIABLES_NAME,
+                    BUTTON_DESC: VARIABLES_NAME,
                     BUTTON_TOOLTIP: 'Edit or delete an existing %s. '
                                     % VARIABLES_NAME,
-                    BUTTON_ICON: ''
+                    BUTTON_ICON: 'file'
                 },
                 CWL_IMPORT_MEOW_BUTTON: {
                     BUTTON_ON_CLICK: self.import_from_meow_clicked,
-                    BUTTON_DESC: "Convert MEOW",
+                    BUTTON_DESC: "MEOW",
                     BUTTON_TOOLTIP:
                         "Convert existing MEOW definitions into CWL",
-                    BUTTON_ICON: ''
+                    BUTTON_ICON: 'wrench'
                 },
                 CWL_IMPORT_DIR_BUTTON: {
                     BUTTON_ON_CLICK: self.import_cwl_from_dir_clicked,
-                    BUTTON_DESC: "Read directory",
+                    BUTTON_DESC: "Load",
                     BUTTON_TOOLTIP:
                         'Imports CWL data from a given directory. ',
-                    BUTTON_ICON: ''
+                    BUTTON_ICON: 'arrow-down'
                 },
                 CWL_EXPORT_DIR_BUTTON: {
                     BUTTON_ON_CLICK: self.export_cwl_to_dir_clicked,
-                    BUTTON_DESC: "Export to directory",
+                    BUTTON_DESC: "Save",
                     BUTTON_TOOLTIP: 'Exports CWL data to a given directory. ',
-                    BUTTON_ICON: ''
+                    BUTTON_ICON: 'arrow-up'
+                },
+                CWL_SAVE_SVG_BUTTON: {
+                    BUTTON_ON_CLICK: self.cwl_save_svg_clicked,
+                    BUTTON_DESC: "Image",
+                    BUTTON_TOOLTIP:
+                        "Saves a copy of the current visualisation",
+                    BUTTON_ICON: 'save'
                 }
             }
         }
@@ -988,10 +994,12 @@ class WorkflowWidget:
                 and new_mode != self.mode:
             if new_mode == CWL_MODE:
                 self.mode = new_mode
+                self.__clear_feedback()
                 self.construct_widget()
                 self.__update_workflow_visualisation()
             elif new_mode == MEOW_MODE:
                 self.mode = new_mode
+                self.__clear_feedback()
                 self.construct_widget()
                 self.__update_workflow_visualisation()
 
@@ -1129,6 +1137,7 @@ class WorkflowWidget:
                 disabled=True,
                 button_style='',
                 tooltip=button_value[BUTTON_TOOLTIP],
+                icon=button_value[BUTTON_ICON],
                 layout=button_layout
             )
             button.on_click(button_value[BUTTON_ON_CLICK])
@@ -1456,18 +1465,33 @@ class WorkflowWidget:
 
         :param button: (widgets.Button) The button object.
 
-        :return: No return.
+        :return: Function call to self.save_svg.
         """
         file_name = 'MEOW_vis_%s.svg' % str(datetime.now())
 
-        # self.__set_feedback(str(self.visualisation_area))
+        return self.save_svg(file_name)
+
+    def cwl_save_svg_clicked(self, button):
+        """
+        Event handler for 'Save Image' button clicked. Will save the current
+        visualisation as an svg called 'CWL_vis_*.svg' with * denoting a date
+        string.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: Function call to self.save_svg.
+        """
+        file_name = 'MEOW_vis_%s.svg' % str(datetime.now())
+
+        return self.save_svg(file_name)
+
+    def save_svg(self, file_name):
         if self.visualisation:
             self.visualisation.save_svg(file_name)
             self.__set_feedback("Saved SVG with filename '%s'" % file_name)
             write_to_log(self.logfile, "meow_save_svg_clicked", file_name)
         else:
             self.__set_feedback("No visualisation date to save")
-
 
     def new_workflow_clicked(self, button):
         """
@@ -1928,6 +1952,7 @@ class WorkflowWidget:
 
                 self.button_elements[CWL_IMPORT_DIR_BUTTON].disabled = False
                 self.button_elements[CWL_EXPORT_DIR_BUTTON].disabled = False
+                self.button_elements[CWL_SAVE_SVG_BUTTON].disabled = False
 
     def __create_new_form(
             self, form_parts, done_function, label_text, selector_key=None,

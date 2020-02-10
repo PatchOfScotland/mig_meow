@@ -33,6 +33,7 @@ CWL_EDIT_VARIABLES_BUTTON = 'cwl_edit_variables_button'
 CWL_IMPORT_MEOW_BUTTON = 'cwl_import_meow_button'
 CWL_IMPORT_DIR_BUTTON = 'cwl_import_dir_button'
 CWL_EXPORT_DIR_BUTTON = 'cwl_export_dir_button'
+CWL_SAVE_SVG_BUTTON = 'cwl_save_svg_button'
 
 CWL_NAME = 'name'
 CWL_CWL_VERSION = 'cwlVersion'
