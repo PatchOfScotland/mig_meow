@@ -17,14 +17,14 @@ setup(name=module_name,
       url='https://github.com/PatchOfScotland/mig_meow',
       packages=['mig_meow'],
       install_requires=[
-            'pillow',
-            'graphviz',
+            'pillow==7.0.0',
+            'graphviz==0.13.2',
             'bqplot==0.11.7',
-            'IPython',
-            'requests',
-            'ipywidgets',
-            'PyYAML',
-            'nbformat'
+            'IPython==7.9.0',
+            'requests==2.22.0',
+            'ipywidgets==7.5.1',
+            'PyYAML==5.3',
+            'nbformat==4.4.0'
       ],
       classifiers=[
             'Programming Language :: Python :: 3',
