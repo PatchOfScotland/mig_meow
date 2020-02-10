@@ -22,6 +22,7 @@ MEOW_IMPORT_VGRID_BUTTON = 'meow_import_vgrid_button'
 MEOW_EXPORT_VGRID_BUTTON = 'meow_export_vgrid_button'
 MEOW_IMPORT_DIR_BUTTON = 'meow_import_dir_button'
 MEOW_EXPORT_DIR_BUTTON = 'meow_export_dir_button'
+MEOW_SAVE_SVG_BUTTON = 'meow_save_svg_button'
 
 CWL_NEW_WORKFLOW_BUTTON = 'cwl_new_workflow_button'
 CWL_EDIT_WORKFLOW_BUTTON = 'cwl_edit_workflow_button'

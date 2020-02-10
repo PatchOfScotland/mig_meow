@@ -7,6 +7,7 @@ from bqplot.marks import Graph
 from copy import deepcopy
 from shutil import copyfile
 
+from datetime import datetime
 from IPython.display import display
 
 from .inputs import valid_file_path, valid_string, check_input_args, \
@@ -35,7 +36,8 @@ from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
     MEOW_IMPORT_DIR_BUTTON, MEOW_EXPORT_DIR_BUTTON, CWL_NEW_WORKFLOW_BUTTON, \
     CWL_EDIT_WORKFLOW_BUTTON, CWL_NEW_STEP_BUTTON, CWL_EDIT_STEP_BUTTON, \
     CWL_NEW_VARIABLES_BUTTON, CWL_EDIT_VARIABLES_BUTTON, \
-    CWL_IMPORT_DIR_BUTTON, CWL_EXPORT_DIR_BUTTON, CWL_IMPORT_MEOW_BUTTON
+    CWL_IMPORT_DIR_BUTTON, CWL_EXPORT_DIR_BUTTON, CWL_IMPORT_MEOW_BUTTON, \
+    MEOW_SAVE_SVG_BUTTON
 from .cwl import make_step_dict, make_workflow_dict, get_linked_workflow, \
     make_settings_dict, check_workflow_is_valid, check_step_is_valid, \
     get_glob_value, get_glob_entry_keys, get_step_name_from_title, \
@@ -119,6 +121,7 @@ FORM_SELECTOR_KEY = 'selector'
 BUTTON_ON_CLICK = 'on_click'
 BUTTON_DESC = 'description'
 BUTTON_TOOLTIP = 'tooltip'
+BUTTON_ICON = 'icon'
 
 MULTILINE_HELP_TEXT = \
     "<br/>" \
@@ -760,6 +763,7 @@ class WorkflowWidget:
         self.mode_toggle.observe(self.__on_mode_selection_changed)
 
         self.visualisation_area = widgets.Output()
+        self.visualisation = None
         self.button_area = widgets.Output()
         self.form_area = widgets.Output()
         self.feedback_area = widgets.HTML()
@@ -810,103 +814,135 @@ class WorkflowWidget:
             MEOW_MODE: {
                 MEOW_NEW_PATTERN_BUTTON: {
                     BUTTON_ON_CLICK: self.new_pattern_clicked,
-                    BUTTON_DESC: "New %s" % PATTERN_NAME,
-                    BUTTON_TOOLTIP: 'Define a new %s. ' % PATTERN_NAME
+                    BUTTON_DESC: PATTERN_NAME,
+                    BUTTON_TOOLTIP: 'Define a new %s. ' % PATTERN_NAME,
+                    BUTTON_ICON: 'plus'
                 },
                 MEOW_EDIT_PATTERN_BUTTON: {
                     BUTTON_ON_CLICK: self.edit_pattern_clicked,
-                    BUTTON_DESC: "Edit %s" % PATTERN_NAME,
+                    BUTTON_DESC: PATTERN_NAME,
                     BUTTON_TOOLTIP: 'Edit or delete an existing %s. '
-                                    % PATTERN_NAME
+                                    % PATTERN_NAME,
+                    BUTTON_ICON: 'file'
                 },
                 MEOW_NEW_RECIPE_BUTTON: {
                     BUTTON_ON_CLICK: self.new_recipe_clicked,
-                    BUTTON_DESC: "Add %s" % RECIPE_NAME,
-                    BUTTON_TOOLTIP: 'Import a new %s. ' % RECIPE_NAME
+                    BUTTON_DESC: RECIPE_NAME,
+                    BUTTON_TOOLTIP: 'Import a new %s. ' % RECIPE_NAME,
+                    BUTTON_ICON: 'plus'
                 },
                 MEOW_EDIT_RECIPE_BUTTON: {
                     BUTTON_ON_CLICK: self.edit_recipe_clicked,
-                    BUTTON_DESC: "Edit %s" % RECIPE_NAME,
+                    BUTTON_DESC: RECIPE_NAME,
                     BUTTON_TOOLTIP: 'Edit or delete an existing %s. '
-                                    % RECIPE_NAME
+                                    % RECIPE_NAME,
+                    BUTTON_ICON: 'file'
                 },
                 MEOW_IMPORT_CWL_BUTTON: {
                     BUTTON_ON_CLICK: self.import_from_cwl_clicked,
-                    BUTTON_DESC: "Convert CWL",
+                    BUTTON_DESC: "CWL",
                     BUTTON_TOOLTIP:
-                        'Attempt to convert existing CWl definitions into '
-                        'MEOW format. '
+                        'Attempt to convert existing CWL definitions into '
+                        'MEOW format. ',
+                    BUTTON_ICON: 'wrench'
                 },
                 MEOW_IMPORT_VGRID_BUTTON: {
                     BUTTON_ON_CLICK: self.import_meow_from_vgrid_clicked,
-                    BUTTON_DESC: "Read VGrid",
-                    BUTTON_TOOLTIP: 'Import data from Vgrid. '
+                    BUTTON_DESC: "VGrid",
+                    BUTTON_TOOLTIP: 'Import data from Vgrid. ',
+                    BUTTON_ICON: 'download'
                 },
                 MEOW_EXPORT_VGRID_BUTTON: {
                     BUTTON_ON_CLICK: self.export_meow_to_vgrid_clicked,
-                    BUTTON_DESC: "Export to Vgrid",
-                    BUTTON_TOOLTIP: 'Exports data to Vgrid. '
+                    BUTTON_DESC: "Vgrid",
+                    BUTTON_TOOLTIP:
+                        'Exports data to Vgrid. This may create new triggers '
+                        'according to MEOW',
+                    BUTTON_ICON: 'upload'
                 },
                 MEOW_IMPORT_DIR_BUTTON: {
                     BUTTON_ON_CLICK: self.import_meow_from_dir_clicked,
-                    BUTTON_DESC: "Read directory",
-                    BUTTON_TOOLTIP: 'Import data from a directory. '
+                    BUTTON_DESC: "Load",
+                    BUTTON_TOOLTIP: 'Import data from a local directory. ',
+                    BUTTON_ICON: 'arrow-down'
                 },
                 MEOW_EXPORT_DIR_BUTTON: {
                     BUTTON_ON_CLICK: self.export_meow_to_dir_clicked,
-                    BUTTON_DESC: "Export to directory",
-                    BUTTON_TOOLTIP: 'Exports data to a directory. '
-                }
+                    BUTTON_DESC: "Save",
+                    BUTTON_TOOLTIP:
+                        "Exports data to a local directory. This saves %s's "
+                        "and %s's for future use, but no triggers will be set "
+                        "up. " % (PATTERN_NAME, RECIPE_NAME),
+                    BUTTON_ICON: 'arrow-up'
+                },
+                MEOW_SAVE_SVG_BUTTON: {
+                    BUTTON_ON_CLICK: self.meow_save_svg_clicked,
+                    BUTTON_DESC: "Image",
+                    BUTTON_TOOLTIP:
+                        "Saves a copy of the current visualisation",
+                    BUTTON_ICON: 'save'
+                },
+
             },
             CWL_MODE: {
                 CWL_NEW_WORKFLOW_BUTTON: {
                     BUTTON_ON_CLICK: self.new_workflow_clicked,
                     BUTTON_DESC: "New %s" % WORKFLOW_NAME,
-                    BUTTON_TOOLTIP: 'Define a new %s. ' % WORKFLOW_NAME
+                    BUTTON_TOOLTIP: 'Define a new %s. ' % WORKFLOW_NAME,
+                    BUTTON_ICON: ''
                 },
                 CWL_EDIT_WORKFLOW_BUTTON: {
                     BUTTON_ON_CLICK: self.edit_workflow_clicked,
                     BUTTON_DESC: "Edit %s" % WORKFLOW_NAME,
                     BUTTON_TOOLTIP: 'Edit or delete an existing %s. '
-                                    % WORKFLOW_NAME
+                                    % WORKFLOW_NAME,
+                    BUTTON_ICON: ''
                 },
                 CWL_NEW_STEP_BUTTON: {
                     BUTTON_ON_CLICK: self.new_step_clicked,
                     BUTTON_DESC: "New %s" % STEP_NAME,
-                    BUTTON_TOOLTIP: 'Define a new %s. ' % STEP_NAME
+                    BUTTON_TOOLTIP: 'Define a new %s. ' % STEP_NAME,
+                    BUTTON_ICON: ''
                 },
                 CWL_EDIT_STEP_BUTTON: {
                     BUTTON_ON_CLICK: self.edit_step_clicked,
                     BUTTON_DESC: "Edit %s" % STEP_NAME,
                     BUTTON_TOOLTIP: 'Edit or delete an existing %s. '
-                                    % STEP_NAME
+                                    % STEP_NAME,
+                    BUTTON_ICON: ''
                 },
                 CWL_NEW_VARIABLES_BUTTON: {
                     BUTTON_ON_CLICK: self.new_variables_clicked,
                     BUTTON_DESC: "Add %s" % VARIABLES_NAME,
-                    BUTTON_TOOLTIP: 'Define new %s. ' % VARIABLES_NAME
+                    BUTTON_TOOLTIP: 'Define new %s. ' % VARIABLES_NAME,
+                    BUTTON_ICON: ''
                 },
                 CWL_EDIT_VARIABLES_BUTTON: {
                     BUTTON_ON_CLICK: self.edit_variables_clicked,
                     BUTTON_DESC: "Edit %s" % VARIABLES_NAME,
                     BUTTON_TOOLTIP: 'Edit or delete an existing %s. '
-                                    % VARIABLES_NAME
+                                    % VARIABLES_NAME,
+                    BUTTON_ICON: ''
                 },
                 CWL_IMPORT_MEOW_BUTTON: {
                     BUTTON_ON_CLICK: self.import_from_meow_clicked,
                     BUTTON_DESC: "Convert MEOW",
                     BUTTON_TOOLTIP:
-                        "Convert existing MEOW definitions into CWL"
+                        "Convert existing MEOW definitions into CWL",
+                    BUTTON_ICON: ''
                 },
                 CWL_IMPORT_DIR_BUTTON: {
                     BUTTON_ON_CLICK: self.import_cwl_from_dir_clicked,
                     BUTTON_DESC: "Read directory",
-                    BUTTON_TOOLTIP: 'Imports CWL data from a given directory. '
+                    BUTTON_TOOLTIP:
+                        'Imports CWL data from a given directory. ',
+                    BUTTON_ICON: ''
                 },
                 CWL_EXPORT_DIR_BUTTON: {
                     BUTTON_ON_CLICK: self.export_cwl_to_dir_clicked,
                     BUTTON_DESC: "Export to directory",
-                    BUTTON_TOOLTIP: 'Exports CWL data to a given directory. '
+                    BUTTON_TOOLTIP: 'Exports CWL data to a given directory. ',
+                    BUTTON_ICON: ''
                 }
             }
         }
@@ -1024,6 +1060,7 @@ class WorkflowWidget:
                 disabled=True,
                 button_style='',
                 tooltip=button_value[BUTTON_TOOLTIP],
+                icon=button_value[BUTTON_ICON],
                 layout=button_layout
             )
             button.on_click(button_value[BUTTON_ON_CLICK])
@@ -1410,6 +1447,27 @@ class WorkflowWidget:
                 "Exported %s %s successfully to %s. "
                 % (RECIPE_NAME, recipe_name, recipe_file_path)
             )
+
+    def meow_save_svg_clicked(self, button):
+        """
+        Event handler for 'Save Image' button clicked. Will save the current
+        visualisation as an svg called 'MEOW_vis_*.svg' with * denoting a date
+        string.
+
+        :param button: (widgets.Button) The button object.
+
+        :return: No return.
+        """
+        file_name = 'MEOW_vis_%s.svg' % str(datetime.now())
+
+        # self.__set_feedback(str(self.visualisation_area))
+        if self.visualisation:
+            self.visualisation.save_svg(file_name)
+            self.__set_feedback("Saved SVG with filename '%s'" % file_name)
+            write_to_log(self.logfile, "meow_save_svg_clicked", file_name)
+        else:
+            self.__set_feedback("No visualisation date to save")
+
 
     def new_workflow_clicked(self, button):
         """
@@ -1836,6 +1894,7 @@ class WorkflowWidget:
                         "specified. "
                 self.button_elements[MEOW_EXPORT_DIR_BUTTON].disabled = False
                 self.button_elements[MEOW_IMPORT_DIR_BUTTON].disabled = False
+                self.button_elements[MEOW_SAVE_SVG_BUTTON].disabled = False
 
             elif self.mode == CWL_MODE:
                 self.button_elements[CWL_NEW_WORKFLOW_BUTTON].disabled = False
@@ -4518,7 +4577,7 @@ class WorkflowWidget:
                     'Could not build workflow object. %s' % meow_workflow
                 )
 
-            visualisation = self.__get_meow_workflow_visualisation(
+            self.visualisation = self.__get_meow_workflow_visualisation(
                 self.meow[PATTERNS],
                 self.meow[RECIPES],
                 meow_workflow
@@ -4526,7 +4585,7 @@ class WorkflowWidget:
 
             self.visualisation_area.clear_output(wait=True)
             with self.visualisation_area:
-                display(visualisation)
+                display(self.visualisation)
         elif self.mode == CWL_MODE:
 
             visualisation = self.__get_cwl_workflow_visualisation(
@@ -4537,7 +4596,7 @@ class WorkflowWidget:
 
             self.visualisation_area.clear_output(wait=True)
             with self.visualisation_area:
-                display(visualisation)
+                display(self.visualisation)
 
     def __get_meow_workflow_visualisation(self, patterns, recipes, workflow):
         """
@@ -4639,7 +4698,7 @@ class WorkflowWidget:
         graph = Graph(
             node_data=pattern_display,
             link_data=link_display,
-            charge=-400,
+            charge=-800,
             colors=colour_display,
             tooltip=MEOW_TOOLTIP
         )
@@ -4649,9 +4708,16 @@ class WorkflowWidget:
         graph.on_element_click(self.__meow_visualisation_element_click)
         graph.on_hover(self.__toggle_tooltips)
 
-        fig_layout = widgets.Layout(width='100%', height='600px')
+        fig_layout = widgets.Layout(
+            width='100%',
+            height='600px'
+        )
 
-        return Figure(marks=[graph], layout=fig_layout)
+        return Figure(
+            marks=[graph],
+            layout=fig_layout,
+            fig_margin={'top': 15, 'bottom': 15, 'left': 15, 'right': 15}
+        )
 
     def __get_cwl_workflow_visualisation(self, workflows, steps, settings):
         """
@@ -4766,7 +4832,7 @@ class WorkflowWidget:
         graph = Graph(
             node_data=node_data,
             link_data=link_data,
-            charge=-400,
+            charge=-800,
             colors=colour_data,
             tooltip=CWL_TOOLTIP
         )
@@ -4776,7 +4842,11 @@ class WorkflowWidget:
 
         fig_layout = widgets.Layout(width='100%', height='600px')
 
-        return Figure(marks=[graph], layout=fig_layout)
+        return Figure(
+            marks=[graph],
+            layout=fig_layout,
+            fig_margin={'top': 15, 'bottom': 15, 'left': 15, 'right': 15}
+        )
 
     # TODO improve this to remove occasional flickering
     def __toggle_tooltips(self, graph, node):
