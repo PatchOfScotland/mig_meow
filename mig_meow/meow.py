@@ -173,7 +173,8 @@ class Pattern:
 
             if parameters[INPUT_FILE] not in self.variables:
                 self.add_variable(
-                    parameters[INPUT_FILE], parameters[INPUT_FILE]
+                    parameters[INPUT_FILE],
+                    copy.deepcopy(parameters[TRIGGER_PATHS])
                 )
 
             return
@@ -369,65 +370,65 @@ class Pattern:
             if output_path:
                 self.add_output(input_file, output_path)
             else:
-                self.add_variable(input_file, input_file)
+                self.add_variable(input_file, regex_path)
         else:
             raise AttributeError(
                 'Could not create single input %s, as input already defined'
                 % input_file
             )
 
-    def add_gathering_input(self, input_file, path_list, output_path=None):
-        """
-         Defines a gathering input for a pattern. That is, a collection of
-        paths that when each individual path is either created or modified,
-        a buffer file containing all the specified paths is updated. Once all
-        files are present in the buffer then the recipe is triggered by it
-        according to the single input trigger, with the buffer as the trigger.
-        Raises AttributeError if an input is already defined.
-
-        :param input_file: (str) 'input_file' is the variable name used to
-        refer to the triggering file within the recipe.
-
-        :param path_list: (list) 'path_list' is a list
-        of paths which will be combined into a single buffer file as so used
-        to trigger a job. Note that these paths are hard coded as paths and
-        are not evaluated as regular expressions.
-
-        :param output_path: (str)[optional] 'output_path' may also be defined.
-        If done so, this will be the path where the input file will be copied.
-        This is useful if some data processing is taking place on the input
-        and you require that data, as the triggering file itself will remain
-        unchanged. Note that this is a regular string path and can be hard
-        coded such as 'dir/file.txt' which will always write to the same
-        location. Alternatively the '*' character can be used to take the name
-        of the triggering file.
-        For example:
-
-        'output_dir/*.hdf5'
-
-        When triggered by a file called 'filename.txt' this would copy the
-        output to output_dir/filename.hdf5. Default is None.
-
-        :return: No return.
-        """
-        check_input(input_file, str, 'input_file')
-        check_input(path_list, list, 'path_list')
-        for entry in path_list:
-            check_input(entry, str, 'path_list entry')
-        check_input(output_path, str, 'output_path', or_none=True)
-
-        if len(self.trigger_paths) == 0:
-            if output_path:
-                self.add_output(input_file, output_path)
-            else:
-                self.add_variable(input_file, input_file)
-            for path in path_list:
-                self.trigger_paths.append(path)
-        else:
-            raise AttributeError(
-                'Could not create gathering input %s, as input already '
-                'defined' % input_file
-            )
+    # def add_gathering_input(self, input_file, path_list, output_path=None):
+    #     """
+    #      Defines a gathering input for a pattern. That is, a collection of
+    #     paths that when each individual path is either created or modified,
+    #     a buffer file containing all the specified paths is updated. Once all
+    #     files are present in the buffer then the recipe is triggered by it
+    #     according to the single input trigger, with the buffer as the trigger.
+    #     Raises AttributeError if an input is already defined.
+    #
+    #     :param input_file: (str) 'input_file' is the variable name used to
+    #     refer to the triggering file within the recipe.
+    #
+    #     :param path_list: (list) 'path_list' is a list
+    #     of paths which will be combined into a single buffer file as so used
+    #     to trigger a job. Note that these paths are hard coded as paths and
+    #     are not evaluated as regular expressions.
+    #
+    #     :param output_path: (str)[optional] 'output_path' may also be defined.
+    #     If done so, this will be the path where the input file will be copied.
+    #     This is useful if some data processing is taking place on the input
+    #     and you require that data, as the triggering file itself will remain
+    #     unchanged. Note that this is a regular string path and can be hard
+    #     coded such as 'dir/file.txt' which will always write to the same
+    #     location. Alternatively the '*' character can be used to take the name
+    #     of the triggering file.
+    #     For example:
+    #
+    #     'output_dir/*.hdf5'
+    #
+    #     When triggered by a file called 'filename.txt' this would copy the
+    #     output to output_dir/filename.hdf5. Default is None.
+    #
+    #     :return: No return.
+    #     """
+    #     check_input(input_file, str, 'input_file')
+    #     check_input(path_list, list, 'path_list')
+    #     for entry in path_list:
+    #         check_input(entry, str, 'path_list entry')
+    #     check_input(output_path, str, 'output_path', or_none=True)
+    #
+    #     if len(self.trigger_paths) == 0:
+    #         if output_path:
+    #             self.add_output(input_file, output_path)
+    #         else:
+    #             self.add_variable(input_file, input_file)
+    #         for path in path_list:
+    #             self.trigger_paths.append(path)
+    #     else:
+    #         raise AttributeError(
+    #             'Could not create gathering input %s, as input already '
+    #             'defined' % input_file
+    #         )
 
     def add_output(self, output_name, output_location):
         """
@@ -458,7 +459,7 @@ class Pattern:
 
         if output_name not in self.outputs.keys():
             self.outputs[output_name] = output_location
-            self.add_variable(output_name, output_name)
+            self.add_variable(output_name, output_location)
         else:
             raise Exception('Could not create output %s as already defined'
                             % output_name)
