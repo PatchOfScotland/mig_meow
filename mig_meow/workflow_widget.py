@@ -2860,8 +2860,6 @@ class WorkflowWidget:
                 self.__set_feedback(msg)
                 self.__update_workflow_visualisation()
                 self.__close_form()
-
-                self.__add_to_feedback("pattern variables: %s" % pattern.variables)
                 return True
             else:
                 msg = "%s is not valid. " % PATTERN_NAME
