@@ -47,6 +47,8 @@ from .logging import create_workflow_logfile, write_to_log
 from .mig import vgrid_workflow_json_call
 from .meow import build_workflow_object, pattern_has_recipes, Pattern, \
     create_recipe_dict, check_patterns_dict, check_recipes_dict
+from .yaml import patten_to_yaml_dict, pattern_from_yaml_dict, \
+    recipe_to_yaml_dict, recipe_from_yaml_dict
 
 YAML_EXTENSIONS = [
     '.yaml',
@@ -1413,48 +1415,56 @@ class WorkflowWidget:
             valid, feedback = pattern.integrity_check()
 
             if not valid:
-                self.__add_to_feedback(
-                    "Could not export %s %s. %s"
-                    % (PATTERN_NAME, pattern_name, feedback)
-                )
+                msg = "Could not export %s %s. %s" \
+                      % (PATTERN_NAME, pattern_name, feedback)
+                self.__add_to_feedback(msg)
                 break
 
             pattern_file_path = os.path.join(patterns_path, pattern_name)
+            pattern_yaml = patten_to_yaml_dict(pattern)
 
             with open(pattern_file_path, 'w') as pattern_file:
                 yaml.dump(
-                    pattern,
+                    pattern_yaml,
                     pattern_file,
                     default_flow_style=False
                 )
 
-            self.__add_to_feedback(
-                "Exported %s %s successfully to %s. "
-                % (PATTERN_NAME, pattern_name, pattern_file_path)
+            msg = "Exported %s %s successfully to %s. " \
+                  % (PATTERN_NAME, pattern_name, pattern_file_path)
+            self.__add_to_feedback(msg)
+            write_to_log(
+                self.logfile,
+                "export_meow_to_dir_clicked",
+                msg
             )
 
         for recipe_name, recipe in self.meow[RECIPES].items():
             valid, feedback = is_valid_recipe_dict(recipe)
 
             if not valid:
-                self.__add_to_feedback(
-                    "Could not export %s %s. %s"
-                    % (RECIPE_NAME, recipe_name, feedback)
-                )
+                msg ="Could not export %s %s. %s" \
+                     % (RECIPE_NAME, recipe_name, feedback)
+                self.__add_to_feedback(msg)
                 break
 
             recipe_file_path = os.path.join(recipes_path, recipe_name)
+            recipe_yaml = recipe_to_yaml_dict(recipe)
 
             with open(recipe_file_path, 'w') as recipe_file:
                 yaml.dump(
-                    recipe,
+                    recipe_yaml,
                     recipe_file,
                     default_flow_style=False
                 )
 
-            self.__add_to_feedback(
-                "Exported %s %s successfully to %s. "
-                % (RECIPE_NAME, recipe_name, recipe_file_path)
+            msg = "Exported %s %s successfully to %s. " \
+                  % (RECIPE_NAME, recipe_name, recipe_file_path)
+            self.__add_to_feedback(msg)
+            write_to_log(
+                self.logfile,
+                "export_meow_to_dir_clicked",
+                msg
             )
 
     def meow_save_svg_clicked(self, button):
@@ -4493,14 +4503,18 @@ class WorkflowWidget:
             if os.path.isfile(os.path.join(patterns_path, f))
         ]
 
-        for patttern_file in pattern_files:
+        for file_name in pattern_files:
             try:
-                with open(os.path.join(patterns_path, patttern_file), 'r') \
+                with open(os.path.join(patterns_path, file_name), 'r') \
                         as yaml_file:
-                    yaml_dict = yaml.full_load(yaml_file)
-                    if '.' in patttern_file:
-                        patttern_file = patttern_file[:patttern_file.index('.')]
-                    buffer_meow[PATTERNS][patttern_file] = yaml_dict
+                    pattern_yaml_dict = yaml.full_load(yaml_file)
+                    if '.' in file_name:
+                        patttern_file = file_name[:file_name.index('.')]
+
+                    pattern = \
+                        pattern_from_yaml_dict(pattern_yaml_dict, file_name)
+
+                    buffer_meow[PATTERNS][patttern_file] = pattern
             except Exception as ex:
                 self.__add_to_feedback(
                     "Tried to import %s but could not. %s" % (PATTERN_NAME, ex)
@@ -4510,14 +4524,17 @@ class WorkflowWidget:
             if os.path.isfile(os.path.join(recipes_path, f))
         ]
 
-        for recipe_file in recipe_files:
+        for file_name in recipe_files:
             try:
-                with open(os.path.join(recipes_path, recipe_file), 'r') \
+                with open(os.path.join(recipes_path, file_name), 'r') \
                         as yaml_file:
-                    yaml_dict = yaml.full_load(yaml_file)
-                    if '.' in recipe_file:
-                        recipe_file = recipe_file[:recipe_file.index('.')]
-                    buffer_meow[RECIPES][recipe_file] = yaml_dict
+                    recipe_yaml_dict = yaml.full_load(yaml_file)
+                    if '.' in file_name:
+                        file_name = file_name[:file_name.index('.')]
+
+                    recipe = recipe_from_yaml_dict(recipe_yaml_dict, file_name)
+
+                    buffer_meow[RECIPES][file_name] = recipe
             except Exception as ex:
                 self.__add_to_feedback(
                     "Tried to import %s but could not. %s" % (RECIPE_NAME, ex)

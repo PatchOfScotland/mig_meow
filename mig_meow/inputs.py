@@ -7,7 +7,8 @@ from .constants import CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_UPPERCASE, \
     VALID_WORKFLOW_MIN, VALID_STEP_MIN, VALID_SETTING_MIN, \
     VALID_PATTERN_OPTIONAL, VALID_RECIPE_OPTIONAL, VALID_SETTING_OPTIONAL, \
     VALID_STEP_OPTIONAL, VALID_WORKFLOW_OPTIONAL, CWL_CLASS_WORKFLOW, \
-    CWL_CLASS_COMMAND_LINE_TOOL, CWL_CLASS
+    CWL_CLASS_COMMAND_LINE_TOOL, CWL_CLASS, TRIGGER_PATHS, TRIGGER_RECIPES, \
+    INPUT_FILE
 
 
 def check_input(variable, expected_type, name, or_none=False):
@@ -167,7 +168,8 @@ def valid_file_path(path, name, extensions=None):
             )
 
 
-def is_valid_dict(to_test, required_args, optional_args, name, paradigm, strict=False):
+def is_valid_dict(to_test, required_args, optional_args, name, paradigm,
+                  strict=False):
     """
     Validates that a given dict has the expected arguments.
 
@@ -199,7 +201,8 @@ def is_valid_dict(to_test, required_args, optional_args, name, paradigm, strict=
 
     if not isinstance(to_test, dict):
         return False, \
-               'The %s %s was incorrectly formatted. ' % (paradigm, name)
+               'The %s %s was incorrectly formatted. Should be a dict, but ' \
+               '%s is a %s' % (paradigm, name, to_test, type(to_test))
 
     message = 'The %s %s %s had an incorrect structure, ' \
               % (paradigm, name, to_test)
@@ -256,21 +259,33 @@ def is_valid_pattern_dict(to_test, strict=False):
     if not valid:
         return False, msg
 
-    if 'trigger_recipes' not in to_test:
+    if not to_test[TRIGGER_PATHS]:
+        return False, "%s invalid: %s. Must be defined" \
+               % (TRIGGER_PATHS, to_test[TRIGGER_PATHS])
+
+    if not to_test[INPUT_FILE]:
+        return False, "%s invalid: %s. Must be defined" \
+               % (INPUT_FILE, to_test[INPUT_FILE])
+
+    if TRIGGER_RECIPES not in to_test:
         return False, "'trigger_recipes' key was not in %s. " \
                % str(list(to_test.keys()))
-    if not isinstance(to_test['trigger_recipes'], dict):
+    if not isinstance(to_test[TRIGGER_RECIPES], dict):
         return False, \
                "Trigger id's have not be stored in the correct format. " \
                "Expected dict but got %s." % type(to_test['trigger_recipes'])
 
-    for trigger_id, trigger in to_test['trigger_recipes'].items():
+    for trigger_id, trigger in to_test[TRIGGER_RECIPES].items():
         if not isinstance(trigger_id, str):
             return False, "Trigger id %s is a %s, not the expected str." \
                    % (str(trigger_id), type(trigger_id))
         if not isinstance(trigger, dict):
             return False, "Trigger %s is a %s, not the expected dict." \
                    % (str(trigger), type(trigger))
+
+        if not trigger:
+            return False, "Trigger is empty. Should contain at least a " \
+                          "single recipe"
 
         for id, recipe in trigger.items():
             if not isinstance(id, str):
@@ -296,6 +311,12 @@ def is_valid_recipe_dict(to_test, strict=False):
     :return: (function call to 'is_valid_dict'). Returns a function call to
     'is_valid_dict'.
     """
+
+    # Note that recipe may be an empty dict if a recipe has not yet been
+    # registered on the mig
+    if isinstance(to_test, dict) and not to_test:
+        return True, ''
+
     return is_valid_dict(
         to_test,
         VALID_RECIPE_MIN,

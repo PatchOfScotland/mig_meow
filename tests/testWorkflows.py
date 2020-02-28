@@ -11,7 +11,6 @@ from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
     MEOW_NEW_PATTERN_BUTTON, MEOW_IMPORT_CWL_BUTTON, DEFAULT_JOB_NAME, \
     NO_NAME_SET_ERROR, NO_RECIPES_SET_ERROR, NO_INPUT_PATH_SET_ERROR, \
     NO_INPUT_FILE_SET_ERROR, PLACEHOLDER_ERROR, \
-    OUTPUT_NOT_VARIABLE_ERROR, TRIGGER_NOT_VARIABLE_ERROR, \
     INVALID_INPUT_PATH_ERROR, PLACEHOLDER, NAME, INPUT_FILE, TRIGGER_PATHS, \
     TRIGGER_RECIPES, OUTPUT, VARIABLES, SOURCE, RECIPE, CWL_NAME, \
     CWL_REQUIREMENTS, CWL_CWL_VERSION, CWL_CLASS, CWL_BASE_COMMAND, \
@@ -621,14 +620,6 @@ class WorkflowTest(unittest.TestCase):
         # Test that we cannot add a variable that already has been defined.
         with self.assertRaises(Exception):
             test_pattern.add_variable('int', 1)
-        # Test that we cannot add a variable that shares a name with the
-        # 'input_file'.
-        with self.assertRaises(Exception):
-            test_pattern.add_variable('input_file', 1)
-        # Test that we cannot add a variable that shares a name with an output
-        # file
-        with self.assertRaises(Exception):
-            test_pattern.add_variable('output_file', 1)
 
         # Test that pattern is still valid and the 3 above tests have not
         # invalidated the pattern.
@@ -712,19 +703,19 @@ class WorkflowTest(unittest.TestCase):
         }
 
         # Test that incorrectly formatted 'trigger_recipes' values is rejected.
-        invalid_recipes_pattern = Pattern(invalid_recipes)
-        valid, msg = invalid_recipes_pattern.integrity_check()
-        self.assertFalse(valid)
-        self.assertEqual(msg, NO_RECIPES_SET_ERROR)
+        with self.assertRaises(Exception):
+            Pattern(invalid_recipes)
 
         no_paths = {
             NAME: 'dict_pattern',
             TRIGGER_PATHS: [],
             TRIGGER_RECIPES: {
-                'recipe_id': {
-                    'name': 'recipe',
-                    'source': 'source.ipynb',
-                    'recipe': {}
+                'trigger_id': {
+                    'recipe_id': {
+                        'name': 'test_recipe',
+                        'source': 'source.ipynb',
+                        'recipe': {}
+                    }
                 }
             },
             INPUT_FILE: 'trigger_file_name',
@@ -744,55 +735,17 @@ class WorkflowTest(unittest.TestCase):
                 'outfile_1': 'something'
             }
         }
-
-        # Test that empty 'input_paths' list is rejected.
-        no_paths_pattern = Pattern(no_paths)
-        valid, msg = no_paths_pattern.integrity_check()
-        self.assertFalse(valid)
-        self.assertEqual(msg, NO_INPUT_PATH_SET_ERROR)
-
-        invalid_paths = {
-            NAME: 'dict_pattern',
-            TRIGGER_PATHS: [''],
-            TRIGGER_RECIPES: {
-                'recipe_id': {
-                    'name': 'recipe',
-                    'source': 'source.ipynb',
-                    'recipe': {}
-                }
-            },
-            INPUT_FILE: 'trigger_file_name',
-            OUTPUT: {
-                'outfile_1': 'dir_1/outpath.txt',
-                'outfile_2': 'dir_2/outpath.txt',
-            },
-            VARIABLES: {
-                'int': 0,
-                'float': 3.5,
-                'array': [0, 1],
-                'dict': {1: 1, 2: 2},
-                'set': {1, 2},
-                'char': 'c',
-                'string': "String",
-                'boolean': True,
-                'outfile_1': 'something'
-            }
-        }
-
-        # Test that empty 'input_path' list entry is rejected.
-        invalid_paths_pattern = Pattern(invalid_paths)
-        valid, msg = invalid_paths_pattern.integrity_check()
-        self.assertFalse(valid)
-        self.assertIn(INVALID_INPUT_PATH_ERROR, msg)
 
         invalid_in_file = {
             NAME: 'dict_pattern',
             TRIGGER_PATHS: ['path'],
             TRIGGER_RECIPES: {
-                'recipe_id': {
-                    'name': 'recipe',
-                    'source': 'source.ipynb',
-                    'recipe': {}
+                'trigger_id': {
+                    'recipe_id': {
+                        'name': 'test_recipe',
+                        'source': 'source.ipynb',
+                        'recipe': {}
+                    }
                 }
             },
             INPUT_FILE: '',
@@ -829,21 +782,6 @@ class WorkflowTest(unittest.TestCase):
         valid, msg = no_infile_pattern.integrity_check()
         self.assertFalse(valid)
         self.assertEqual(msg, NO_INPUT_FILE_SET_ERROR)
-
-        # Test that a pattern output not being in 'variables' is rejected.
-        output_not_variable_pattern = Pattern(VALID_PATTERN_DICT)
-        output_not_variable_pattern.variables.pop('outfile_1')
-        valid, msg = output_not_variable_pattern.integrity_check()
-        self.assertFalse(valid)
-        self.assertIn(OUTPUT_NOT_VARIABLE_ERROR, msg)
-
-        # Test that a pattern 'input_file' not being in 'variables' is
-        # rejected.
-        trigger_not_variable_pattern = Pattern(VALID_PATTERN_DICT)
-        trigger_not_variable_pattern.variables.pop('trigger_file_name')
-        valid, msg = trigger_not_variable_pattern.integrity_check()
-        self.assertFalse(valid)
-        self.assertEqual(msg, TRIGGER_NOT_VARIABLE_ERROR)
 
     def testPatternPlaceholderCheck(self):
         # Test that pattern is valid with valid dictionary.

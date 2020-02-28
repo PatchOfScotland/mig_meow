@@ -116,6 +116,7 @@ VGRID = 'vgrid'
 SOURCE = 'source'
 PATTERNS = 'patterns'
 TRIGGER_RECIPES = 'trigger_recipes'
+TASK_FILE = 'task_file'
 
 CWL_CLASS_COMMAND_LINE_TOOL = 'CommandLineTool'
 CWL_CLASS_WORKFLOW = 'Workflow'
@@ -228,14 +229,6 @@ INVALID_INPUT_PATH_ERROR = "The input path is not valid. "
 NO_RECIPES_SET_ERROR = "No recipes have been defined. "
 PLACEHOLDER_ERROR = \
     "A placeholder value was detected. Please update this before proceeding. "
-TRIGGER_NOT_VARIABLE_ERROR = \
-    "Trigger file has been defined but is not accessible as a variable " \
-    "within the job. If you manually set the trigger file you should also " \
-    "add it to the variables dict"
-OUTPUT_NOT_VARIABLE_ERROR = \
-    "Output has been defined but is not accessible as a variable within the " \
-    "job. If you manually set the trigger file you should also add it to " \
-    "the variables dict"
 
 MEOW_MODE = 'MEOW'
 CWL_MODE = 'CWL'
