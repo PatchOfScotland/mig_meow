@@ -133,6 +133,41 @@ LOWER = 'lower'
 UPPER = 'upper'
 TOP_BAR = 'top_bar'
 
+
+# class PollingThread(threading.Thread):
+#     """
+#     Separate thread used to update the monitor widget by polling data from
+#     MiG job queue.
+#     """
+#     # TODO replace this methodology.
+#     def __init__(self, monitor_widget, stop_flag, timer):
+#         """
+#         Constructor for PollingThread.
+#
+#         :param monitor_widget: (MonitorWidget) The widget to poll for.
+#
+#         :param stop_flag: (Event) A flag denoting if the polling should
+#         continue or not.
+#
+#         :param timer: (int) How often to poll, in seconds.
+#         """
+#         threading.Thread.__init__(self)
+#         self.monitor_widget = monitor_widget
+#         self.stop_flag = stop_flag
+#         self.timer = timer
+#
+#     def run(self):
+#         """
+#         Run function for PollingThread, which will start the thread. Until it
+#         is flagged to stop this will continue forever, and ask the monitor
+#         widget to update periodically, according to the timer given.
+#
+#         :return: No return.
+#         """
+#         while not self.stop_flag.wait(3):
+#             self.monitor_widget.update_queue_display()
+
+
 class MonitorWidget:
     """
     Jupyter widget for displaying a MiG job queue. Some basic interactions
@@ -171,7 +206,29 @@ class MonitorWidget:
         self.jobs = {}
         self.widgets = {}
 
-        self.__stop_polling = threading.Event()
+        # self.__stop_polling = threading.Event()
+        self.__start_queue_display(None)
+
+    def __start_queue_display(self, button):
+        """
+        Starts displaying queue information. Creates and starts a
+        PollingThread to keep the display updating automatically.
+
+        :return: No return.
+        """
+        self.update_queue_display()
+        # polling_thread = PollingThread(self, self.__stop_polling, self.timer)
+        # polling_thread.daemon = True
+        # polling_thread.start()
+
+    def __stop_queue_display(self):
+        """
+        Sets a flag to stop the PollingThread and prevent an automatic
+        update.
+
+        :return: No return.
+        """
+        # self.__stop_polling.set()
 
     def update_queue_display(self):
         """
@@ -180,13 +237,12 @@ class MonitorWidget:
 
         :return: No return.
         """
-        print('running..')
-        # #  TODO accomodate this call not working
-        # valid, result = self.get_vgrid_queue()
-        #
-        # if valid:
-        #     self.jobs = result
-        #     self.__display_job_queue()
+        #  TODO accommodate this call not working
+        valid, result = self.get_vgrid_queue()
+
+        if valid:
+            self.jobs = result
+            self.__display_job_queue()
 
     def get_vgrid_queue(self):
         """
@@ -446,9 +502,7 @@ class MonitorWidget:
 
         job = self.jobs[job_id]
 
-        detail_items = [
-            self.__back_to_queue_button()
-        ]
+        detail_items = [self.__back_to_queue_button()]
 
         for key, value in JOB_CORE_DISPLAY_KEYS.items():
             detail_items.append(
@@ -456,7 +510,11 @@ class MonitorWidget:
             )
             msg = ''
             if key in job:
-                msg = str(job[key])
+                if isinstance(job[key], list):
+                    for elem in job[key]:
+                        msg += str(elem)
+                else:
+                    msg = str(job[key])
             detail_items.append(
                 widgets.Label(msg)
             )
@@ -482,7 +540,8 @@ class MonitorWidget:
             tooltip='Go back to job queue',
             icon='backward'
         )
-        button.on_click(self.__start_queue_display)
+        # button.on_click(self.__start_queue_display)
+        button.on_click(self.__display_job_queue)
         return button
 
     def __resubmit_func(self, button, job_id):
@@ -555,6 +614,6 @@ class MonitorWidget:
 
 
 def update_monitor(monitor):
-    while True:
-        time.sleep(3)
+    while(True):
         monitor.update_queue_display()
+        time.sleep(3)
