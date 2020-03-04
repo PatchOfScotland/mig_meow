@@ -1,6 +1,8 @@
 
+import threading
+
 from .workflow_widget import WorkflowWidget
-from .monitor_widget import MonitorWidget
+from .monitor_widget import MonitorWidget, update_monitor
 
 
 def create_workflow_widget(**kwargs):
@@ -26,4 +28,6 @@ def create_monitor_widget(**kwargs):
 
     widget = MonitorWidget(**kwargs)
 
+    monitor_thread = threading.Thread(target=update_monitor, args=(widget,))
+    monitor_thread.start()
     return widget.display_widget()

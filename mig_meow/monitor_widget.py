@@ -1,6 +1,7 @@
 
 import ipywidgets as widgets
 import threading
+import time
 
 from IPython.display import display
 
@@ -132,41 +133,6 @@ LOWER = 'lower'
 UPPER = 'upper'
 TOP_BAR = 'top_bar'
 
-
-class PollingThread(threading.Thread):
-    """
-    Separate thread used to update the monitor widget by polling data from
-    MiG job queue.
-    """
-    # TODO replace this methodology.
-    def __init__(self, monitor_widget, stop_flag, timer):
-        """
-        Constructor for PollingThread.
-
-        :param monitor_widget: (MonitorWidget) The widget to poll for.
-
-        :param stop_flag: (Event) A flag denoting if the polling should
-        continue or not.
-
-        :param timer: (int) How often to poll, in seconds.
-        """
-        threading.Thread.__init__(self)
-        self.monitor_widget = monitor_widget
-        self.stop_flag = stop_flag
-        self.timer = timer
-
-    def run(self):
-        """
-        Run function for PollingThread, which will start the thread. Until it
-        is flagged to stop this will continue forever, and ask the monitor
-        widget to update periodically, according to the timer given.
-
-        :return: No return.
-        """
-        while not self.stop_flag.wait(self.timer):
-            self.monitor_widget.update_queue_display()
-
-
 class MonitorWidget:
     """
     Jupyter widget for displaying a MiG job queue. Some basic interactions
@@ -206,28 +172,6 @@ class MonitorWidget:
         self.widgets = {}
 
         self.__stop_polling = threading.Event()
-        self.__start_queue_display(None)
-
-    def __start_queue_display(self, button):
-        """
-        Starts displaying queue information. Creates and starts a
-        PollingThread to keep the display updating automatically.
-
-        :return: No return.
-        """
-        self.update_queue_display()
-        polling_thread = PollingThread(self, self.__stop_polling, self.timer)
-        polling_thread.daemon = True
-        polling_thread.start()
-
-    def __stop_queue_display(self):
-        """
-        Sets a flag to stop the PollingThread and prevent an automatic
-        update.
-
-        :return: No return.
-        """
-        self.__stop_polling.set()
 
     def update_queue_display(self):
         """
@@ -236,12 +180,13 @@ class MonitorWidget:
 
         :return: No return.
         """
-        #  TODO accomodate this call not working
-        valid, result = self.get_vgrid_queue()
-
-        if valid:
-            self.jobs = result
-            self.__display_job_queue()
+        print('running..')
+        # #  TODO accomodate this call not working
+        # valid, result = self.get_vgrid_queue()
+        #
+        # if valid:
+        #     self.jobs = result
+        #     self.__display_job_queue()
 
     def get_vgrid_queue(self):
         """
@@ -264,6 +209,10 @@ class MonitorWidget:
 
         if response['object_type'] == 'job_dict':
             jobs = response['jobs']
+            write_to_log(
+                self.logfile,
+                'get_vgrid_queue',
+                'Got jobs: %s' % jobs.keys())
             return True, jobs
         else:
             msg = 'something went wrong with retrieving the queue. '
@@ -603,3 +552,9 @@ class MonitorWidget:
         :return: (widgets.Output) The output are to be displayed ina  notebook.
         """
         return self.monitor_display_area
+
+
+def update_monitor(monitor):
+    while True:
+        time.sleep(3)
+        monitor.update_queue_display()
