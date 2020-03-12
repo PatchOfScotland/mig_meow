@@ -616,4 +616,4 @@ class MonitorWidget:
 def update_monitor(monitor):
     while(True):
         monitor.update_queue_display()
-        time.sleep(3)
+        time.sleep(15)
