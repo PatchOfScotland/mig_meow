@@ -132,7 +132,7 @@ def valid_file_path(path, name, extensions=None):
     messages.
 
     :param extensions: (list)[optional]. List of possible extensions to
-    check in path. Defaults to None.
+    check in path. Defaults to None. Extensions should be of the form '.txt'.
 
     :return: No return.
     """

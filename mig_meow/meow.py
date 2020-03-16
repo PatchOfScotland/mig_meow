@@ -1,8 +1,10 @@
 import copy
+import json
 import re
 import os
 import nbformat
 
+from .constants import NOTEBOOK_EXTENSIONS
 from .inputs import valid_string, is_valid_pattern_dict, check_input, \
     valid_file_path, is_valid_recipe_dict
 from .constants import DESCENDANTS, WORKFLOW_INPUTS, \
@@ -482,6 +484,34 @@ class Pattern:
                 display_dict[OUTPUT][key] = value
 
         return display_dict
+
+
+def register_recipe(source, name=None):
+    """
+    Registers a new Recipe dict.
+
+    :param source: (str) The source notebook of the Recipe.
+
+    :param name: (str)[optional] The name the Recipe is to be registered under.
+    If not provided then the source filename will be used instead.
+
+    :return: (dict) A dict object expressing the Recipe notebook at the given
+    source
+    """
+    valid_file_path(source, 'source', extensions=NOTEBOOK_EXTENSIONS)
+    check_input(name, str, 'name', or_none=True)
+
+    if not name:
+        if os.path.sep in source:
+            name = source[source.rfind('/') + 1:source.index('.')]
+        else:
+            name = source[:source.index('.')]
+    if not os.path.isfile(source):
+        raise FileNotFoundError("Source %s was not found. " % source)
+
+    with open(source, "r") as read_file:
+        notebook = json.load(read_file)
+        return create_recipe_dict(notebook, name, source)
 
 
 def create_recipe_dict(notebook, name, source):

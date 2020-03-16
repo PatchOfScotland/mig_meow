@@ -46,7 +46,8 @@ from .cwl import make_step_dict, make_workflow_dict, get_linked_workflow, \
 from .logging import create_workflow_logfile, write_to_log
 from .mig import vgrid_workflow_json_call
 from .meow import build_workflow_object, pattern_has_recipes, Pattern, \
-    create_recipe_dict, check_patterns_dict, check_recipes_dict
+    create_recipe_dict, check_patterns_dict, check_recipes_dict, \
+    register_recipe
 from .yaml import patten_to_yaml_dict, pattern_from_yaml_dict, \
     recipe_to_yaml_dict, recipe_from_yaml_dict
 
@@ -2959,53 +2960,30 @@ class WorkflowWidget:
             source = values[SOURCE]
             name = values[NAME]
 
-            valid_file_path(
-                source,
-                'Source',
-                extensions=NOTEBOOK_EXTENSIONS
-            )
-            if os.path.sep in source:
-                filename = \
-                    source[source.rfind('/') + 1:source.index('.')]
-            else:
-                filename = source[:source.index('.')]
-            if not name:
-                name = filename
-            if not os.path.isfile(source):
-                self.__set_feedback("Source %s was not found. " % source)
-                return False
-            if name:
-                valid_string(name,
-                             'Name',
-                             CHAR_UPPERCASE
-                             + CHAR_LOWERCASE
-                             + CHAR_NUMERIC
-                             + CHAR_LINES)
-                if not editing:
-                    if name in self.meow[RECIPES]:
-                        msg = "%s name is not valid as another %s " \
-                              "is already registered with that name. Please " \
-                              "try again using a different name. " \
-                              % (RECIPE_NAME, RECIPE_NAME)
-                        self.__set_feedback(msg)
-                        return False
+            recipe = register_recipe(source, name)
 
-            with open(source, "r") as read_file:
-                notebook = json.load(read_file)
-                recipe = create_recipe_dict(notebook, name, source)
-                if name in self.meow[RECIPES]:
-                    word = 'updated'
-                    try:
-                        recipe[PERSISTENCE_ID] = \
-                            self.meow[RECIPES][name][PERSISTENCE_ID]
-                    except KeyError:
-                        pass
-                else:
-                    word = 'created'
-                self.meow[RECIPES][name] = recipe
-                self.__set_feedback(
-                    "%s \'%s\' %s. " % (RECIPE_NAME, name, word)
-                )
+            if not editing:
+                if recipe[NAME] in self.meow[RECIPES]:
+                    msg = "%s name is not valid as another %s " \
+                          "is already registered with that name. Please " \
+                          "try again using a different name. " \
+                          % (RECIPE_NAME, RECIPE_NAME)
+                    self.__set_feedback(msg)
+                    return False
+
+            if recipe[NAME] in self.meow[RECIPES]:
+                word = 'updated'
+                try:
+                    recipe[PERSISTENCE_ID] = \
+                        self.meow[RECIPES][recipe[NAME]][PERSISTENCE_ID]
+                except KeyError:
+                    pass
+            else:
+                word = 'created'
+            self.meow[RECIPES][recipe[NAME]] = recipe
+            self.__set_feedback(
+                "%s \'%s\' %s. " % (RECIPE_NAME, recipe[NAME], word)
+            )
             self.__update_workflow_visualisation()
             self.__close_form()
             return True
