@@ -536,6 +536,7 @@ class Pattern:
             INPUT_FILE: self.trigger_file,
             TRIGGER_PATHS: self.trigger_paths,
             RECIPES: self.recipes,
+            SWEEP: self.sweep,
             OUTPUT: {},
             VARIABLES: {}
         }

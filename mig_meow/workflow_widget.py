@@ -2153,9 +2153,11 @@ class WorkflowWidget:
                         if isinstance(updating_element, list):
                             values_count = \
                                 len(selected_object[form_part[INPUT_KEY]])
+
                             required_inputs = values_count - 1
                             if required_inputs < 0:
                                 required_inputs = 0
+
                             if type(selected_object[form_part[INPUT_KEY]]) \
                                     == dict:
                                 section = self.__form_multi_dict_input(
