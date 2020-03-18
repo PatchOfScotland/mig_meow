@@ -1,4 +1,6 @@
 
+import copy
+
 from .constants import NAME, PERSISTENCE_ID, INPUT_FILE, TRIGGER_PATHS, \
     RECIPES, OUTPUT, VARIABLES, OBJECT_TYPE, VGRID, TASK_FILE, \
     TRIGGER_RECIPES, SWEEP
@@ -39,6 +41,15 @@ def pattern_from_yaml_dict(yaml, name):
     :return: (dict) A dict, expressing the given Pattern
     """
     yaml[NAME] = name
+    if RECIPES in yaml and TRIGGER_RECIPES not in yaml:
+        trigger_id = 'placeholder_id'
+        recipe_dict = {
+            trigger_id: {}
+        }
+        for recipe in yaml[RECIPES]:
+            recipe_dict[trigger_id][recipe] = {}
+        yaml[TRIGGER_RECIPES] = recipe_dict
+        yaml.pop(RECIPES)
     pattern = Pattern(yaml)
     return pattern
 

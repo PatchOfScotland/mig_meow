@@ -122,6 +122,7 @@ def parameter_sweep_entry(name, start, stop, increment):
         SWEEP_JUMP: increment
     }
 
+
 class Pattern:
     def __init__(self, parameters):
         """

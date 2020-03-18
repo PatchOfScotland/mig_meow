@@ -2188,8 +2188,23 @@ class WorkflowWidget:
                                 if isinstance(value_list, dict):
                                     keys = list(value_list.keys())
                                     if index < len(selected_object[update]):
-                                        item[NAME_KEY].value = keys[index]
-                                        item[VALUE_KEY].value = str(value_list[keys[index]])
+                                        if NAME_KEY in item \
+                                                and VALUE_KEY in item:
+                                            item[NAME_KEY].value = keys[index]
+                                            item[VALUE_KEY].value = \
+                                                str(value_list[keys[index]])
+                                        elif NAME_KEY in item \
+                                                and SWEEP_START_KEY in item \
+                                                and SWEEP_START_KEY in item \
+                                                and SWEEP_JUMP_KEY in item:
+                                            key = keys[index]
+                                            item[NAME_KEY].value = key
+                                            item[SWEEP_START_KEY].value = \
+                                                str(value_list[key][SWEEP_START])
+                                            item[SWEEP_STOP_KEY].value = \
+                                                str(value_list[key][SWEEP_STOP])
+                                            item[SWEEP_JUMP_KEY].value = \
+                                                str(value_list[key][SWEEP_JUMP])
                                 else:
                                     if index < len(selected_object[update]):
                                         item.value = value_list[index]
@@ -4660,12 +4675,12 @@ class WorkflowWidget:
                         as yaml_file:
                     pattern_yaml_dict = yaml.full_load(yaml_file)
                     if '.' in file_name:
-                        patttern_file = file_name[:file_name.index('.')]
+                        file_name = file_name[:file_name.index('.')]
 
                     pattern = \
                         pattern_from_yaml_dict(pattern_yaml_dict, file_name)
 
-                    buffer_meow[PATTERNS][patttern_file] = pattern
+                    buffer_meow[PATTERNS][file_name] = pattern
             except Exception as ex:
                 self.__add_to_feedback(
                     "Tried to import %s but could not. %s" % (PATTERN_NAME, ex)
