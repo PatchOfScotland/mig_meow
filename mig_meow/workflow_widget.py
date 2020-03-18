@@ -2149,8 +2149,8 @@ class WorkflowWidget:
                     for form_part in form_parts:
                         updating_element = \
                             self.form_inputs[form_part[INPUT_KEY]]
-                        if isinstance(updating_element, list):
 
+                        if isinstance(updating_element, list):
                             values_count = \
                                 len(selected_object[form_part[INPUT_KEY]])
                             required_inputs = values_count - 1
@@ -2162,8 +2162,8 @@ class WorkflowWidget:
                                     form_part[INPUT_KEY],
                                     form_part[INPUT_NAME],
                                     form_part[INPUT_HELP],
-                                    form_part[INPUT_OPTIONAL],
                                     form_part[INPUT_HEADINGS],
+                                    form_part[INPUT_OPTIONAL],
                                     required_inputs
                                 )
                             else:
@@ -2969,7 +2969,6 @@ class WorkflowWidget:
                           "already registered with that name. " \
                           % (PATTERN_NAME, PATTERN_NAME)
                     self.__set_feedback(msg)
-                    print('DM %s' % msg)
                     return False
             file_name = values[INPUT_FILE]
             trigger_paths = values[TRIGGER_PATHS]
@@ -3042,20 +3041,17 @@ class WorkflowWidget:
                 self.__set_feedback(msg)
                 self.__update_workflow_visualisation()
                 self.__close_form()
-                print('DM %s' % msg)
                 return True
             else:
                 msg = "%s is not valid. " % PATTERN_NAME
                 if warnings:
                     msg += "\n%s" % warnings
                 self.__set_feedback(msg)
-                print('DM %s' % msg)
                 return False
         except Exception as e:
             msg = "Something went wrong with %s generation. %s" \
                   % (PATTERN_NAME, str(e))
             self.__set_feedback(msg)
-            print('DM %s' % msg)
             return False
 
     def process_new_recipe(self, values, editing=False):
