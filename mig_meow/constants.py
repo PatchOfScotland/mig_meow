@@ -112,6 +112,10 @@ OUTPUT = 'output'
 RECIPE = 'recipe'
 RECIPES = 'recipes'
 VARIABLES = 'variables'
+SWEEP = 'param_sweep'
+SWEEP_START = 'start'
+SWEEP_STOP = 'stop'
+SWEEP_JUMP = 'increment'
 VGRID = 'vgrid'
 SOURCE = 'source'
 PATTERNS = 'patterns'
@@ -138,7 +142,18 @@ VALID_PATTERN_MIN = {
 
 VALID_PATTERN_OPTIONAL = {
     OUTPUT: dict,
-    VARIABLES: dict
+    VARIABLES: dict,
+    SWEEP: dict,
+}
+
+VALID_SWEEP_MIN = {
+    SWEEP_START: [int, float],
+    SWEEP_STOP: [int, float],
+    SWEEP_JUMP: [int, float]
+}
+
+VALID_SWEEP_OPTIONAL = {
+
 }
 
 VALID_RECIPE_MIN = {

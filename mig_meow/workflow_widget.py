@@ -11,7 +11,7 @@ from datetime import datetime
 from IPython.display import display
 
 from .inputs import valid_file_path, valid_string, check_input_args, \
-    check_input, valid_dir_path, is_valid_recipe_dict
+    check_input, valid_dir_path, is_valid_recipe_dict, is_a_number
 from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
     DEFAULT_JOB_NAME, SOURCE, OBJECT_TYPE, \
     VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
@@ -37,7 +37,8 @@ from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
     CWL_EDIT_WORKFLOW_BUTTON, CWL_NEW_STEP_BUTTON, CWL_EDIT_STEP_BUTTON, \
     CWL_NEW_VARIABLES_BUTTON, CWL_EDIT_VARIABLES_BUTTON, \
     CWL_IMPORT_DIR_BUTTON, CWL_EXPORT_DIR_BUTTON, CWL_IMPORT_MEOW_BUTTON, \
-    MEOW_SAVE_SVG_BUTTON, CWL_SAVE_SVG_BUTTON
+    MEOW_SAVE_SVG_BUTTON, CWL_SAVE_SVG_BUTTON, SWEEP, SWEEP_START, \
+    SWEEP_STOP, SWEEP_JUMP
 from .cwl import make_step_dict, make_workflow_dict, get_linked_workflow, \
     make_settings_dict, check_workflow_is_valid, check_step_is_valid, \
     get_glob_value, get_glob_entry_keys, get_step_name_from_title, \
@@ -103,15 +104,21 @@ FORM_PATTERN_RECIPES = 'Recipes'
 FORM_PATTERN_TRIGGER_FILE = 'Input file'
 FORM_PATTERN_OUTPUT = 'Output'
 FORM_PATTERN_VARIABLES = 'Variables'
+FORM_PATTERN_SWEEP = 'Parameter Sweeps'
 
 NAME_KEY = 'Name'
 VALUE_KEY = 'Value'
+SWEEP_START_KEY = 'Start'
+SWEEP_STOP_KEY = 'Stop'
+SWEEP_JUMP_KEY = 'Jump'
+
 
 INPUT_KEY = 'key'
 INPUT_NAME = 'name'
 INPUT_TYPE = 'type'
 INPUT_HELP = 'help'
 INPUT_OPTIONAL = 'optional'
+INPUT_HEADINGS = 'headings'
 
 FORM_SINGLE_INPUT = 'single'
 FORM_MULTI_INPUT = 'multi'
@@ -288,6 +295,7 @@ PATTERN_FORM_INPUTS = {
             "<br/>"
             "{JOB_ID}: *Some unique job ID*"
             % (PATTERN_NAME, RECIPE_NAME, PATTERN_NAME, RECIPE_NAME),
+        INPUT_HEADINGS: [NAME_KEY, VALUE_KEY],
         INPUT_OPTIONAL: True
     },
     FORM_PATTERN_VARIABLES: {
@@ -339,8 +347,50 @@ PATTERN_FORM_INPUTS = {
             "<br/>"
             "{JOB_ID}: *Some unique job ID*"
             % (RECIPE_NAME, RECIPE_NAME, RECIPE_NAME, PATTERN_NAME),
+        INPUT_HEADINGS: [NAME_KEY, VALUE_KEY],
         INPUT_OPTIONAL: True
     },
+    FORM_PATTERN_SWEEP: {
+        INPUT_KEY: SWEEP,
+        INPUT_TYPE: FORM_DICT_INPUT,
+        INPUT_NAME: FORM_PATTERN_SWEEP,
+        INPUT_HELP:
+            "Parameter Sweeping Variables(s) are an optional parameter used "
+            "to define any variables to be overwritten within the %s code in "
+            "the same manner as regular Variables. Where they differ is that "
+            "a parameter sweep will take multiple values for a variable and "
+            "start a new job for each. Defining a parameter sweep is done in"
+            "four parts. Firstly is the name of the variable, which is the "
+            "variable name used within the %s code to refer to this "
+            "specific parameter. We must then define a small loop between a "
+            "lower bounding value (start) and an upper bounding value (stop). "
+            "The increment between instances of values is defined using the "
+            "jump."
+            "<br/>"
+            "Example: "
+            "<br/>"
+            "Name: <b>count</b>"
+            "<br/>"
+            "Start: <b>10</b>"
+            "<br/>"
+            "Start: <b>20</b>"
+            "<br/>"
+            "Start: <b>2</b>"
+            "<br/>"
+            "In this example the %s would use a variable called "
+            "'count'. When a job is triggered using this %s, 6 jobs would be "
+            "created. In one 'count' would have a value of 10, and in others "
+            "it would be 12, 14, 16, 18 and 20. Note that only integers and "
+            "floats may be used in the parameter sweep. "
+            % (RECIPE_NAME, RECIPE_NAME, RECIPE_NAME, PATTERN_NAME),
+        INPUT_HEADINGS: [
+            NAME_KEY,
+            SWEEP_START_KEY,
+            SWEEP_STOP_KEY,
+            SWEEP_JUMP_KEY
+        ],
+        INPUT_OPTIONAL: True
+    }
 }
 
 FORM_WORKFLOW_NAME = 'Name'
@@ -372,6 +422,7 @@ WORKFLOW_FORM_INPUTS = {
             "<a target='_blank' rel=noopener noreferrer' "
             "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % WORKFLOW_NAME,
+        INPUT_HEADINGS: [NAME_KEY, VALUE_KEY],
         INPUT_OPTIONAL: False
     },
     FORM_WORKFLOW_OUTPUTS: {
@@ -385,6 +436,7 @@ WORKFLOW_FORM_INPUTS = {
             "<a target='_blank' rel=noopener noreferrer' "
             "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % WORKFLOW_NAME,
+        INPUT_HEADINGS: [NAME_KEY, VALUE_KEY],
         INPUT_OPTIONAL: True
     },
     FORM_WORKFLOW_STEPS: {
@@ -398,6 +450,7 @@ WORKFLOW_FORM_INPUTS = {
             "<a target='_blank' rel=noopener noreferrer' "
             "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % WORKFLOW_NAME,
+        INPUT_HEADINGS: [NAME_KEY, VALUE_KEY],
         INPUT_OPTIONAL: False
     },
     FORM_WORKFLOW_REQUIREMENTS: {
@@ -411,6 +464,7 @@ WORKFLOW_FORM_INPUTS = {
             "<a target='_blank' rel=noopener noreferrer' "
             "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % WORKFLOW_NAME,
+        INPUT_HEADINGS: [NAME_KEY, VALUE_KEY],
         INPUT_OPTIONAL: True
     }
 }
@@ -474,6 +528,7 @@ STEP_FORM_INPUTS = {
             "<a target='_blank' rel=noopener noreferrer' "
             "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % STEP_NAME,
+        INPUT_HEADINGS: [NAME_KEY, VALUE_KEY],
         INPUT_OPTIONAL: False
     },
     FORM_STEP_OUTPUTS: {
@@ -487,6 +542,7 @@ STEP_FORM_INPUTS = {
             "<a target='_blank' rel=noopener noreferrer' "
             "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % STEP_NAME,
+        INPUT_HEADINGS: [NAME_KEY, VALUE_KEY],
         INPUT_OPTIONAL: True
     },
     FORM_STEP_REQUIREMENTS: {
@@ -500,6 +556,7 @@ STEP_FORM_INPUTS = {
             "<a target='_blank' rel=noopener noreferrer' "
             "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % STEP_NAME,
+        INPUT_HEADINGS: [NAME_KEY, VALUE_KEY],
         INPUT_OPTIONAL: True
     },
     FORM_STEP_ARGUMENTS: {
@@ -526,6 +583,7 @@ STEP_FORM_INPUTS = {
             "<a target='_blank' rel=noopener noreferrer' "
             "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % STEP_NAME,
+        INPUT_HEADINGS: [NAME_KEY, VALUE_KEY],
         INPUT_OPTIONAL: True
     }
 }
@@ -557,6 +615,7 @@ VARIABLES_FORM_INPUTS = {
             "<a target='_blank' rel=noopener noreferrer' "
             "href='https://www.commonwl.org/user_guide/'>CWL user guide</a>"
             % VARIABLES_NAME,
+        INPUT_HEADINGS: [NAME_KEY, VALUE_KEY],
         INPUT_OPTIONAL: False
     }
 }
@@ -567,9 +626,9 @@ MEOW_TOOLTIP = Tooltip(
         'Recipe(s)',
         'Trigger Path(s)',
         'Outputs(s)',
-        'Static Inputs(s)',
         'Input File',
-        'Variable(s)'
+        'Variable(s)',
+        'Sweep(s)'
     ],
 )
 
@@ -1281,7 +1340,8 @@ class WorkflowWidget:
                 PATTERN_FORM_INPUTS[FORM_PATTERN_RECIPES],
                 PATTERN_FORM_INPUTS[FORM_PATTERN_TRIGGER_FILE],
                 PATTERN_FORM_INPUTS[FORM_PATTERN_OUTPUT],
-                PATTERN_FORM_INPUTS[FORM_PATTERN_VARIABLES]
+                PATTERN_FORM_INPUTS[FORM_PATTERN_VARIABLES],
+                PATTERN_FORM_INPUTS[FORM_PATTERN_SWEEP]
             ],
             self.process_new_pattern,
             PATTERN_NAME
@@ -1303,7 +1363,8 @@ class WorkflowWidget:
                 PATTERN_FORM_INPUTS[FORM_PATTERN_RECIPES],
                 PATTERN_FORM_INPUTS[FORM_PATTERN_TRIGGER_FILE],
                 PATTERN_FORM_INPUTS[FORM_PATTERN_OUTPUT],
-                PATTERN_FORM_INPUTS[FORM_PATTERN_VARIABLES]
+                PATTERN_FORM_INPUTS[FORM_PATTERN_VARIABLES],
+                PATTERN_FORM_INPUTS[FORM_PATTERN_SWEEP]
             ],
             self.process_editing_pattern,
             PATTERN_NAME,
@@ -2102,6 +2163,7 @@ class WorkflowWidget:
                                     form_part[INPUT_NAME],
                                     form_part[INPUT_HELP],
                                     form_part[INPUT_OPTIONAL],
+                                    form_part[INPUT_HEADINGS],
                                     required_inputs
                                 )
                             else:
@@ -2197,7 +2259,8 @@ class WorkflowWidget:
                     element[INPUT_KEY],
                     element[INPUT_NAME],
                     element[INPUT_HELP],
-                    element[INPUT_OPTIONAL],
+                    element[INPUT_HEADINGS],
+                    element[INPUT_OPTIONAL]
                 )
                 self.form_sections[element[INPUT_KEY]] = form_section
                 rows.append(form_section)
@@ -2391,7 +2454,7 @@ class WorkflowWidget:
             additional_input
         ])
 
-    def __make_dict_input_row(self, key, output_items):
+    def __make_dict_input_row(self, key, output_items, headings):
         """
         Makes an additional input row for a dict based form input. The
         additional row is appended in place.
@@ -2402,6 +2465,8 @@ class WorkflowWidget:
         :param output_items: (list) A list of form rows to which the
         additional shall be appended.
 
+        :param headings: (list) A list of all the headings needing input.
+
         :return: No return.
         """
 
@@ -2410,24 +2475,32 @@ class WorkflowWidget:
             layout=widgets.Layout(width='20%', min_width='10ex')
         )
 
-        name_input = widgets.Text(
+        first_input = widgets.Text(
             layout=widgets.Layout(width='20%')
         )
 
-        value_input = widgets.Text(
-            layout=widgets.Layout(width='55%')
-        )
-
-        self.form_inputs[key].append({
-            NAME_KEY: name_input,
-            VALUE_KEY: value_input
-        })
-
-        row = widgets.HBox([
+        inputs_list = [
             hidden_label,
-            name_input,
-            value_input
-        ])
+            first_input
+        ]
+        inputs_dict = {
+            headings[0]: first_input
+        }
+
+        for i in range(1, len(headings)):
+            width = '%d%%' % ((40 / (len(headings) - 1)))
+            # value_input = widgets.Text(
+            #     layout=widgets.Layout(width='55%')
+            # )
+            extra_input = widgets.Text(
+                layout=widgets.Layout(width=width)
+            )
+            inputs_list.append(extra_input)
+            inputs_dict[headings[i]] = extra_input
+
+        self.form_inputs[key].append(inputs_dict)
+
+        row = widgets.HBox(inputs_list)
 
         output_items.insert(-1, row)
 
@@ -2629,7 +2702,7 @@ class WorkflowWidget:
         return section
 
     def __form_multi_dict_input(
-            self, key, display_text, help_text,
+            self, key, display_text, help_text, headings,
             optional=False, additional_inputs=None,
     ):
         """
@@ -2643,6 +2716,9 @@ class WorkflowWidget:
 
         :param help_text: (str) help text, so a user knows how to fill in
         this row.
+
+        :param headings: (list) The headings to be used to show what each form
+        entry box relates to
 
         :param optional: (boolean)[optional] If true the label will be marked
         with additional text showing this input row is optional. Default is
@@ -2665,14 +2741,18 @@ class WorkflowWidget:
         )
 
         key_label = widgets.Label(
-            value="%s: " % NAME_KEY,
+            value="%s: " % headings[0],
             layout=widgets.Layout(width='20%')
         )
 
-        value_label = widgets.Label(
-            value="%s: " % VALUE_KEY,
-            layout=widgets.Layout(width='39%')
-        )
+        extra_labels = []
+        for i in range(1, len(headings)):
+            width = '%d%%' % ((40 / (len(headings) - 1)))
+            value_label = widgets.Label(
+                value="%s: " % headings[i],
+                layout=widgets.Layout(width=width)
+            )
+            extra_labels.append(value_label)
 
         def activate_remove_button():
             """
@@ -2696,7 +2776,7 @@ class WorkflowWidget:
 
             :return: No return.
             """
-            self.__make_dict_input_row(key, output_items)
+            self.__make_dict_input_row(key, output_items, headings)
             expanded_section = widgets.VBox(
                 output_items,
                 layout=widgets.Layout(width='100%')
@@ -2752,8 +2832,8 @@ class WorkflowWidget:
 
         top_row_items = [
             label,
-            key_label,
-            value_label,
+            key_label
+        ] + extra_labels + [
             add_button,
             remove_button,
             help_button
@@ -2768,11 +2848,11 @@ class WorkflowWidget:
 
         self.form_inputs[key] = []
 
-        self.__make_dict_input_row(key, output_items)
+        self.__make_dict_input_row(key, output_items, headings)
 
         if additional_inputs:
             for x in range(0, additional_inputs):
-                self.__make_dict_input_row(key, output_items)
+                self.__make_dict_input_row(key, output_items, headings)
 
         section = widgets.VBox(
             output_items,
@@ -2889,6 +2969,7 @@ class WorkflowWidget:
                           "already registered with that name. " \
                           % (PATTERN_NAME, PATTERN_NAME)
                     self.__set_feedback(msg)
+                    print('DM %s' % msg)
                     return False
             file_name = values[INPUT_FILE]
             trigger_paths = values[TRIGGER_PATHS]
@@ -2898,16 +2979,50 @@ class WorkflowWidget:
                 # TODO Currently ignores any additional trigger paths.
                 #  fix this once mig formatting complete.
                 pattern.add_single_input(file_name, trigger_paths[0])
+
             for recipe in values[RECIPES]:
                 pattern.add_recipe(recipe)
+
             for variable in values[VARIABLES]:
                 if variable[NAME_KEY]:
                     pattern.add_variable(
                         variable[NAME_KEY], variable[VALUE_KEY]
                     )
+
             for output in values[OUTPUT]:
-                if output[VALUE_KEY]:
+                if output[VALUE_KEY] \
+                        and output[NAME_KEY]:
                     pattern.add_output(output[NAME_KEY], output[VALUE_KEY])
+
+            for sweep in values[SWEEP]:
+                if sweep[NAME_KEY] \
+                        and sweep[SWEEP_START_KEY] \
+                        and sweep[SWEEP_STOP_KEY] \
+                        and sweep[SWEEP_JUMP_KEY]:
+                    valid_string(
+                        sweep[SWEEP_START_KEY],
+                        'Parameter Sweep %s for %s'
+                        % (sweep[NAME_KEY], SWEEP_START_KEY),
+                        CHAR_NUMERIC + '.-'
+                    )
+                    valid_string(
+                        sweep[SWEEP_STOP_KEY],
+                        'Parameter Sweep %s for %s'
+                        % (sweep[NAME_KEY], SWEEP_STOP_KEY),
+                        CHAR_NUMERIC + '.-'
+                    )
+                    valid_string(
+                        sweep[SWEEP_JUMP_KEY],
+                        'Parameter Sweep %s for %s'
+                        % (sweep[NAME_KEY], SWEEP_JUMP_KEY),
+                        CHAR_NUMERIC + '.-'
+                    )
+                    sweep_dict = {
+                        SWEEP_START: float(sweep[SWEEP_START_KEY]),
+                        SWEEP_STOP: float(sweep[SWEEP_STOP_KEY]),
+                        SWEEP_JUMP: float(sweep[SWEEP_JUMP_KEY])
+                    }
+                    pattern.add_param_sweep(sweep[NAME_KEY], sweep_dict)
             valid, warnings = pattern.integrity_check()
             if valid:
                 if pattern.name in self.meow[PATTERNS]:
@@ -2927,17 +3042,20 @@ class WorkflowWidget:
                 self.__set_feedback(msg)
                 self.__update_workflow_visualisation()
                 self.__close_form()
+                print('DM %s' % msg)
                 return True
             else:
                 msg = "%s is not valid. " % PATTERN_NAME
                 if warnings:
                     msg += "\n%s" % warnings
                 self.__set_feedback(msg)
+                print('DM %s' % msg)
                 return False
         except Exception as e:
             msg = "Something went wrong with %s generation. %s" \
                   % (PATTERN_NAME, str(e))
             self.__set_feedback(msg)
+            print('DM %s' % msg)
             return False
 
     def process_new_recipe(self, values, editing=False):
@@ -4970,6 +5088,7 @@ class WorkflowWidget:
             'Outputs(s)': str(pattern.outputs),
             'Input File': pattern.trigger_file,
             'Variable(s)': str(pattern.variables),
+            'Sweep(s)': str(pattern.sweep),
             'shape': 'circle',
             'shape_attrs': {'r': 30},
             'tooltip': MEOW_MODE

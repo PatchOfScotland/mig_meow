@@ -1,6 +1,7 @@
 
 from .constants import NAME, PERSISTENCE_ID, INPUT_FILE, TRIGGER_PATHS, \
-    RECIPES, OUTPUT, VARIABLES, OBJECT_TYPE, VGRID, TASK_FILE
+    RECIPES, OUTPUT, VARIABLES, OBJECT_TYPE, VGRID, TASK_FILE, \
+    TRIGGER_RECIPES, SWEEP
 from .meow import Pattern
 
 
@@ -21,7 +22,8 @@ def patten_to_yaml_dict(pattern):
         TRIGGER_PATHS: pattern.trigger_paths,
         RECIPES: pattern.recipes,
         OUTPUT: pattern.outputs,
-        VARIABLES: pattern.variables
+        VARIABLES: pattern.variables,
+        SWEEP: pattern.sweep
     }
     return pattern_yaml
 

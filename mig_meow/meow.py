@@ -6,7 +6,7 @@ import nbformat
 
 from .constants import NOTEBOOK_EXTENSIONS
 from .inputs import valid_string, is_valid_pattern_dict, check_input, \
-    valid_file_path, is_valid_recipe_dict
+    valid_file_path, is_valid_recipe_dict, valid_param_sweep
 from .constants import DESCENDANTS, WORKFLOW_INPUTS, \
     WORKFLOW_OUTPUTS, ANCESTORS, DEFAULT_JOB_NAME, NAME, INPUT_FILE, \
     TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, CHAR_UPPERCASE, \
@@ -14,7 +14,8 @@ from .constants import DESCENDANTS, WORKFLOW_INPUTS, \
     PLACEHOLDER, TRIGGER_RECIPES, SOURCE, RECIPE, PATTERN_NAME, RECIPE_NAME, \
     NO_OUTPUT_SET_WARNING, NO_INPUT_FILE_SET_ERROR, NO_INPUT_PATH_SET_ERROR, \
     NO_NAME_SET_ERROR, NO_RECIPES_SET_ERROR, PLACEHOLDER_ERROR, \
-    INVALID_INPUT_PATH_ERROR
+    INVALID_INPUT_PATH_ERROR, SWEEP, SWEEP_START, SWEEP_STOP, \
+    SWEEP_JUMP
 
 
 OUTPUT_MAGIC_CHAR = '*'
@@ -107,6 +108,20 @@ def check_recipes_dict(recipes):
     return True, ''
 
 
+def parameter_sweep_entry(name, start, stop, increment):
+    """
+    Helper function to create parameter sweep entry
+
+    :return: (dict) A dictionary expressing a parameter sweep
+    """
+    check_input(name, str, 'name')
+
+    return {
+        SWEEP_START: start,
+        SWEEP_STOP: stop,
+        SWEEP_JUMP: increment
+    }
+
 class Pattern:
     def __init__(self, parameters):
         """
@@ -138,6 +153,7 @@ class Pattern:
             self.recipes = []
             self.outputs = {}
             self.variables = {}
+            self.sweep = {}
             return
         # if given dict we are importing from a stored pattern object
         if isinstance(parameters, dict):
@@ -155,24 +171,35 @@ class Pattern:
             self.recipes = []
             self.outputs = {}
             self.variables = {}
+            self.sweep = {}
 
             self.trigger_file = copy.deepcopy(parameters[INPUT_FILE])
 
-            for trigger_id, trigger in parameters[TRIGGER_RECIPES].items():
-                for recipe_key, recipe in trigger.items():
-                    # A MiG recipe by this name has already been registered
-                    if 'name' in recipe:
-                        self.add_recipe(recipe['name'])
-                    # If not already registered
-                    else:
-                        self.add_recipe(recipe_key)
+            # MiG has fun formatting recipe entries.
+            if TRIGGER_RECIPES in parameters:
+                for trigger_id, trigger in parameters[TRIGGER_RECIPES].items():
+                    for recipe_key, recipe in trigger.items():
+                        # A MiG recipe by this name has already been registered
+                        if 'name' in recipe:
+                            self.add_recipe(recipe['name'])
+                        # If not already registered
+                        else:
+                            self.add_recipe(recipe_key)
+            elif RECIPES in parameters:
+                for recipe in parameters[RECIPES]:
+                    self.add_recipe(recipe)
 
-            for name, path in parameters[OUTPUT].items():
-                self.add_output(name, path)
+            if OUTPUT in parameters:
+                for name, path in parameters[OUTPUT].items():
+                    self.add_output(name, path)
 
-            for name, value in parameters[VARIABLES].items():
-                self.add_variable(name, value)
+            if VARIABLES in parameters:
+                for name, value in parameters[VARIABLES].items():
+                    self.add_variable(name, value)
 
+            if SWEEP in parameters:
+                for name, value in parameters[SWEEP].items():
+                    self.add_param_sweep(name, value)
             return
         raise TypeError(
             'Pattern requires either a str input as a name for a new pattern, '
@@ -194,12 +221,14 @@ class Pattern:
                  'Output(s): %s, ' \
                  'Recipe(s): %s, ' \
                  'Variable(s): %s' \
+                 'Sweeping(s): %s' \
                  % (self.name,
                     self.trigger_file,
                     self.trigger_paths,
                     self.outputs,
                     self.recipes,
-                    self.variables)
+                    self.variables,
+                    self.sweep)
         return string
 
     def __eq__(self, other):
@@ -227,6 +256,8 @@ class Pattern:
         if self.recipes != other.recipes:
             return False
         if self.variables != other.variables:
+            return False
+        if self.sweep != other.sweep:
             return False
         count = 0
         try:
@@ -455,6 +486,41 @@ class Pattern:
             raise ValueError(
                 'Could not create variable %s as a variable with this '
                 'name is already defined. ' % variable_name
+            )
+
+    def add_param_sweep(self, name, sweep_dict):
+        """
+        Adds a parameter sweeping variable to the Pattern, which will be
+        passed to the Recipe notebook using papermill as parameters. Raises
+        ValueError if parameter sweeping variable name is already in use.
+
+        :param name: (str) name of the variable.
+
+        :param sweep_dict: (dict) dictionary defining the parameter sweep.
+        Should be of the form:
+        {
+            'start': (int) or (float),
+            'stop': (int) or (float),
+            'jump': (int) or (float)
+        }
+
+        :return: No return.
+        """
+        valid_string(name,
+                     'name',
+                     CHAR_UPPERCASE
+                     + CHAR_LOWERCASE
+                     + CHAR_NUMERIC
+                     + CHAR_LINES)
+        valid_param_sweep(sweep_dict, name)
+
+        if name not in self.sweep.keys():
+            self.sweep[name] = sweep_dict
+        else:
+            raise ValueError(
+                'Could not create parameter sweeping variable %s as a '
+                'parameter sweeping variable with this name is already '
+                'defined. ' % name
             )
 
     def to_display_dict(self):

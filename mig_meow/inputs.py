@@ -1,5 +1,6 @@
 
 import os
+import unicodedata
 
 from .constants import CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_UPPERCASE, \
     VALID_PATTERN_MIN, RECIPE_NAME, VALID_RECIPE_MIN, PATTERN_NAME, \
@@ -8,7 +9,34 @@ from .constants import CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_UPPERCASE, \
     VALID_PATTERN_OPTIONAL, VALID_RECIPE_OPTIONAL, VALID_SETTING_OPTIONAL, \
     VALID_STEP_OPTIONAL, VALID_WORKFLOW_OPTIONAL, CWL_CLASS_WORKFLOW, \
     CWL_CLASS_COMMAND_LINE_TOOL, CWL_CLASS, TRIGGER_PATHS, TRIGGER_RECIPES, \
-    INPUT_FILE
+    INPUT_FILE, VALID_SWEEP_MIN, VALID_SWEEP_OPTIONAL, SWEEP_START, \
+    SWEEP_STOP, SWEEP_JUMP
+
+
+def is_a_number(string):
+    """
+    Helper function to determine if a given string expresses a number
+
+    :param string: (str) The string to check
+
+    :return: (bool) Will return True if given string expresses a number, and
+    False otherwise
+    """
+    check_input(string, 'str', 'string')
+
+    try:
+        float(string)
+        return True
+    except ValueError:
+        pass
+
+    try:
+        unicodedata.numeric(string)
+        return True
+    except (TypeError, ValueError):
+        pass
+
+    return False
 
 
 def check_input(variable, expected_type, name, or_none=False):
@@ -37,13 +65,17 @@ def check_input(variable, expected_type, name, or_none=False):
 
     if not or_none:
         if not isinstance(variable, expected_type):
-            raise TypeError('Expected %s type was %s, got %s'
-                            % (name, expected_type, type(variable)))
+            raise TypeError(
+                'Expected %s type was %s, got %s'
+                % (name, expected_type, prep_html(type(variable)))
+            )
     else:
         if not isinstance(variable, expected_type) \
                 and not isinstance(variable, type(None)):
-            raise TypeError('Expected %s type was %s or None, got %s'
-                            % (name, expected_type, type(variable)))
+            raise TypeError(
+                'Expected %s type was %s or None, got %s'
+                % (name, expected_type, prep_html(type(variable)))
+            )
 
 
 def check_input_args(args, valid_args):
@@ -62,12 +94,15 @@ def check_input_args(args, valid_args):
 
     for key, arg in args.items():
         if key not in valid_args:
-            raise ValueError("Unsupported argument %s. Valid are: %s. "
-                            % (key, list(valid_args.keys())))
+            raise ValueError(
+                "Unsupported argument %s. Valid are: %s. "
+                % (key, list(valid_args.keys()))
+            )
         if not isinstance(arg, valid_args[key]):
             raise TypeError(
                 'Argument %s is in an unexpected format. Expected %s but got '
-                '%s' % (key, valid_args[key], type(arg)))
+                '%s' % (key, valid_args[key], prep_html(type(arg)))
+            )
 
 
 def valid_string(variable, name, valid_chars):
@@ -168,6 +203,62 @@ def valid_file_path(path, name, extensions=None):
             )
 
 
+def valid_param_sweep(to_test, name):
+    """
+    Checks that a given dict is a valid Pattern parameter sweep definition.
+    Raises ValueError if a problem is encountered.
+
+    :param to_test: (dict) The dictionary to test.
+
+    :param name: (str) The name of the given dictionary. Used for ease of
+    debugging.
+
+    :return: No return.
+    """
+    check_input(to_test, dict, 'parameter sweep')
+    check_input(name, str, 'parameter sweep name')
+    valid, msg = is_valid_dict(
+        to_test,
+        VALID_SWEEP_MIN,
+        VALID_SWEEP_OPTIONAL,
+        'parameter sweep',
+        MEOW_MODE,
+        strict=True
+    )
+
+    if not valid:
+        raise ValueError(msg)
+
+    if not isinstance(to_test[SWEEP_START], type(to_test[SWEEP_STOP])) or \
+            not isinstance(to_test[SWEEP_START], type(to_test[SWEEP_JUMP])):
+        raise ValueError(
+            'All parameter sweep values should be of the same type. Found '
+            'types were start: %s, stop: %s, and jump: %s'
+            % (prep_html(type(to_test[SWEEP_START])),
+               prep_html(type(to_test[SWEEP_STOP])),
+               prep_html(type(to_test[SWEEP_JUMP])))
+        )
+
+    # Try to check that this loop is not infinite
+    if to_test[SWEEP_JUMP] == 0:
+        raise ValueError(
+            'Cannot create parameter sweep with a jump value of zero, as '
+            'this would create an infinite loop'
+        )
+    elif to_test[SWEEP_JUMP] > 0:
+        if not to_test[SWEEP_STOP] > to_test[SWEEP_START]:
+            raise ValueError(
+                'Cannot create parameter sweep with a positive jump value '
+                'where the end point is smaller than the start. '
+            )
+    elif to_test[SWEEP_JUMP] < 0:
+        if not to_test[SWEEP_STOP] < to_test[SWEEP_START]:
+            raise ValueError(
+                'Cannot create parameter sweep with a negative jump value '
+                'where the end point is larger than the start. '
+            )
+
+
 def is_valid_dict(to_test, required_args, optional_args, name, paradigm,
                   strict=False):
     """
@@ -202,7 +293,8 @@ def is_valid_dict(to_test, required_args, optional_args, name, paradigm,
     if not isinstance(to_test, dict):
         return False, \
                'The %s %s was incorrectly formatted. Should be a dict, but ' \
-               '%s is a %s' % (paradigm, name, to_test, type(to_test))
+               '%s is a %s' \
+               % (paradigm, name, to_test, prep_html(type(to_test)))
 
     message = 'The %s %s %s had an incorrect structure, ' \
               % (paradigm, name, to_test)
@@ -210,18 +302,37 @@ def is_valid_dict(to_test, required_args, optional_args, name, paradigm,
         if key not in to_test:
             message += 'it is missing key %s. ' % key
             return False, message
-        if not isinstance(to_test[key], value):
-            message += \
-                ' %s is expected to have type %s but actually has %s. ' \
-                % (to_test[key], value, type(to_test[key]))
-            return False, message
+        if isinstance(value, list):
+            if type(to_test[key]) not in value:
+                message += \
+                    ' %s is expected to have types %s but actually has %s. ' \
+                    % (key, prep_html(value), prep_html(type(to_test[key])))
+                return False, message
+        else:
+            if not isinstance(to_test[key], value):
+                message += \
+                    ' %s is expected to have type %s but actually has %s. ' \
+                    % (key, prep_html(value), prep_html(type(to_test[key])))
+                return False, message
 
     for key, value in optional_args.items():
-        if key in to_test and not isinstance(to_test[key], value):
-            message += \
-                ' %s is expected to have type %s but actually has %s. ' \
-                % (to_test[key], value, type(to_test[key]))
-            return False, message
+        if key in to_test:
+            if isinstance(value, list):
+                if type(to_test[key] not in value):
+                    message += \
+                        ' %s is expected to have types %s but actually has ' \
+                        '%s. ' \
+                        % (to_test[key], prep_html(value),
+                           prep_html(type(to_test[key])))
+                    return False, message
+            else:
+                if not isinstance(to_test[key], value):
+                    message += \
+                        ' %s is expected to have type %s but actually has ' \
+                        '%s. ' \
+                        % (to_test[key], prep_html(value),
+                           prep_html(type(to_test[key])))
+                    return False, message
 
     if strict:
         for key in to_test.keys():
@@ -273,15 +384,16 @@ def is_valid_pattern_dict(to_test, strict=False):
     if not isinstance(to_test[TRIGGER_RECIPES], dict):
         return False, \
                "Trigger id's have not be stored in the correct format. " \
-               "Expected dict but got %s." % type(to_test['trigger_recipes'])
+               "Expected dict but got %s." \
+               % prep_html(type(to_test['trigger_recipes']))
 
     for trigger_id, trigger in to_test[TRIGGER_RECIPES].items():
         if not isinstance(trigger_id, str):
             return False, "Trigger id %s is a %s, not the expected str." \
-                   % (str(trigger_id), type(trigger_id))
+                   % (str(trigger_id), prep_html(type(trigger_id)))
         if not isinstance(trigger, dict):
             return False, "Trigger %s is a %s, not the expected dict." \
-                   % (str(trigger), type(trigger))
+                   % (str(trigger), prep_html(type(trigger)))
 
         if not trigger:
             return False, "Trigger is empty. Should contain at least a " \
@@ -290,7 +402,7 @@ def is_valid_pattern_dict(to_test, strict=False):
         for id, recipe in trigger.items():
             if not isinstance(id, str):
                 return False, "Recipe id %s is a %s, not the expected str." \
-                       % (str(id), type(id))
+                       % (str(id), prep_html(type(id)))
             valid, msg = is_valid_recipe_dict(recipe)
             if not valid:
                 return False, msg
@@ -415,3 +527,33 @@ def is_valid_setting_dict(to_test, strict=False):
         CWL_MODE,
         strict=strict
     )
+
+
+def prep_html(prep):
+    """
+    Helper function to strip the pointy brackets out of type strings so that
+    their contents appears in html
+
+    :param prep: (type) or (list) An object type, or a list of object types
+
+    :return: (str) The finalised string
+    """
+    if isinstance(prep, list):
+        for elem in prep:
+            if not isinstance(elem, type):
+                raise TypeError(
+                    "'prep_html given incorrect format %s when expected 'type'"
+                    % prep_html(type(elem))
+                )
+    else:
+        if not isinstance(prep, type):
+            raise TypeError(
+                "'prep_html given incorrect format %s when expected 'type'"
+                % prep_html(type(prep))
+            )
+
+    string = str(prep)
+    string = string.replace('>', '')
+    string = string.replace('<', '')
+
+    return string

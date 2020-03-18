@@ -15,15 +15,15 @@ from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
     TRIGGER_RECIPES, OUTPUT, VARIABLES, SOURCE, RECIPE, CWL_NAME, \
     CWL_REQUIREMENTS, CWL_CWL_VERSION, CWL_CLASS, CWL_BASE_COMMAND, \
     CWL_INPUTS, CWL_OUTPUTS, CWL_STEPS, CWL_STDOUT, CWL_ARGUMENTS, CWL_HINTS, \
-    CWL_VARIABLES, CWL_CLASS_WORKFLOW, \
-    CWL_CLASS_COMMAND_LINE_TOOL
+    CWL_VARIABLES, CWL_CLASS_WORKFLOW, CWL_CLASS_COMMAND_LINE_TOOL, SWEEP
 from mig_meow.cwl import check_workflows_dict, check_steps_dict, \
     check_settings_dict
 from mig_meow.inputs import is_valid_recipe_dict, is_valid_pattern_dict, \
     is_valid_workflow_dict, is_valid_step_dict, is_valid_setting_dict
 from mig_meow.meow import Pattern, check_patterns_dict, \
     build_workflow_object, create_recipe_dict, check_recipes_dict
-from mig_meow.workflow_widget import WorkflowWidget
+from mig_meow.workflow_widget import WorkflowWidget, NAME_KEY, VALUE_KEY, \
+    SWEEP_START_KEY, SWEEP_STOP_KEY, SWEEP_JUMP_KEY
 
 EMPTY_NOTEBOOK = 'test_notebook.ipynb'
 ANOTHER_NOTEBOOK = 'another_notebook.ipynb'
@@ -223,46 +223,60 @@ VALID_PATTERN_FORM_VALUES = {
     INPUT_FILE: 'trigger_file_name',
     OUTPUT: [
         {
-            'Name': 'outfile_1',
-            'Value': 'dir_1/out.path'
+            NAME_KEY: 'outfile_1',
+            VALUE_KEY: 'dir_1/out.path'
         },
         {
-            'Name': 'outfile_2',
-            'Value': 'dir_2/out.path'
+            NAME_KEY: 'outfile_2',
+            VALUE_KEY: 'dir_2/out.path'
         }
     ],
     VARIABLES: [
         {
-            'Name': 'int',
-            'Value': 0
+            NAME_KEY: 'int',
+            VALUE_KEY: 0
         },
         {
-            'Name': 'float',
-            'Value': 3.5
+            NAME_KEY: 'float',
+            VALUE_KEY: 3.5
         },
         {
-            'Name': 'array',
-            'Value': [0, 1]
+            NAME_KEY: 'array',
+            VALUE_KEY: [0, 1]
         },
         {
-            'Name': 'dict',
-            'Value': {1: 1, 2: 2}
+            NAME_KEY: 'dict',
+            VALUE_KEY: {1: 1, 2: 2}
         },
         {
-            'Name': 'set',
-            'Value': {1, 2}
+            NAME_KEY: 'set',
+            VALUE_KEY: {1, 2}
         },
         {
-            'Name': 'char',
-            'Value': 'c'
+            NAME_KEY: 'char',
+            VALUE_KEY: 'c'
         },
         {
-            'Name': 'string',
-            'Value': "String"
+            NAME_KEY: 'string',
+            VALUE_KEY: "String"
         },
         {
-            'Name': 'boolean',
-            'Value': True
+            NAME_KEY: 'boolean',
+            VALUE_KEY: True
+        }
+    ],
+    SWEEP: [
+        {
+            NAME_KEY: 'going_up',
+            SWEEP_START_KEY: 0,
+            SWEEP_STOP_KEY: 10,
+            SWEEP_JUMP_KEY: 1
+        },
+        {
+            NAME_KEY: 'going_down',
+            SWEEP_START_KEY: 0,
+            SWEEP_STOP_KEY: -10,
+            SWEEP_JUMP_KEY: -1
         }
     ]
 }
