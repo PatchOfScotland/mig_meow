@@ -3697,7 +3697,8 @@ class WorkflowWidget:
                 TRIGGER_PATHS: pattern.trigger_paths,
                 OUTPUT: pattern.outputs,
                 RECIPES: pattern.recipes,
-                VARIABLES: pattern.variables
+                VARIABLES: pattern.variables,
+                SWEEP: pattern.sweep
             }
             try:
                 if pattern.persistence_id:
