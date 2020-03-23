@@ -293,7 +293,7 @@ PATTERN_FORM_INPUTS = {
             "<br/>"
             "{EXTENSION}: .txt"
             "<br/>"
-            "{JOB_ID}: *Some unique job ID*"
+            "{JOB}: *Some unique job ID*"
             % (PATTERN_NAME, RECIPE_NAME, PATTERN_NAME, RECIPE_NAME),
         INPUT_HEADINGS: [NAME_KEY, VALUE_KEY],
         INPUT_OPTIONAL: True
@@ -345,7 +345,7 @@ PATTERN_FORM_INPUTS = {
             "<br/>"
             "{EXTENSION}: .txt"
             "<br/>"
-            "{JOB_ID}: *Some unique job ID*"
+            "{JOB}: *Some unique job ID*"
             % (RECIPE_NAME, RECIPE_NAME, RECIPE_NAME, PATTERN_NAME),
         INPUT_HEADINGS: [NAME_KEY, VALUE_KEY],
         INPUT_OPTIONAL: True
