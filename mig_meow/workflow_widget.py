@@ -3839,9 +3839,6 @@ class WorkflowWidget:
                        relevant_calls)
                 )
 
-        # Strip names from delete calls. They were only included for feedback
-        # purposes and may complicate mig operations
-
         self.__create_confirmation_buttons(
             self.__export_workflow,
             {
@@ -4908,7 +4905,9 @@ class WorkflowWidget:
             link_data=link_display,
             charge=-800,
             colors=colour_display,
-            tooltip=MEOW_TOOLTIP
+            tooltip=MEOW_TOOLTIP,
+            directed=True,
+            link_type='line'
         )
 
         # TODO investigate graph.interactions to see if we can get tooltip to
@@ -5042,7 +5041,9 @@ class WorkflowWidget:
             link_data=link_data,
             charge=-800,
             colors=colour_data,
-            tooltip=CWL_TOOLTIP
+            tooltip=CWL_TOOLTIP,
+            directed=True,
+            link_type='line'
         )
 
         graph.on_element_click(self.__cwl_visualisation_element_click)

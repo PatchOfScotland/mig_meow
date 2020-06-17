@@ -218,9 +218,9 @@ NOTEBOOK_EXTENSIONS = [
     NOTEBOOK_EXTENSION
 ]
 
-GREEN = 'green'
-RED = 'red'
-WHITE = 'white'
+GREEN = 'lightgreen'
+RED = 'pink'
+WHITE = 'lightgray'
 
 COLOURS = [
     GREEN,

@@ -6,7 +6,7 @@ import nbformat
 
 from .constants import NOTEBOOK_EXTENSIONS
 from .inputs import valid_string, is_valid_pattern_dict, check_input, \
-    valid_file_path, is_valid_recipe_dict, valid_param_sweep
+    valid_file_path, is_valid_recipe_dict, valid_param_sweep, valid_recipe_name
 from .constants import DESCENDANTS, WORKFLOW_INPUTS, \
     WORKFLOW_OUTPUTS, ANCESTORS, DEFAULT_JOB_NAME, NAME, INPUT_FILE, \
     TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, CHAR_UPPERCASE, \
@@ -596,14 +596,7 @@ def create_recipe_dict(notebook, name, source):
     'source': str, 'recipe': dict}
     """
 
-    valid_string(
-        name,
-        'recipe name',
-        CHAR_UPPERCASE
-        + CHAR_LOWERCASE
-        + CHAR_NUMERIC
-        + CHAR_LINES
-    )
+    valid_recipe_name(name)
     valid_file_path(
         source,
        'recipe source'

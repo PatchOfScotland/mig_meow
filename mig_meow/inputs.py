@@ -10,7 +10,7 @@ from .constants import CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_UPPERCASE, \
     VALID_STEP_OPTIONAL, VALID_WORKFLOW_OPTIONAL, CWL_CLASS_WORKFLOW, \
     CWL_CLASS_COMMAND_LINE_TOOL, CWL_CLASS, TRIGGER_PATHS, TRIGGER_RECIPES, \
     INPUT_FILE, VALID_SWEEP_MIN, VALID_SWEEP_OPTIONAL, SWEEP_START, \
-    SWEEP_STOP, SWEEP_JUMP
+    SWEEP_STOP, SWEEP_JUMP, CHAR_LINES
 
 
 def is_a_number(string):
@@ -257,6 +257,42 @@ def valid_param_sweep(to_test, name):
                 'Cannot create parameter sweep with a negative jump value '
                 'where the end point is larger than the start. '
             )
+
+
+def valid_recipe_name(name):
+    '''
+    Validates that a given name is a valid recipe name.
+
+    :param name: (str) The name to test.
+
+    :return: No return
+    '''
+    valid_string(
+        name,
+        'recipe name',
+        CHAR_UPPERCASE
+        + CHAR_LOWERCASE
+        + CHAR_NUMERIC
+        + CHAR_LINES
+    )
+
+
+def valid_pattern_name(name):
+    '''
+    Validates that a given name is a valid pattern name.
+
+    :param name: (str) The name to test.
+
+    :return: No return
+    '''
+    valid_string(
+        name,
+        'pattern name',
+        CHAR_UPPERCASE
+        + CHAR_LOWERCASE
+        + CHAR_NUMERIC
+        + CHAR_LINES
+    )
 
 
 def is_valid_dict(to_test, required_args, optional_args, name, paradigm,
