@@ -15,10 +15,10 @@ from .constants import DESCENDANTS, WORKFLOW_INPUTS, \
     NO_OUTPUT_SET_WARNING, NO_INPUT_FILE_SET_ERROR, NO_INPUT_PATH_SET_ERROR, \
     NO_NAME_SET_ERROR, NO_RECIPES_SET_ERROR, PLACEHOLDER_ERROR, \
     INVALID_INPUT_PATH_ERROR, SWEEP, SWEEP_START, SWEEP_STOP, \
-    SWEEP_JUMP
+    SWEEP_JUMP, MIG_TRIGGER_KEYWORDS
 
 
-OUTPUT_MAGIC_CHAR = '*'
+OUTPUT_MAGIC_CHARS = MIG_TRIGGER_KEYWORDS + ['*']
 
 
 def is_valid_pattern_object(to_test):
@@ -672,8 +672,11 @@ def build_workflow_object(patterns):
                             workflow[pattern.name][WORKFLOW_INPUTS].pop(
                                 pattern.trigger_file
                             )
-                    if OUTPUT_MAGIC_CHAR in value:
-                        magic_value = value.replace(OUTPUT_MAGIC_CHAR, '.*')
+                    check = [mc for mc in OUTPUT_MAGIC_CHARS if mc in value]
+                    if check:
+                        magic_value = value
+                        for magic_char in check:
+                            magic_value = magic_value.replace(magic_char, '.*')
                         if re.match(magic_value, input_regex):
                             workflow[other.name][DESCENDANTS][pattern.name] = \
                                 match_dict

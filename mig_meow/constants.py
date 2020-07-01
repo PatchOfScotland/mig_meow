@@ -255,3 +255,15 @@ WIDGET_MODES = [
 LOGGING_DIR = 'mig_meow_widget_logs'
 WORKFLOW_LOGFILE_NAME = 'workfow_widget'
 MONITOR_LOGFILE_NAME = 'monitor_widget'
+
+MIG_TRIGGER_KEYWORDS = [
+    "{PATH}",
+    "{REL_PATH}",
+    "{DIR}",
+    "{REL_DIR}",
+    "{FILENAME}",
+    "{PREFIX}",
+    "{VGRID}",
+    "{EXTENSION}",
+    "{JOB}"
+]

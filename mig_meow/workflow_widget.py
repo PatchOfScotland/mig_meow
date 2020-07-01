@@ -269,7 +269,7 @@ PATTERN_FORM_INPUTS = {
             "Certain wildcards can be used within the Value parameter to "
             "created dynamic output locations. For example:"
             "<br/>"
-            "Value: <b>dir/{FILENAME}.hdf5</b>"
+            "Value: <b>dir/{FILENAME}</b>"
             "<br/>"
             "These will be replaced at runtime with the appropriate values "
             "as explained below. These will change value based on the path of "
@@ -321,7 +321,7 @@ PATTERN_FORM_INPUTS = {
             "Certain wildcards can be used within the Value parameter to "
             "created dynamic output locations. For example:"
             "<br/>"
-            "Value: <b>dir/{FILENAME}.hdf5</b>"
+            "Value: <b>dir/{FILENAME}</b>"
             "<br/>"
             "These will be replaced at runtime with the appropriate values "
             "as explained below. These will change value based on the path of "
@@ -4880,8 +4880,8 @@ class WorkflowWidget:
                     node_name = "%s_input_%s" % (pattern, file)
                     path_nodes[node_name] = node_index
                     link_display.append({
-                        'source': node_index,
-                        'target': pattern_index
+                        'source': pattern_index,
+                        'target': node_index
                     })
 
         # Do this second as we need to make sure all patterns have been set
