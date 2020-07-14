@@ -221,7 +221,7 @@ class Pattern:
                  'Trigger(s): %s, ' \
                  'Output(s): %s, ' \
                  'Recipe(s): %s, ' \
-                 'Variable(s): %s' \
+                 'Variable(s): %s, ' \
                  'Sweeping(s): %s' \
                  % (self.name,
                     self.trigger_file,

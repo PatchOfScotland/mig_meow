@@ -6,7 +6,7 @@ from .constants import VGRID_READ, VGRID_ANY_OBJECT_TYPE, \
     VGRID_RECIPE_OBJECT_TYPE, NAME, VGRID_ERROR_TYPE, VGRID_TEXT_TYPE, VGRID, \
     VGRID_DELETE, PERSISTENCE_ID, RECIPE_NAME, PATTERN_NAME, INPUT_FILE, \
     SWEEP, TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, VGRID_CREATE, \
-    VGRID_UPDATE
+    VGRID_UPDATE, PATTERNS, RECIPE, SOURCE
 from .inputs import check_input, is_valid_recipe_dict, valid_pattern_name, \
     valid_recipe_name
 from .mig import vgrid_workflow_json_call
@@ -55,7 +55,8 @@ def read_vgrid(vgrid):
 
     :param vgrid: (str) A vgrid to read
 
-    :return: (tuple of (dict, dict))
+    :return: (dict) A dictionary of responses. Contains separate keys for the
+    patterns and the recipes.
     '''
 
     check_input(vgrid, str, VGRID)
@@ -67,6 +68,10 @@ def read_vgrid(vgrid):
         {}
     )
 
+    output = {
+        PATTERNS: {},
+        RECIPES: {}
+    }
     response_patterns = {}
     response_recipes = {}
     if VGRID_WORKFLOWS_OBJECT in response:
@@ -77,15 +82,17 @@ def read_vgrid(vgrid):
             elif response_object[OBJECT_TYPE] == VGRID_RECIPE_OBJECT_TYPE:
                 response_recipes[response_object[NAME]] = response_object
 
-        return response_patterns, response_recipes
+        output[PATTERNS] = response_patterns
+        output[RECIPES] = response_recipes
+        return output
 
-    elif response[OBJECT_TYPE] == VGRID_ERROR_TYPE:
+    elif OBJECT_TYPE in response and response[OBJECT_TYPE] == VGRID_ERROR_TYPE:
         print("Could not retrieve workflow objects. %s"
               % response[VGRID_TEXT_TYPE])
-        return {}, {}
+        return output
     else:
         print("Unexpected response: {}".format(response))
-        return {}, {}
+        return output
 
 
 def write_vgrid(patterns, recipes, vgrid):
@@ -98,7 +105,7 @@ def write_vgrid(patterns, recipes, vgrid):
 
     :param vgrid: (str) The vgrid to write to.
 
-    :return: (tuple of (dict, dict)) Dicts of updated patterns and recipes.
+    :return: (dict) Dicts of updated patterns and recipes.
     '''
     check_input(vgrid, str, VGRID)
     check_input(patterns, dict, 'patterns', or_none=True)
@@ -114,10 +121,12 @@ def write_vgrid(patterns, recipes, vgrid):
         new_recipe = write_vgrid_recipe(recipe, vgrid)
         updated_recipes[recipe[NAME]] = new_recipe
 
-    return updated_patterns, updated_recipes
+    return {
+        PATTERNS: updated_patterns,
+        RECIPES: updated_recipes
+    }
 
 
-# TODO
 def read_vgrid_pattern(pattern, vgrid):
     '''
     Reads a given pattern from a given vgrid.
@@ -142,20 +151,62 @@ def read_vgrid_pattern(pattern, vgrid):
         attributes
     )
 
-    if VGRID_WORKFLOWS_OBJECT in response \
-            and response[VGRID_WORKFLOWS_OBJECT][OBJECT_TYPE] \
-            == VGRID_PATTERN_OBJECT_TYPE:
-        return Pattern(response[VGRID_WORKFLOWS_OBJECT])
-    elif response[OBJECT_TYPE] == VGRID_ERROR_TYPE:
-        print("Could not retrieve workflow pattern. %s"
-              % response[VGRID_TEXT_TYPE])
+    if OBJECT_TYPE in response \
+            and response[OBJECT_TYPE] == VGRID_WORKFLOWS_OBJECT \
+            and VGRID_WORKFLOWS_OBJECT in response:
+        pattern_list = response[VGRID_WORKFLOWS_OBJECT]
+        if len(pattern_list) > 1:
+            print("Got several matching %ss: %s"
+                  % (PATTERN_NAME, [entry[NAME] for entry in pattern_list]))
+        return Pattern(pattern_list[0])
+    elif OBJECT_TYPE in response and response[OBJECT_TYPE] == VGRID_ERROR_TYPE:
+        print("Could not retrieve workflow %s. %s"
+              % (PATTERN_NAME, response[VGRID_TEXT_TYPE]))
+        return None
+    else:
+        print("Got unexpected response. %s" % response)
         return None
 
 
-# TODO
 def read_vgrid_recipe(recipe, vgrid):
+    '''
+    Reads a given recipe from a given vgrid.
+
+    :param recipe: (str) The recipe name to read.
+
+    :param vgrid: (str) The Vgrid to read from
+
+    :return: (dict) A recipe dict, or None if a recipe could not be found
+    '''
     check_input(vgrid, str, VGRID)
     valid_recipe_name(recipe)
+
+    attributes = {
+        NAME: recipe
+    }
+
+    _, response, _ = vgrid_workflow_json_call(
+        vgrid,
+        VGRID_READ,
+        VGRID_RECIPE_OBJECT_TYPE,
+        attributes
+    )
+
+    if OBJECT_TYPE in response \
+            and response[OBJECT_TYPE] == VGRID_WORKFLOWS_OBJECT \
+            and VGRID_WORKFLOWS_OBJECT in response:
+        recipe_list = response[VGRID_WORKFLOWS_OBJECT]
+        if len(recipe_list) > 1:
+            print("Got several matching %ss: %s"
+                  % (RECIPE_NAME, [entry[NAME] for entry in recipe_list]))
+        return recipe_list[0]
+    elif OBJECT_TYPE in response and response[OBJECT_TYPE] == VGRID_ERROR_TYPE:
+        print("Could not retrieve workflow %s. %s"
+              % (RECIPE_NAME, response[VGRID_TEXT_TYPE]))
+        return None
+    else:
+        print("Got unexpected response. %s" % response)
+        return None
 
 
 def write_vgrid_pattern(pattern, vgrid):
@@ -225,7 +276,9 @@ def write_vgrid_recipe(recipe, vgrid):
     is_valid_recipe_dict(recipe)
 
     attributes = {
-        NAME: recipe[NAME]
+        NAME: recipe[NAME],
+        RECIPE: recipe[RECIPE],
+        SOURCE: recipe[SOURCE]
     }
 
     if PERSISTENCE_ID in recipe:
