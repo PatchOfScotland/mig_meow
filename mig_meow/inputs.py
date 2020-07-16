@@ -156,6 +156,27 @@ def valid_dir_path(path, name):
             )
 
 
+def dir_exists(path, create=False):
+    '''
+    Checks a given path exists and is a directory. Raises a ValueError if the
+    path either does not exist or is not a directory.
+
+    :param path: (str) the path to check
+
+    :param create: (bool) toggle to create dir if it does not exist. Default
+    is false
+
+    :return: (no return)
+    '''
+    if not os.path.exists(path):
+        if create:
+            os.mkdir(path)
+        else:
+            raise ValueError("Directory '%s' does not exist. " % path)
+    if not os.path.isdir(path):
+        raise ValueError("Path '%s' is not a directory. " % path)
+
+
 def valid_file_path(path, name, extensions=None):
     """
     Checks that a given string is a valid file path. Raises ValueError if not

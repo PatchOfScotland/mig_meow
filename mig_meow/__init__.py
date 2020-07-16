@@ -5,4 +5,4 @@ from .mig import *
 from .monitor_widget import *
 from .notebook import *
 from .workflow_widget import *
-from .yaml import *
+from .yaml_funcs import *

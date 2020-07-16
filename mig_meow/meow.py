@@ -6,7 +6,8 @@ import nbformat
 
 from .constants import NOTEBOOK_EXTENSIONS
 from .inputs import valid_string, is_valid_pattern_dict, check_input, \
-    valid_file_path, is_valid_recipe_dict, valid_param_sweep, valid_recipe_name
+    valid_file_path, is_valid_recipe_dict, valid_param_sweep, \
+    valid_recipe_name, valid_pattern_name
 from .constants import DESCENDANTS, WORKFLOW_INPUTS, \
     WORKFLOW_OUTPUTS, ANCESTORS, DEFAULT_JOB_NAME, NAME, INPUT_FILE, \
     TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, CHAR_UPPERCASE, \
@@ -21,11 +22,14 @@ from .constants import DESCENDANTS, WORKFLOW_INPUTS, \
 OUTPUT_MAGIC_CHARS = MIG_TRIGGER_KEYWORDS + ['*']
 
 
-def is_valid_pattern_object(to_test):
+def is_valid_pattern_object(to_test, integrity=False):
     """
     Validates that the passed object is a meow Pattern
 
     :param: to_test: (dict) object, hopefully is a Pattern class object..
+
+    :param: integrity: (boolean) toggle for if to perform integrity check on
+    pattern object. Default is false.
 
     :return: (Tuple (bool, string) Returns a tuple where if the provided
     object is not a Pattern the first value will be False. Otherwise it will
@@ -40,14 +44,20 @@ def is_valid_pattern_object(to_test):
         return False, \
                'The workflow %s was incorrectly formatted' % PATTERN_NAME
 
-    return True, ''
+    if integrity:
+        return to_test.integrity_check()
+    else:
+        return True, ''
 
 
-def check_patterns_dict(patterns):
+def check_patterns_dict(patterns, integrity=False):
     """
     Validates that the given object is a dictionary of valid patterns.
 
     :param patterns: (dict) A dictionary of Pattern class objects.
+
+    :param: integrity: (boolean) toggle for if to perform integrity check on
+    pattern object. Default is false.
 
     :return: (Tuple (bool, string) Returns a tuple where if the provided
     object is not a dict of valid Pattern objects the first value will be
@@ -69,7 +79,7 @@ def check_patterns_dict(patterns):
                    'name with its key %s.' \
                    % (PATTERN_NAME, pattern.name, name)
 
-        valid, feedback = is_valid_pattern_object(pattern)
+        valid, feedback = is_valid_pattern_object(pattern, integrity=integrity)
         if not valid:
             return False, \
                    '%s %s was not valid. %s' \
@@ -140,14 +150,7 @@ class Pattern:
         # if given only a string use this as a name, it is the basis of a
         # completely new pattern
         if isinstance(parameters, str):
-            valid_string(
-                parameters,
-                'pattern_name',
-                CHAR_UPPERCASE
-                + CHAR_LOWERCASE
-                + CHAR_NUMERIC
-                + CHAR_LINES
-            )
+            valid_pattern_name(parameters)
             self.name = parameters
             self.trigger_file = None
             self.trigger_paths = []

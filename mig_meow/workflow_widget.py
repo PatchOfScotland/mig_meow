@@ -49,7 +49,7 @@ from .mig import vgrid_workflow_json_call
 from .meow import build_workflow_object, pattern_has_recipes, Pattern, \
     create_recipe_dict, check_patterns_dict, check_recipes_dict, \
     register_recipe
-from .yaml import patten_to_yaml_dict, pattern_from_yaml_dict, \
+from .yaml_funcs import patten_to_yaml_dict, pattern_from_yaml_dict, \
     recipe_to_yaml_dict, recipe_from_yaml_dict
 
 YAML_EXTENSIONS = [
@@ -4682,6 +4682,7 @@ class WorkflowWidget:
                 self.__add_to_feedback(
                     "Tried to import %s but could not. %s" % (PATTERN_NAME, ex)
                 )
+
         recipe_files = [
             f for f in os.listdir(recipes_path)
             if os.path.isfile(os.path.join(recipes_path, f))
