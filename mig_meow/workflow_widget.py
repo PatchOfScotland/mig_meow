@@ -727,6 +727,12 @@ def prepare_to_dump(to_export):
     return new_dict
 
 
+def get_quoted_val(value):
+    if isinstance(value, str):
+        return '"%s"' % value
+    return str(value)
+
+
 class WorkflowWidget:
     def __init__(self, **kwargs):
         """
@@ -2192,7 +2198,8 @@ class WorkflowWidget:
                                                 and VALUE_KEY in item:
                                             item[NAME_KEY].value = keys[index]
                                             item[VALUE_KEY].value = \
-                                                str(value_list[keys[index]])
+                                                get_quoted_val(
+                                                    value_list[keys[index]])
                                         elif NAME_KEY in item \
                                                 and SWEEP_START_KEY in item \
                                                 and SWEEP_START_KEY in item \
@@ -3001,9 +3008,13 @@ class WorkflowWidget:
 
             for variable in values[VARIABLES]:
                 if variable[NAME_KEY]:
-                    pattern.add_variable(
-                        variable[NAME_KEY], variable[VALUE_KEY]
-                    )
+                    val = variable[VALUE_KEY]
+                    try:
+                        val = eval(variable[VALUE_KEY])
+                    except:
+                        pass
+
+                    pattern.add_variable(variable[NAME_KEY], val)
 
             for output in values[OUTPUT]:
                 if output[VALUE_KEY] \
