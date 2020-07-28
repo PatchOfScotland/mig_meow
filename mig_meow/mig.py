@@ -236,7 +236,8 @@ def vgrid_job_json_call(
     )
 
 
-def __vgrid_json_call(operation, workflow_type, attributes, url, logfile=None):
+def __vgrid_json_call(
+        operation, workflow_type, attributes, url, logfile=None, verify=True):
     """
     Makes JSON call to MiG. Will pull url and session_id from local
     environment variables, as setup by MiG notebook spawner. Will raise
@@ -256,6 +257,9 @@ def __vgrid_json_call(operation, workflow_type, attributes, url, logfile=None):
 
     :param logfile: (str)[optional] Path to a logfile. If provided logs are
     recorded in this file. Default is None.
+
+    :param verify: (bool)[optional] Toggle for if to verify using SSL
+    certificates. Default is True.
 
     :return: (Tuple (dict, dict, dict) Returns JSON call results as three
     dicts. First is the header, then the body then the footer. Header contains
@@ -292,7 +296,7 @@ def __vgrid_json_call(operation, workflow_type, attributes, url, logfile=None):
         response = requests.post(
             url,
             json=data,
-            verify=False,
+            verify=verify,
             timeout=DEFAULT_JSON_TIMEOUT
         )
 
