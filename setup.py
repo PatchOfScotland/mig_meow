@@ -19,7 +19,7 @@ with open('README.md', 'r') as readme:
     long_description = readme.read()
 
 module_data = {}
-with open(os.path.join(current_dir, "version.py")) as f:
+with open(os.path.join(current_dir, "mig_meow", "version.py")) as f:
     exec(f.read(), {}, module_data)
 
 setup(name=module_data['__name__'],
