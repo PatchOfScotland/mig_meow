@@ -1,0 +1,7 @@
+graphviz>=0.13.2
+bqplot>=0.12.12
+IPython>=7.9.0
+requests>=2.22.0
+ipywidgets>=7.5.1
+PyYAML>=5.3
+nbformat>=4.4.0

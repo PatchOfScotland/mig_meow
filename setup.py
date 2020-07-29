@@ -1,14 +1,29 @@
+import os
+
 from setuptools import setup
+
+current_dir = os.path.abspath(os.path.dirname(__file__))
+
+
+def read_file(path):
+    with open(path, "r") as _file:
+        return _file.read()
+
+
+def read_requirements(filename):
+    path = os.path.join(current_dir, filename)
+    return [req.strip() for req in read_file(path).splitlines() if req.strip()]
+
 
 with open('README.md', 'r') as readme:
     long_description = readme.read()
 
-module_name = 'mig_meow'
-module_fullname = 'Managing Event-Oriented_workflows'
-module_version = '0.13'
+module_data = {}
+with open(os.path.join(current_dir, "version.py")) as f:
+    exec(f.read(), {}, module_data)
 
-setup(name=module_name,
-      version=module_version,
+setup(name=module_data['__name__'],
+      version=module_data['__version__'],
       author='David Marchant',
       author_email='d.marchant@ed-alumni.net',
       description='MiG based manager for event oriented workflows',
@@ -16,16 +31,7 @@ setup(name=module_name,
       # long_description_content_type='text/markdown',
       url='https://github.com/PatchOfScotland/mig_meow',
       packages=['mig_meow'],
-      install_requires=[
-            #'pillow==7.0.0',
-            'graphviz>=0.13.2',
-            'bqplot>=0.12.12',
-            'IPython>=7.9.0',
-            'requests>=2.22.0',
-            'ipywidgets>=7.5.1',
-            'PyYAML>=5.3',
-            'nbformat>=4.4.0'
-      ],
+      install_requires=read_requirements("requirements.txt"),
       classifiers=[
             'Programming Language :: Python :: 3',
             'License :: OSI Approved :: GNU General Public License (GPL)',
