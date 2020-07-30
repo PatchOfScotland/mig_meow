@@ -91,7 +91,8 @@ def export_recipe_to_vgrid(vgrid, recipe):
 
 
 def vgrid_workflow_json_call(
-        vgrid, operation, workflow_type, attributes, logfile=None):
+        vgrid, operation, workflow_type, attributes, logfile=None,
+        ssl=True):
     """
     Validates input for a JSON workflow call to VGRID. Raises a TypeError or
     ValueError if an invalid value is found. If no problems are found then a
@@ -111,6 +112,8 @@ def vgrid_workflow_json_call(
     :param logfile: (str)[optional] Path to a logfile. If provided logs are
     recorded in this file. Default is None.
 
+    :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
+
     :return: (function call to __vgrid_json_call) If all inputs are valid,
     will call function '__vgrid_json_call'.
     """
@@ -118,6 +121,7 @@ def vgrid_workflow_json_call(
     check_input(operation, str, 'operation')
     check_input(workflow_type, str, 'workflow_type')
     check_input(attributes, dict, 'attributes', or_none=True)
+    check_input(ssl, bool, 'ssl')
 
     try:
         url = os.environ['WORKFLOWS_URL']
@@ -159,12 +163,14 @@ def vgrid_workflow_json_call(
         workflow_type,
         attributes,
         url,
-        logfile=logfile
+        logfile=logfile,
+        ssl=ssl
     )
 
 
 def vgrid_job_json_call(
-        vgrid, operation, workflow_type, attributes, logfile=None):
+        vgrid, operation, workflow_type, attributes, logfile=None,
+        ssl=True):
     """
     Validates input for a JSON job call to VGRID. Raises a TypeError or
     ValueError if an invalid value is found. If no problems are found then a
@@ -184,6 +190,9 @@ def vgrid_job_json_call(
     :param logfile: (str)[optional] Path to a logfile. If provided logs are
     recorded in this file. Default is None.
 
+    :param skip_ssl: (boolean)[optional] Toggle to skip ssl checks. Default
+    False
+
     :return: (function call to __vgrid_json_call) If all inputs are valid,
     will call function '__vgrid_json_call'.
     """
@@ -191,6 +200,7 @@ def vgrid_job_json_call(
     check_input(operation, str, 'operation')
     check_input(workflow_type, str, 'workflow_type')
     check_input(attributes, dict, 'attributes', or_none=True)
+    check_input(ssl, bool, 'ssl')
 
     try:
         url = os.environ['JOBS_URL']
@@ -232,12 +242,14 @@ def vgrid_job_json_call(
         workflow_type,
         attributes,
         url,
-        logfile=logfile
+        logfile=logfile,
+        ssl=ssl
     )
 
 
 def __vgrid_json_call(
-        operation, workflow_type, attributes, url, logfile=None, verify=True):
+        operation, workflow_type, attributes, url, logfile=None, verify=True,
+        ssl=True):
     """
     Makes JSON call to MiG. Will pull url and session_id from local
     environment variables, as setup by MiG notebook spawner. Will raise
@@ -260,6 +272,8 @@ def __vgrid_json_call(
 
     :param verify: (bool)[optional] Toggle for if to verify using SSL
     certificates. Default is True.
+
+    :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :return: (Tuple (dict, dict, dict) Returns JSON call results as three
     dicts. First is the header, then the body then the footer. Header contains
@@ -296,7 +310,7 @@ def __vgrid_json_call(
         response = requests.post(
             url,
             json=data,
-            verify=verify,
+            verify=ssl,
             timeout=DEFAULT_JSON_TIMEOUT
         )
 

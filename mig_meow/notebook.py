@@ -54,11 +54,13 @@ def monitor_widget(**kwargs):
     return widget.display_widget()
 
 
-def read_vgrid(vgrid):
+def read_vgrid(vgrid, ssl=True):
     '''
     Reads a given vgrid. Returns a dict of Patterns and a dict of Recipes .
 
     :param vgrid: (str) A vgrid to read
+
+    :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :return: (dict) A dictionary of responses. Contains separate keys for the
     patterns and the recipes.
@@ -70,7 +72,8 @@ def read_vgrid(vgrid):
         vgrid,
         VGRID_READ,
         VGRID_ANY_OBJECT_TYPE,
-        {}
+        {},
+        ssl=ssl
     )
 
     output = {
@@ -100,7 +103,7 @@ def read_vgrid(vgrid):
         return output
 
 
-def write_vgrid(patterns, recipes, vgrid):
+def write_vgrid(patterns, recipes, vgrid, ssl=True):
     '''
     Writes a collection of patterns and recipes to a given vgrid.
 
@@ -110,6 +113,8 @@ def write_vgrid(patterns, recipes, vgrid):
 
     :param vgrid: (str) The vgrid to write to.
 
+    :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
+
     :return: (dict) Dicts of updated patterns and recipes.
     '''
     check_input(vgrid, str, VGRID)
@@ -118,12 +123,12 @@ def write_vgrid(patterns, recipes, vgrid):
 
     updated_patterns = {}
     for pattern in patterns.values():
-        new_pattern = write_vgrid_pattern(pattern, vgrid)
+        new_pattern = write_vgrid_pattern(pattern, vgrid, ssl=ssl)
         updated_patterns[pattern.name] = new_pattern
 
     updated_recipes = {}
     for recipe in recipes.values():
-        new_recipe = write_vgrid_recipe(recipe, vgrid)
+        new_recipe = write_vgrid_recipe(recipe, vgrid, ssl=ssl)
         updated_recipes[recipe[NAME]] = new_recipe
 
     return {
@@ -132,13 +137,15 @@ def write_vgrid(patterns, recipes, vgrid):
     }
 
 
-def read_vgrid_pattern(pattern, vgrid):
+def read_vgrid_pattern(pattern, vgrid, ssl=True):
     '''
     Reads a given pattern from a given vgrid.
 
     :param pattern: (str) The pattern name to read.
 
     :param vgrid: (str) The Vgrid to read from
+
+    :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :return: (Pattern) A pattern object, or None if a Pattern could not be found
     '''
@@ -153,7 +160,8 @@ def read_vgrid_pattern(pattern, vgrid):
         vgrid,
         VGRID_READ,
         VGRID_PATTERN_OBJECT_TYPE,
-        attributes
+        attributes,
+        ssl=ssl
     )
 
     if OBJECT_TYPE in response \
@@ -173,13 +181,15 @@ def read_vgrid_pattern(pattern, vgrid):
         return None
 
 
-def read_vgrid_recipe(recipe, vgrid):
+def read_vgrid_recipe(recipe, vgrid, ssl=True):
     '''
     Reads a given recipe from a given vgrid.
 
     :param recipe: (str) The recipe name to read.
 
     :param vgrid: (str) The Vgrid to read from
+
+    :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :return: (dict) A recipe dict, or None if a recipe could not be found
     '''
@@ -194,7 +204,8 @@ def read_vgrid_recipe(recipe, vgrid):
         vgrid,
         VGRID_READ,
         VGRID_RECIPE_OBJECT_TYPE,
-        attributes
+        attributes,
+        ssl=ssl
     )
 
     if OBJECT_TYPE in response \
@@ -214,13 +225,15 @@ def read_vgrid_recipe(recipe, vgrid):
         return None
 
 
-def write_vgrid_pattern(pattern, vgrid):
+def write_vgrid_pattern(pattern, vgrid, ssl=True):
     '''
     Creates a new Pattern on a given VGrid, or updates an existing Pattern.
 
     :param pattern: (Pattern) The pattern object to write to the VGrid.
 
     :param vgrid: (str) The vgrid to write the pattern to.
+
+    :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :return: (Pattern) The registered Pattern object.
     '''
@@ -248,7 +261,8 @@ def write_vgrid_pattern(pattern, vgrid):
         vgrid,
         operation,
         VGRID_PATTERN_OBJECT_TYPE,
-        attributes
+        attributes,
+        ssl=ssl
     )
 
     if response['object_type'] != 'error_text':
@@ -266,13 +280,15 @@ def write_vgrid_pattern(pattern, vgrid):
     return pattern
 
 
-def write_vgrid_recipe(recipe, vgrid):
+def write_vgrid_recipe(recipe, vgrid, ssl=True):
     '''
     Creates a new recipe on a given VGrid, or updates an existing recipe.
 
     :param recipe: (dict) The recipe to write to the VGrid.
 
     :param vgrid: (str) The vgrid to write the recipe to.
+
+    :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :return: (dict) The registered Recipe dict.
     '''
@@ -296,7 +312,8 @@ def write_vgrid_recipe(recipe, vgrid):
         vgrid,
         operation,
         VGRID_RECIPE_OBJECT_TYPE,
-        attributes
+        attributes,
+        ssl=ssl
     )
 
     if response['object_type'] != 'error_text':
@@ -314,13 +331,15 @@ def write_vgrid_recipe(recipe, vgrid):
     return recipe
 
 
-def delete_vgrid_pattern(pattern, vgrid):
+def delete_vgrid_pattern(pattern, vgrid, ssl=True):
     '''
     Attempts to delete a given pattern from a given VGrid.
 
     :param pattern: (Pattern) A valid workflow Pattern object
 
     :param vgrid: (str) A MiG Vgrid to connect to
+
+    :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :return: (dict) Returns a Pattern object. If the deletion is successful
     the persistence_id attribute is removed
@@ -346,7 +365,8 @@ def delete_vgrid_pattern(pattern, vgrid):
         vgrid,
         VGRID_DELETE,
         VGRID_PATTERN_OBJECT_TYPE,
-        attributes
+        attributes,
+        ssl=ssl
     )
 
     if response['object_type'] != 'error_text':
@@ -358,13 +378,15 @@ def delete_vgrid_pattern(pattern, vgrid):
     return pattern
 
 
-def delete_vgrid_recipe(recipe, vgrid):
+def delete_vgrid_recipe(recipe, vgrid, ssl=True):
     '''
     Attempts to delete a given recipe from a given VGrid.
 
     :param recipe: (dict) A valid workflow recipe
 
     :param vgrid: (str) A MiG Vgrid to connect to
+
+    :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :return: (dict) Returns a recipe dictionary. If the deletion is successful
     the persistence_id attribute is removed
@@ -389,7 +411,8 @@ def delete_vgrid_recipe(recipe, vgrid):
         vgrid,
         VGRID_DELETE,
         VGRID_RECIPE_OBJECT_TYPE,
-        attributes
+        attributes,
+        ssl=ssl
     )
 
     if response['object_type'] != 'error_text':
