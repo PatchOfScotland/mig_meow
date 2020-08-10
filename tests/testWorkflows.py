@@ -1681,8 +1681,8 @@ class WorkflowTest(unittest.TestCase):
             },
             INPUT_FILE: 'trigger_file_name',
             OUTPUT: {
-                'outfile_1': 'first/one',
-                'outfile_2': 'first/two',
+                'outfile_1': '{VGRID}/first/one',
+                'outfile_2': '{VGRID}/first/two',
             },
             VARIABLES: {}
         }
@@ -1732,7 +1732,7 @@ class WorkflowTest(unittest.TestCase):
             },
             'input_file': 'trigger_file_name',
             'output': {
-                'outfile': 'third/one'
+                'outfile': '{VGRID}/third/one'
             },
             'variables': {}
         }
@@ -1758,7 +1758,7 @@ class WorkflowTest(unittest.TestCase):
             },
             'input_file': 'trigger_file_name',
             'output': {
-                'outfile': 'four/one'
+                'outfile': '{VGRID}/four/one'
             },
             'variables': {}
         }
@@ -1784,7 +1784,7 @@ class WorkflowTest(unittest.TestCase):
             },
             'input_file': 'trigger_file_name',
             'output': {
-                'outfile': 'first/two'
+                'outfile': '{VGRID}/first/two'
             },
             'variables': {}
         }
