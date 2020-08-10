@@ -614,11 +614,14 @@ def create_recipe_dict(notebook, name, source):
     return recipe
 
 
-def build_workflow_object(patterns):
+def build_workflow_object(patterns, vgrid=None):
     """
     Builds the emergent workflow from defined patterns.
 
     :param patterns: (dict) A dictionary of valid Pattern objects.
+
+    :param vgrid: (str) [Optional] The name of the vgrid this workflow is
+    operating in
 
     :return: (Tuple (bool, string or dict) Returns a tuple with the first value
     being a boolean, with True showing that a workflow was built without
@@ -655,6 +658,14 @@ def build_workflow_object(patterns):
         for other in patterns.values():
             other_output_dict = other.outputs
             for input_regex in input_regex_list:
+                # To match inputs to outputs we need to add on the vgrid path.
+                # We might be able to guess this if self.vgrid is defined,
+                # otherwise just use the placeholder term.
+                if vgrid:
+                    full_input_regex = os.path.join(vgrid, input_regex)
+                else:
+                    full_input_regex = os.path.join('{VGRID}', input_regex)
+
                 for key, value in other_output_dict.items():
                     filename = value
                     if os.path.sep in filename:
@@ -665,7 +676,7 @@ def build_workflow_object(patterns):
                         'value': value,
                         'filename': filename
                     }
-                    if re.match(input_regex, value):
+                    if re.match(full_input_regex, value):
                         workflow[other.name][DESCENDANTS][pattern.name] = \
                             match_dict
                         workflow[pattern.name][ANCESTORS][other.name] = \
@@ -680,7 +691,7 @@ def build_workflow_object(patterns):
                         magic_value = value
                         for magic_char in check:
                             magic_value = magic_value.replace(magic_char, '.*')
-                        if re.match(magic_value, input_regex):
+                        if re.match(magic_value, full_input_regex):
                             workflow[other.name][DESCENDANTS][pattern.name] = \
                                 match_dict
                             workflow[pattern.name][ANCESTORS][other.name] = \

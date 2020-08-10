@@ -506,7 +506,7 @@ def write_dir(patterns, recipes, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
 
 
 def read_dir_pattern(pattern_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR,
-                     print_errors=False):
+                     print_errors=False, file=None):
     '''
     Read a specific Pattern within the given local directory. There should be
     an intermediate directory, 'Patterns' between the two.
@@ -516,8 +516,12 @@ def read_dir_pattern(pattern_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR,
     :param directory: (str) a local directory to read from. Default is
     'meow_directory'.
 
-    :param print_errors: (bool) Toggle for if encountered errors result in a
-    print statement or throwing an exception. Default is to throw an exception.
+    :param print_errors: (bool) [Optional] Toggle for if encountered errors
+    result in a print statement or throwing an exception. Default is to throw
+    an exception.
+
+    :param file: (str) [Optional] Optional parameter to overwride looking in
+    the standard p
 
     :return: (Pattern) The read in pattern object.
     '''

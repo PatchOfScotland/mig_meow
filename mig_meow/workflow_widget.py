@@ -267,9 +267,12 @@ PATTERN_FORM_INPUTS = {
             "referred to within the %s code using the variable 'result'. "
             "<br/>"
             "Certain wildcards can be used within the Value parameter to "
-            "created dynamic output locations. For example:"
+            "created dynamic output locations. If these locations are to be "
+            "read from or written to they should include the Vgrid name in "
+            "the path. "
+            "For example:"
             "<br/>"
-            "Value: <b>dir/{FILENAME}</b>"
+            "Value: <b>myVgrid/dir/{FILENAME}</b>"
             "<br/>"
             "These will be replaced at runtime with the appropriate values "
             "as explained below. These will change value based on the path of "
@@ -4787,7 +4790,8 @@ class WorkflowWidget:
         self.__check_state()
 
         if self.mode == MEOW_MODE:
-            valid, meow_workflow = build_workflow_object(self.meow[PATTERNS])
+            valid, meow_workflow = \
+                build_workflow_object(self.meow[PATTERNS], self.vgrid)
 
             if not valid:
                 self.__set_feedback(
