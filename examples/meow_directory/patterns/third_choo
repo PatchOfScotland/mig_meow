@@ -1,0 +1,12 @@
+input_file: infile
+input_paths:
+- data_2/*
+output:
+  outfile_insufficent: '{VGRID}/data_1/{FILENAME}'
+  outfile_thresholded: '{VGRID}/final/{FILENAME}'
+parameterize_over: {}
+recipes:
+- choo
+variables:
+  extra: 1
+  threshold: 10000

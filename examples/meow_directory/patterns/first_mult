@@ -1,0 +1,10 @@
+input_file: infile
+input_paths:
+- initial_data/*
+output:
+  outfile: '{VGRID}/data_1/{FILENAME}'
+parameterize_over: {}
+recipes:
+- mult
+variables:
+  factor: 2

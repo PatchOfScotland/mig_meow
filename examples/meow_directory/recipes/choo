@@ -1,0 +1,172 @@
+recipe:
+  cells:
+  - cell_type: code
+    execution_count: 22
+    metadata: {}
+    outputs: []
+    source:
+    - '# Default parameter values
+
+      '
+    - '# Threshold against which we decide output location
+
+      '
+    - 'threshold = 10000
+
+      '
+    - '# Amount to add to nom-thresholded data
+
+      '
+    - 'extra = 1
+
+      '
+    - '# Data input file location
+
+      '
+    - 'infile = ''data/data_0.npy''
+
+      '
+    - '# Output file location
+
+      '
+    - 'outfile_thresholded = ''final/data_0.npy''
+
+      '
+    - '# Output file location
+
+      '
+    - 'outfile_insufficent = ''data/data_0.npy''
+
+      '
+  - cell_type: code
+    execution_count: 23
+    metadata: {}
+    outputs: []
+    source:
+    - 'import numpy as np
+
+      '
+    - import os
+  - cell_type: code
+    execution_count: 24
+    metadata: {}
+    outputs:
+    - ename: FileNotFoundError
+      evalue: '[Errno 2] No such file or directory: ''final/data_0.npy'''
+      output_type: error
+      traceback:
+      - "\e[0;31m---------------------------------------------------------------------------\e\
+        [0m"
+      - "\e[0;31mFileNotFoundError\e[0m                         Traceback (most recent\
+        \ call last)"
+      - "\e[0;32m<ipython-input-24-e12660a20da7>\e[0m in \e[0;36m<module>\e[0;34m\e\
+        [0m\n\e[1;32m      5\e[0m \e[0;32mif\e[0m \e[0;34m(\e[0m\e[0mdata\e[0m \e\
+        [0;34m>\e[0m \e[0;36m3000\e[0m\e[0;34m)\e[0m\e[0;34m.\e[0m\e[0many\e[0m\e\
+        [0;34m(\e[0m\e[0;34m)\e[0m\e[0;34m:\e[0m\e[0;34m\e[0m\e[0;34m\e[0m\e[0m\n\e\
+        [1;32m      6\e[0m     \e[0;31m# If it is, write the unmodified data to one\
+        \ location\e[0m\e[0;34m\e[0m\e[0;34m\e[0m\e[0;34m\e[0m\e[0m\n\e[0;32m---->\
+        \ 7\e[0;31m     \e[0mnp\e[0m\e[0;34m.\e[0m\e[0msave\e[0m\e[0;34m(\e[0m\e[0moutfile_thresholded\e\
+        [0m\e[0;34m,\e[0m \e[0mdata\e[0m\e[0;34m)\e[0m\e[0;34m\e[0m\e[0;34m\e[0m\e\
+        [0m\n\e[0m\e[1;32m      8\e[0m \e[0;32melse\e[0m\e[0;34m:\e[0m\e[0;34m\e[0m\e\
+        [0;34m\e[0m\e[0m\n\e[1;32m      9\e[0m     \e[0;31m# If we don't yet meet\
+        \ the threshold, add extra to the data\e[0m\e[0;34m\e[0m\e[0;34m\e[0m\e[0;34m\e\
+        [0m\e[0m\n"
+      - "\e[0;32m~/anaconda3/lib/python3.6/site-packages/numpy/lib/npyio.py\e[0m in\
+        \ \e[0;36msave\e[0;34m(file, arr, allow_pickle, fix_imports)\e[0m\n\e[1;32m\
+        \    490\e[0m         \e[0;32mif\e[0m \e[0;32mnot\e[0m \e[0mfile\e[0m\e[0;34m.\e\
+        [0m\e[0mendswith\e[0m\e[0;34m(\e[0m\e[0;34m'.npy'\e[0m\e[0;34m)\e[0m\e[0;34m:\e\
+        [0m\e[0;34m\e[0m\e[0;34m\e[0m\e[0m\n\e[1;32m    491\e[0m             \e[0mfile\e\
+        [0m \e[0;34m=\e[0m \e[0mfile\e[0m \e[0;34m+\e[0m \e[0;34m'.npy'\e[0m\e[0;34m\e\
+        [0m\e[0;34m\e[0m\e[0m\n\e[0;32m--> 492\e[0;31m         \e[0mfid\e[0m \e[0;34m=\e\
+        [0m \e[0mopen\e[0m\e[0;34m(\e[0m\e[0mfile\e[0m\e[0;34m,\e[0m \e[0;34m\"wb\"\
+        \e[0m\e[0;34m)\e[0m\e[0;34m\e[0m\e[0;34m\e[0m\e[0m\n\e[0m\e[1;32m    493\e\
+        [0m         \e[0mown_fid\e[0m \e[0;34m=\e[0m \e[0;32mTrue\e[0m\e[0;34m\e[0m\e\
+        [0;34m\e[0m\e[0m\n\e[1;32m    494\e[0m     \e[0;32melif\e[0m \e[0mis_pathlib_path\e\
+        [0m\e[0;34m(\e[0m\e[0mfile\e[0m\e[0;34m)\e[0m\e[0;34m:\e[0m\e[0;34m\e[0m\e\
+        [0;34m\e[0m\e[0m\n"
+      - "\e[0;31mFileNotFoundError\e[0m: [Errno 2] No such file or directory: 'final/data_0.npy'"
+    source:
+    - '# load in dataset. Should be numpy array
+
+      '
+    - 'data = np.load(infile)
+
+      '
+    - '
+
+      '
+    - '# Test if any value in the data is above the threshold
+
+      '
+    - 'if (data > int(threshold)).any():
+
+      '
+    - '    # Create output directory if it doesn''t exist
+
+      '
+    - '    output_dir_path = os.path.dirname(outfile_thresholded)
+
+      '
+    - '    if output_dir_path:
+
+      '
+    - '        os.makedirs(output_dir_path, exist_ok=True)
+
+      '
+    - "    \n"
+    - '    # If it is, write the unmodified data to one location
+
+      '
+    - '    np.save(outfile_thresholded, data)
+
+      '
+    - 'else:
+
+      '
+    - '    # If we don''t yet meet the threshold, add extra to the data
+
+      '
+    - '    added = data + int(extra)
+
+      '
+    - "    \n"
+    - '    # Create output directory if it doesn''t exist
+
+      '
+    - '    output_dir_path = os.path.dirname(outfile_insufficent)
+
+      '
+    - '    if output_dir_path:
+
+      '
+    - '        os.makedirs(output_dir_path, exist_ok=True)
+
+      '
+    - "    \n"
+    - '    # Save the data to a different location
+
+      '
+    - '    np.save(outfile_insufficent, data)'
+  - cell_type: code
+    execution_count: null
+    metadata: {}
+    outputs: []
+    source: []
+  metadata:
+    kernelspec:
+      display_name: Python 3
+      language: python
+      name: python3
+    language_info:
+      codemirror_mode:
+        name: ipython
+        version: 3
+      file_extension: .py
+      mimetype: text/x-python
+      name: python
+      nbconvert_exporter: python
+      pygments_lexer: ipython3
+      version: 3.7.6
+  nbformat: 4
+  nbformat_minor: 4
+source: chooser.ipynb

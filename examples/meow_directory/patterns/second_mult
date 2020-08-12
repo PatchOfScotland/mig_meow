@@ -1,0 +1,10 @@
+input_file: infile
+input_paths:
+- data_1/data_*.npy
+output:
+  outfile: '{VGRID}/data_2/{FILENAME}'
+parameterize_over: {}
+recipes:
+- mult
+variables:
+  factor: 3

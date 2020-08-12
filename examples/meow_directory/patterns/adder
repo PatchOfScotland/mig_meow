@@ -1,0 +1,13 @@
+input_file: infile
+input_paths:
+- initial_data/*
+output:
+  outfile: '{VGRID}/data_added/{FILENAME}'
+parameterize_over:
+  extra:
+    increment: 1
+    start: 1
+    stop: 3
+recipes:
+- add
+variables: {}
