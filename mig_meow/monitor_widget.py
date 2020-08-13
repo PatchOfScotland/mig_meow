@@ -5,7 +5,7 @@ import time
 
 from IPython.display import display
 
-from .inputs import check_input
+from .validation import check_input
 from .constants import VGRID, VGRID_READ, VGRID_QUEUE_OBJECT_TYPE,\
     CANCEL_JOB, VGRID_CREATE, VGRID_UPDATE, VGRID_JOB_OBJECT_TYPE, \
     OBJECT_TYPE

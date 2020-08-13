@@ -4,6 +4,8 @@
 # is clearer to group them here with appropriate variables.
 # Variables may also need to be saved here if needed for testing.
 
+import os
+
 DEFAULT_JSON_TIMEOUT = 15
 DEFAULT_WORKFLOW_TITLE = 'workflow'
 DEFAULT_MEOW_IMPORT_EXPORT_DIR = 'meow_directory'
@@ -255,6 +257,10 @@ WIDGET_MODES = [
 LOGGING_DIR = 'mig_meow_widget_logs'
 WORKFLOW_LOGFILE_NAME = 'workfow_widget'
 MONITOR_LOGFILE_NAME = 'monitor_widget'
+RUNNER_LOGFILE_NAME = 'workflow_runner'
+RUNNER_DATA = '.workflow_data'
+RUNNER_PATTERNS = os.path.join(RUNNER_DATA, PATTERNS)
+RUNNER_RECIPES = os.path.join(RUNNER_DATA, RECIPES)
 
 MIG_TRIGGER_KEYWORDS = [
     "{PATH}",

@@ -18,7 +18,7 @@ from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
     CWL_VARIABLES, CWL_CLASS_WORKFLOW, CWL_CLASS_COMMAND_LINE_TOOL, SWEEP
 from mig_meow.cwl import check_workflows_dict, check_steps_dict, \
     check_settings_dict
-from mig_meow.inputs import is_valid_recipe_dict, is_valid_pattern_dict, \
+from mig_meow.validation import is_valid_recipe_dict, is_valid_pattern_dict, \
     is_valid_workflow_dict, is_valid_step_dict, is_valid_setting_dict
 from mig_meow.meow import Pattern, check_patterns_dict, \
     build_workflow_object, create_recipe_dict, check_recipes_dict
@@ -1921,6 +1921,7 @@ class WorkflowTest(unittest.TestCase):
             'mode': 'CWL',
             'auto_import': True,
             'export_name': 'example_name',
+            'debug': False,
             'cwl_dir': 'test_dir',
             PATTERNS: {
                 pattern.name: pattern

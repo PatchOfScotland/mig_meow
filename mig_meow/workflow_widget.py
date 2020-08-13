@@ -10,7 +10,7 @@ from shutil import copyfile
 from datetime import datetime
 from IPython.display import display
 
-from .inputs import valid_file_path, valid_string, check_input_args, \
+from .validation import valid_file_path, valid_string, check_input_args, \
     check_input, valid_dir_path, is_valid_recipe_dict, is_a_number
 from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
     DEFAULT_JOB_NAME, SOURCE, OBJECT_TYPE, \
@@ -49,8 +49,9 @@ from .mig import vgrid_workflow_json_call
 from .meow import build_workflow_object, pattern_has_recipes, Pattern, \
     create_recipe_dict, check_patterns_dict, check_recipes_dict, \
     register_recipe
-from .yaml_funcs import patten_to_yaml_dict, pattern_from_yaml_dict, \
-    recipe_to_yaml_dict, recipe_from_yaml_dict
+from .fileio import patten_to_yaml_dict, pattern_from_yaml_dict, \
+    recipe_to_yaml_dict, recipe_from_yaml_dict, write_dir_pattern, \
+    write_dir_recipe, read_dir
 
 YAML_EXTENSIONS = [
     '.yaml',
@@ -1539,26 +1540,14 @@ class WorkflowWidget:
             os.mkdir(recipes_path)
 
         for pattern_name, pattern in self.meow[PATTERNS].items():
-            valid, feedback = pattern.integrity_check()
-
-            if not valid:
-                msg = "Could not export %s %s. %s" \
-                      % (PATTERN_NAME, pattern_name, feedback)
-                self.__add_to_feedback(msg)
-                break
-
-            pattern_file_path = os.path.join(patterns_path, pattern_name)
-            pattern_yaml = patten_to_yaml_dict(pattern)
-
-            with open(pattern_file_path, 'w') as pattern_file:
-                yaml.dump(
-                    pattern_yaml,
-                    pattern_file,
-                    default_flow_style=False
-                )
+            try:
+                write_dir_pattern(pattern, directory=patterns_path)
+            except Exception as e:
+                self.__add_to_feedback(e)
 
             msg = "Exported %s %s successfully to %s. " \
-                  % (PATTERN_NAME, pattern_name, pattern_file_path)
+                  % (PATTERN_NAME, pattern_name,
+                     os.path.join(patterns_path, pattern.name))
             self.__add_to_feedback(msg)
             write_to_log(
                 self.logfile,
@@ -1567,26 +1556,14 @@ class WorkflowWidget:
             )
 
         for recipe_name, recipe in self.meow[RECIPES].items():
-            valid, feedback = is_valid_recipe_dict(recipe)
-
-            if not valid:
-                msg ="Could not export %s %s. %s" \
-                     % (RECIPE_NAME, recipe_name, feedback)
-                self.__add_to_feedback(msg)
-                break
-
-            recipe_file_path = os.path.join(recipes_path, recipe_name)
-            recipe_yaml = recipe_to_yaml_dict(recipe)
-
-            with open(recipe_file_path, 'w') as recipe_file:
-                yaml.dump(
-                    recipe_yaml,
-                    recipe_file,
-                    default_flow_style=False
-                )
+            try:
+                write_dir_recipe(recipe, directory=recipes_path)
+            except Exception as e:
+                self.__add_to_feedback(e)
 
             msg = "Exported %s %s successfully to %s. " \
-                  % (RECIPE_NAME, recipe_name, recipe_file_path)
+                  % (RECIPE_NAME, recipe_name,
+                     os.path.join(recipes_path, recipe_name))
             self.__add_to_feedback(msg)
             write_to_log(
                 self.logfile,
@@ -2989,6 +2966,7 @@ class WorkflowWidget:
         """
 
         try:
+            self.__clear_feedback()
             pattern = Pattern(values[NAME])
             if not editing:
                 if values[NAME] in self.meow[PATTERNS]:
@@ -2998,15 +2976,26 @@ class WorkflowWidget:
                     self.__set_feedback(msg)
                     return False
             file_name = values[INPUT_FILE]
-            trigger_paths = values[TRIGGER_PATHS]
-            if len(trigger_paths) == 1:
-                pattern.add_single_input(file_name, trigger_paths[0])
-            else:
-                # TODO Currently ignores any additional trigger paths.
-                #  fix this once mig formatting complete.
-                pattern.add_single_input(file_name, trigger_paths[0])
 
-            for recipe in values[RECIPES]:
+            # TODO Currently ignores any additional trigger paths.
+            #  fix this once mig formatting complete.
+            trigger_paths = values[TRIGGER_PATHS]
+            if len(trigger_paths) > 1:
+                trigger_paths = trigger_paths[:1]
+                self.__add_to_feedback(
+                    "Currently the MiG only supports one trigger path per "
+                    "Pattern. Only path %s will be used." % trigger_paths[0])
+            pattern.add_single_input(file_name, trigger_paths[0])
+
+            # TODO Currently ignores any additional recipes.
+            #  fix this once mig formatting complete.
+            recipes = values[RECIPES]
+            if len(recipes) > 1:
+                recipes = recipes[:1]
+                self.__add_to_feedback(
+                    "Currently the MiG only supports one recipe per "
+                    "Pattern. Only path %s will be used." % recipes[0])
+            for recipe in recipes:
                 pattern.add_recipe(recipe)
 
             for variable in values[VARIABLES]:
@@ -3069,7 +3058,7 @@ class WorkflowWidget:
                 msg = "%s \'%s\' %s. " % (PATTERN_NAME, pattern.name, word)
                 if warnings:
                     msg += "\n%s" % warnings
-                self.__set_feedback(msg)
+                self.__add_to_feedback(msg)
                 self.__update_workflow_visualisation()
                 self.__close_form()
                 return True
@@ -4675,48 +4664,7 @@ class WorkflowWidget:
                   % (self.meow_import_export_dir, MEOW_IMPORT_EXPORT_DIR_ARG)
             return False, msg
 
-        pattern_files = [
-            f for f in os.listdir(patterns_path)
-            if os.path.isfile(os.path.join(patterns_path, f))
-        ]
-
-        for file_name in pattern_files:
-            try:
-                with open(os.path.join(patterns_path, file_name), 'r') \
-                        as yaml_file:
-                    pattern_yaml_dict = yaml.full_load(yaml_file)
-                    if '.' in file_name:
-                        file_name = file_name[:file_name.index('.')]
-
-                    pattern = \
-                        pattern_from_yaml_dict(pattern_yaml_dict, file_name)
-
-                    buffer_meow[PATTERNS][file_name] = pattern
-            except Exception as ex:
-                self.__add_to_feedback(
-                    "Tried to import %s but could not. %s" % (PATTERN_NAME, ex)
-                )
-
-        recipe_files = [
-            f for f in os.listdir(recipes_path)
-            if os.path.isfile(os.path.join(recipes_path, f))
-        ]
-
-        for file_name in recipe_files:
-            try:
-                with open(os.path.join(recipes_path, file_name), 'r') \
-                        as yaml_file:
-                    recipe_yaml_dict = yaml.full_load(yaml_file)
-                    if '.' in file_name:
-                        file_name = file_name[:file_name.index('.')]
-
-                    recipe = recipe_from_yaml_dict(recipe_yaml_dict, file_name)
-
-                    buffer_meow[RECIPES][file_name] = recipe
-            except Exception as ex:
-                self.__add_to_feedback(
-                    "Tried to import %s but could not. %s" % (RECIPE_NAME, ex)
-                )
+        buffer_meow = read_dir(self.meow_import_export_dir)
 
         return True, buffer_meow
 

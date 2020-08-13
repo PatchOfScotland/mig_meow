@@ -6,7 +6,7 @@ from .constants import CWL_NAME, CWL_CWL_VERSION, CWL_CLASS, CWL_BASE_COMMAND,\
     CWL_VARIABLES, PLACEHOLDER, WORKFLOW_NAME, STEP_NAME, VARIABLES_NAME, \
     WORKFLOWS, STEPS, SETTINGS, CWL_CLASS_COMMAND_LINE_TOOL, \
     CWL_CLASS_WORKFLOW, CWL_WORKFLOW_RUN
-from .inputs import check_input, is_valid_workflow_dict, is_valid_step_dict, \
+from .validation import check_input, is_valid_workflow_dict, is_valid_step_dict, \
     is_valid_setting_dict
 
 

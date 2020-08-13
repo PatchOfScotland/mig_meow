@@ -146,7 +146,7 @@ def valid_dir_path(path, name):
     check_input(path, str, name)
 
     valid_chars = \
-        CHAR_NUMERIC + CHAR_UPPERCASE + CHAR_LOWERCASE + '-_' + os.path.sep
+        CHAR_NUMERIC + CHAR_UPPERCASE + CHAR_LOWERCASE + '-_.' + os.path.sep
 
     for char in path:
         if char not in valid_chars:

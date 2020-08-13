@@ -26,3 +26,7 @@ Lab it will require the labextensions:
 ## Examples
 Some example patterns and recipes are included in the 'examples' directory. 
 These can be worked through in the 'workflow_examples.ipynb' notebook.
+
+## Testing
+Automatic testing is available though it will require a numpy install to work 
+correctly.

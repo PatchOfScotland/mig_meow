@@ -28,10 +28,12 @@ setup(name=module_data['__name__'],
       author_email='d.marchant@ed-alumni.net',
       description='MiG based manager for event oriented workflows',
       long_description=long_description,
-      # long_description_content_type='text/markdown',
       url='https://github.com/PatchOfScotland/mig_meow',
       packages=['mig_meow'],
       install_requires=read_requirements("requirements.txt"),
+      extras_require={
+                "test": read_requirements("requirements-testing.txt"),
+      },
       classifiers=[
             'Programming Language :: Python :: 3',
             'License :: OSI Approved :: GNU General Public License (GPL)',

@@ -1,10 +1,13 @@
 
 import os
+import threading
 
 from datetime import datetime
 
-from .constants import LOGGING_DIR, WORKFLOW_LOGFILE_NAME, MONITOR_LOGFILE_NAME
+from .constants import LOGGING_DIR, WORKFLOW_LOGFILE_NAME, \
+    MONITOR_LOGFILE_NAME, RUNNER_LOGFILE_NAME
 
+lock = threading.Lock()
 
 def __create_logfile(mode, title):
     """
@@ -60,7 +63,19 @@ def create_monitor_logfile(debug_mode=None):
     return __create_logfile(debug_mode, MONITOR_LOGFILE_NAME)
 
 
-def write_to_log(log, anchor, entry):
+def create_localrunner_logfile(debug_mode=None):
+    """
+    Creates a new logfile for a local runner.
+
+    :param debug_mode: (boolean)[optional] flag for runner debug mode. If True
+    then a log is created. If false it is not. Default is None.
+
+    :return: (function call to __create_logfile)
+    """
+    return __create_logfile(debug_mode, RUNNER_LOGFILE_NAME)
+
+
+def write_to_log(log, anchor, entry, to_print=False):
     """
     Writes a new entry to a logfile.
 
@@ -74,9 +89,15 @@ def write_to_log(log, anchor, entry):
 
     :param entry: (str) Line to write to logfile.
 
+    :param print: (boolean) Also print entry. Default is False
+
     :return: No return.
     """
     if log:
+        lock.acquire()
         time = str(datetime.now())
         with open(log, 'a') as logfile:
             logfile.write("%s: %s - %s\n" % (time, anchor, entry))
+        lock.release()
+    if to_print:
+        print("%s - %s" % (anchor, entry))
