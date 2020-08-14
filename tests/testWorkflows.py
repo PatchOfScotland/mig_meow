@@ -15,13 +15,15 @@ from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
     TRIGGER_RECIPES, OUTPUT, VARIABLES, SOURCE, RECIPE, CWL_NAME, \
     CWL_REQUIREMENTS, CWL_CWL_VERSION, CWL_CLASS, CWL_BASE_COMMAND, \
     CWL_INPUTS, CWL_OUTPUTS, CWL_STEPS, CWL_STDOUT, CWL_ARGUMENTS, CWL_HINTS, \
-    CWL_VARIABLES, CWL_CLASS_WORKFLOW, CWL_CLASS_COMMAND_LINE_TOOL, SWEEP
+    CWL_VARIABLES, CWL_CLASS_WORKFLOW, CWL_CLASS_COMMAND_LINE_TOOL, SWEEP, \
+    SWEEP_START, SWEEP_STOP, SWEEP_JUMP
 from mig_meow.cwl import check_workflows_dict, check_steps_dict, \
     check_settings_dict
 from mig_meow.validation import is_valid_recipe_dict, is_valid_pattern_dict, \
     is_valid_workflow_dict, is_valid_step_dict, is_valid_setting_dict
 from mig_meow.meow import Pattern, check_patterns_dict, \
-    build_workflow_object, create_recipe_dict, check_recipes_dict
+    build_workflow_object, create_recipe_dict, check_recipes_dict, \
+    parameter_sweep_entry, get_parameter_sweep_values
 from mig_meow.workflow_widget import WorkflowWidget, NAME_KEY, VALUE_KEY, \
     SWEEP_START_KEY, SWEEP_STOP_KEY, SWEEP_JUMP_KEY
 
@@ -3259,3 +3261,20 @@ class WorkflowTest(unittest.TestCase):
         self.assertFalse(
             workflow_widget.button_elements[MEOW_EXPORT_VGRID_BUTTON].disabled
         )
+
+    def testParamSweepCounting(self):
+
+        expected_sweep = {
+            SWEEP_START: 1,
+            SWEEP_STOP: 10,
+            SWEEP_JUMP: 1
+        }
+        sweep = parameter_sweep_entry('test', 1, 10, 1)
+
+        self.assertEqual(expected_sweep, sweep)
+
+        expected_values = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        values = get_parameter_sweep_values(sweep)
+
+        self.assertEqual(expected_values, values)
+

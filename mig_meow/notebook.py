@@ -41,7 +41,7 @@ def monitor_widget(**kwargs):
     return widget.display_widget()
 
 
-def start_local_workflow(vgrid_name, patterns, recipes, warning=True):
+def start_local_workflow(vgrid_name, patterns, recipes, workers, warning=True):
     if warning:
         print("This function is intended only as an illustration of MEOW "
               "functionality, and should therefore be used with caution. It "
@@ -50,4 +50,10 @@ def start_local_workflow(vgrid_name, patterns, recipes, warning=True):
               "proper workflow functionality please use the MiG integration")
 
     runner = WorkflowRunner()
-    runner.run_local_workflow(vgrid_name, patterns=patterns, recipes=recipes)
+    runner.run_local_workflow(
+        vgrid_name,
+        workers,
+        patterns=patterns,
+        recipes=recipes,
+        start_workers=True
+    )

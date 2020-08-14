@@ -1,6 +1,7 @@
 
 import copy
 import os
+import json
 import yaml
 
 from .constants import NAME, PERSISTENCE_ID, INPUT_FILE, TRIGGER_PATHS, \
@@ -11,6 +12,21 @@ from .meow import Pattern, check_patterns_dict, check_recipes_dict, \
     is_valid_pattern_object
 from .validation import valid_pattern_name, dir_exists, valid_dir_path, \
     is_valid_recipe_dict, valid_recipe_name
+
+
+def write_notebook(source, filename):
+    with open(filename, 'w') as job_file:
+        json.dump(source, job_file)
+
+
+def write_yaml(source, filename):
+    with open(filename, 'w') as param_file:
+        yaml.dump(source, param_file, default_flow_style=False)
+
+
+def read_yaml(filepath):
+    with open(filepath, 'r') as yaml_file:
+        return yaml.full_load(yaml_file)
 
 
 def make_dir(path, can_exist=True):
@@ -216,16 +232,14 @@ def read_dir_pattern(pattern_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR,
     dir_exists(pattern_dir)
 
     try:
-        with open(os.path.join(pattern_dir, pattern_name), 'r') \
-                as yaml_file:
-            pattern_yaml_dict = yaml.full_load(yaml_file)
-            if '.' in pattern_name:
-                pattern_name = pattern_name[:pattern_name.index('.')]
+        pattern_yaml_dict = read_yaml(os.path.join(pattern_dir, pattern_name))
+        if '.' in pattern_name:
+            pattern_name = pattern_name[:pattern_name.index('.')]
 
-            pattern = \
-                pattern_from_yaml_dict(pattern_yaml_dict, pattern_name)
+        pattern = \
+            pattern_from_yaml_dict(pattern_yaml_dict, pattern_name)
 
-            return pattern
+        return pattern
     except Exception as ex:
         msg = "Tried to import %s '%s', but could not. %s" \
               % (PATTERN_NAME, pattern_name, ex)
@@ -259,15 +273,14 @@ def read_dir_recipe(recipe_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR,
     dir_exists(recipe_dir)
 
     try:
-        with open(os.path.join(recipe_dir, recipe_name), 'r') \
-                as yaml_file:
-            recipe_yaml_dict = yaml.full_load(yaml_file)
-            if '.' in recipe_name:
-                recipe_name = recipe_name[:recipe_name.index('.')]
 
-            recipe = recipe_from_yaml_dict(recipe_yaml_dict, recipe_name)
+        recipe_yaml_dict = read_yaml(os.path.join(recipe_dir, recipe_name))
+        if '.' in recipe_name:
+            recipe_name = recipe_name[:recipe_name.index('.')]
 
-            return recipe
+        recipe = recipe_from_yaml_dict(recipe_yaml_dict, recipe_name)
+
+        return recipe
     except Exception as ex:
         msg = "Tried to import %s '%s', but could not. %s" \
               % (RECIPE_NAME, recipe_name, ex)
@@ -301,12 +314,7 @@ def write_dir_pattern(pattern, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
     pattern_file_path = os.path.join(pattern_dir, pattern.name)
     pattern_yaml = patten_to_yaml_dict(pattern)
 
-    with open(pattern_file_path, 'w') as pattern_file:
-        yaml.dump(
-            pattern_yaml,
-            pattern_file,
-            default_flow_style=False
-        )
+    write_yaml(pattern_yaml, pattern_file_path)
 
 
 def write_dir_recipe(recipe, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
@@ -333,12 +341,7 @@ def write_dir_recipe(recipe, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
     recipe_file_path = os.path.join(recipe_dir, recipe[NAME])
     recipe_yaml = recipe_to_yaml_dict(recipe)
 
-    with open(recipe_file_path, 'w') as recipe_file:
-        yaml.dump(
-            recipe_yaml,
-            recipe_file,
-            default_flow_style=False
-        )
+    write_yaml(recipe_yaml, recipe_file_path)
 
 
 def delete_dir_pattern(pattern_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):

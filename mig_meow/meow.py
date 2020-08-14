@@ -134,6 +134,23 @@ def parameter_sweep_entry(name, start, stop, increment):
     }
 
 
+def get_parameter_sweep_values(sweep):
+    valid_param_sweep(sweep, 'parameter_sweep')
+
+    variables = []
+
+    start = sweep[SWEEP_START]
+    stop = sweep[SWEEP_STOP]
+    increment = sweep[SWEEP_JUMP]
+
+    par_val = start
+    while par_val <= stop:
+        variables.append(par_val)
+        par_val += increment
+
+    return variables
+
+
 class Pattern:
     def __init__(self, parameters):
         """

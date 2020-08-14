@@ -6,3 +6,5 @@ ipywidgets>=7.5.1
 PyYAML>=5.3
 nbformat>=4.4.0
 watchdog
+notebook_parameterizer
+papermill

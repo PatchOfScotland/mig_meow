@@ -4,10 +4,11 @@ import shutil
 import time
 import numpy as np
 
-from mig_meow.constants import PATTERNS, RECIPES, RUNNER_DATA, \
-    RUNNER_RECIPES, RUNNER_PATTERNS
+from mig_meow.constants import PATTERNS, RECIPES
 from mig_meow.fileio import read_dir
-from mig_meow.localrunner import WorkflowRunner, RULES, JOBS
+from mig_meow.localrunner import WorkflowRunner, RULES, JOBS, RUNNER_DATA, \
+    RUNNER_RECIPES, RUNNER_PATTERNS, RULE_PATH, RULE_PATTERN, RULE_RECIPE, \
+    RULE_ID, WORKERS, QUEUE
 
 VGRID = 'testing_directory'
 
@@ -50,6 +51,7 @@ class WorkflowTest(unittest.TestCase):
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
             VGRID,
+            0,
             daemon=True
         )
 
@@ -61,7 +63,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertTrue(os.path.exists(VGRID))
         self.assertTrue(os.path.isdir(VGRID))
 
-        self.assertTrue(runner.stop_runner())
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
 
         self.assertFalse(os.path.exists(RUNNER_DATA))
         self.assertTrue(os.path.exists(VGRID))
@@ -74,6 +76,7 @@ class WorkflowTest(unittest.TestCase):
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
             VGRID,
+            0,
             patterns=patterns,
             daemon=True
         )
@@ -88,7 +91,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn('second_mult', runner.runner_state[PATTERNS])
         self.assertIn('third_choo', runner.runner_state[PATTERNS])
 
-        self.assertTrue(runner.stop_runner())
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
 
     def testWorklflowRunnerRecipeImports(self):
         data = read_dir(directory='examples/meow_directory')
@@ -97,6 +100,7 @@ class WorkflowTest(unittest.TestCase):
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
             VGRID,
+            0,
             recipes=recipes,
             daemon=True
         )
@@ -110,12 +114,13 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn('mult', runner.runner_state[RECIPES])
         self.assertIn('choo', runner.runner_state[RECIPES])
 
-        self.assertTrue(runner.stop_runner())
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
 
     def testWorkflowRunnerPatternIdentification(self):
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
             VGRID,
+            0,
             daemon=True
         )
 
@@ -141,6 +146,7 @@ class WorkflowTest(unittest.TestCase):
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
             VGRID,
+            0,
             daemon=True
         )
 
@@ -170,6 +176,7 @@ class WorkflowTest(unittest.TestCase):
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
             VGRID,
+            0,
             patterns=patterns,
             recipes=recipes,
             daemon=True
@@ -181,10 +188,15 @@ class WorkflowTest(unittest.TestCase):
         self.assertIsNotNone(runner.runner_state[RULES])
         self.assertIsInstance(runner.runner_state[RULES], list)
         self.assertEqual(len(runner.runner_state[RULES]), 4)
+        idless_rules = [{
+            RULE_PATH: r[RULE_PATH],
+            RULE_PATTERN: r[RULE_PATTERN],
+            RULE_RECIPE: r[RULE_RECIPE]
+        } for r in runner.runner_state[RULES]]
         for rule in STANDARD_RULES:
-            self.assertIn(rule, runner.runner_state[RULES])
+            self.assertIn(rule, idless_rules)
 
-        self.assertTrue(runner.stop_runner())
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
 
     def testWorkflowRunnerPatternRemoval(self):
         data = read_dir(directory='examples/meow_directory')
@@ -194,6 +206,7 @@ class WorkflowTest(unittest.TestCase):
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
             VGRID,
+            0,
             patterns=patterns,
             recipes=recipes,
             daemon=True
@@ -202,8 +215,13 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
+        idless_rules = [{
+            RULE_PATH: r[RULE_PATH],
+            RULE_PATTERN: r[RULE_PATTERN],
+            RULE_RECIPE: r[RULE_RECIPE]
+        } for r in runner.runner_state[RULES]]
         for rule in STANDARD_RULES:
-            self.assertIn(rule, runner.runner_state[RULES])
+            self.assertIn(rule, idless_rules)
 
         os.remove(os.path.join(RUNNER_PATTERNS, 'adder'))
 
@@ -211,10 +229,15 @@ class WorkflowTest(unittest.TestCase):
         time.sleep(3)
 
         self.assertEqual(len(runner.runner_state[RULES]), 3)
+        idless_rules = [{
+            RULE_PATH: r[RULE_PATH],
+            RULE_PATTERN: r[RULE_PATTERN],
+            RULE_RECIPE: r[RULE_RECIPE]
+        } for r in runner.runner_state[RULES]]
         for rule in STANDARD_RULES[1:]:
-            self.assertIn(rule, runner.runner_state[RULES])
+            self.assertIn(rule, idless_rules)
 
-        self.assertTrue(runner.stop_runner())
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
 
     def testWorkflowRunnerRecipeRemoval(self):
         data = read_dir(directory='examples/meow_directory')
@@ -224,6 +247,7 @@ class WorkflowTest(unittest.TestCase):
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
             VGRID,
+            0,
             patterns=patterns,
             recipes=recipes,
             daemon=True
@@ -232,8 +256,13 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
+        idless_rules = [{
+            RULE_PATH: r[RULE_PATH],
+            RULE_PATTERN: r[RULE_PATTERN],
+            RULE_RECIPE: r[RULE_RECIPE]
+        } for r in runner.runner_state[RULES]]
         for rule in STANDARD_RULES:
-            self.assertIn(rule, runner.runner_state[RULES])
+            self.assertIn(rule, idless_rules)
 
         os.remove(os.path.join(RUNNER_RECIPES, 'mult'))
 
@@ -241,10 +270,15 @@ class WorkflowTest(unittest.TestCase):
         time.sleep(3)
 
         self.assertEqual(len(runner.runner_state[RULES]), 2)
+        idless_rules = [{
+            RULE_PATH: r[RULE_PATH],
+            RULE_PATTERN: r[RULE_PATTERN],
+            RULE_RECIPE: r[RULE_RECIPE]
+        } for r in runner.runner_state[RULES]]
         for rule in [STANDARD_RULES[0], STANDARD_RULES[3]]:
-            self.assertIn(rule, runner.runner_state[RULES])
+            self.assertIn(rule, idless_rules)
 
-        self.assertTrue(runner.stop_runner())
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
 
     def testWorkflowRunnerEventIdentification(self):
         data = read_dir(directory='examples/meow_directory')
@@ -254,9 +288,11 @@ class WorkflowTest(unittest.TestCase):
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
             VGRID,
+            0,
             patterns=patterns,
             recipes=recipes,
-            daemon=True
+            daemon=True,
+            reuse_vgrid=False
         )
 
         # Small pause here as we need to allow daemon processes to work
@@ -272,20 +308,62 @@ class WorkflowTest(unittest.TestCase):
 
         data = np.random.randint(100, size=(5, 5))
         data_filename = os.path.join(data_directory, 'datafile')
+        self.assertFalse(os.path.exists(data_filename))
         np.save(data_filename, data)
 
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertEqual(len(runner.runner_state[JOBS]), 2)
+        self.assertEqual(len(runner.runner_state[JOBS]), 4)
+
+        incorrect_directory = os.path.join(VGRID, 'init_data')
+        os.mkdir(incorrect_directory)
+        self.assertTrue(os.path.exists(incorrect_directory))
 
         incorrect_filename = os.path.join(VGRID, 'init_data', 'datafile')
+        np.save(incorrect_filename, data)
+
+        # Small pause here as we need to allow daemon processes to work
+        time.sleep(3)
+
+        self.assertEqual(len(runner.runner_state[JOBS]), 4)
+
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
+
+    def testWorkflowRunnerJobExecution(self):
+        data = read_dir(directory='examples/meow_directory')
+        patterns = data[PATTERNS]
+        recipes = data[RECIPES]
+
+        runner = WorkflowRunner(logging=False)
+        runner.run_local_workflow(
+            VGRID,
+            0,
+            patterns=patterns,
+            recipes=recipes,
+            daemon=True,
+            reuse_vgrid=False
+        )
+
+        # Small pause here as we need to allow daemon processes to work
+        time.sleep(3)
+
+        self.assertIsNotNone(runner.runner_state[JOBS])
+        self.assertIsInstance(runner.runner_state[JOBS], list)
+        self.assertEqual(len(runner.runner_state[JOBS]), 0)
+
+        data_directory = os.path.join(VGRID, 'initial_data')
+        os.mkdir(data_directory)
+        self.assertTrue(os.path.exists(data_directory))
+
+        data = np.random.randint(100, size=(5, 5))
+        data_filename = os.path.join(data_directory, 'datafile')
+        self.assertFalse(os.path.exists(data_filename))
         np.save(data_filename, data)
 
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertEqual(len(runner.runner_state[JOBS]), 2)
+        self.assertEqual(len(runner.runner_state[JOBS]), 4)
 
-        self.assertTrue(runner.stop_runner())
-
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
