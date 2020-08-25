@@ -1,12 +1,27 @@
+# This file defines a MEOW Pattern.
+
+# The Patterns name is taken from the filename, so this Pattern would be called 'third_choo'.
+
+# The input_file is a special variable name to be replace in the Recipe within Jobs. It is the variable name for a string containing the path of the trigger event. In this case, the event path will be assigned to the variable 'infile' in the Recipe.
 input_file: infile
+
+# Input paths are all the triggering paths for this Pattern. This is a regular path though the '*' wildcard character will be used to match any number of intermediate characters. In this case the Pattern will trigger on any data inside the 'data_2' directory.
 input_paths:
 - data_2/*
+
+# output are variables to be replaced in the Recipe. There are used in the visualisation of a MEOW workflow. Other than that they are treated the same as variables. In this case we are using some in-built keywords to construct paths at runtime.
 output:
   outfile_insufficent: '{VGRID}/data_1/{FILENAME}'
   outfile_thresholded: '{VGRID}/final/{FILENAME}'
+
+# We can specify that multiple jobs should be scheduled with different values for a parameter using a parameter sweep. In this case no parameter sweep will be performed.
 parameterize_over: {}
+
+# This is the recipe we will use to run the triggered jobs. In this case we will use the recipe 'choo'
 recipes:
 - choo
+
+# Any additional variables to be replaced in the jobs are defined here. In this case we will overwrite the 'extra' variable in the Recipe with the value 1, and the 'threshold' variable with the value 10000'.
 variables:
   extra: 1
   threshold: 10000
