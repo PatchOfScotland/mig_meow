@@ -4,13 +4,15 @@ import shutil
 import time
 import numpy as np
 
-from mig_meow.constants import PATTERNS, RECIPES
+from mig_meow.constants import PATTERNS, RECIPES, KEYWORD_DIR, KEYWORD_JOB, \
+    KEYWORD_VGRID, KEYWORD_EXTENSION, KEYWORD_PREFIX, KEYWORD_FILENAME, \
+    KEYWORD_REL_DIR, KEYWORD_REL_PATH, KEYWORD_PATH, VGRID
 from mig_meow.fileio import read_dir
 from mig_meow.localrunner import WorkflowRunner, RULES, JOBS, RUNNER_DATA, \
     RUNNER_RECIPES, RUNNER_PATTERNS, RULE_PATH, RULE_PATTERN, RULE_RECIPE, \
-    RULE_ID, WORKERS, QUEUE
+    RULE_ID, WORKERS, QUEUE, replace_keywords
 
-VGRID = 'testing_directory'
+TESTING_VGRID = 'testing_directory'
 
 STANDARD_RULES = [
     {
@@ -38,21 +40,22 @@ STANDARD_RULES = [
 
 class WorkflowTest(unittest.TestCase):
     def setUp(self):
-        if os.path.exists(VGRID):
+        if os.path.exists(TESTING_VGRID):
             raise Exception("Required testing location '%s' is already in use")
 
     def tearDown(self):
-        if os.path.exists(VGRID):
-            shutil.rmtree(VGRID)
+        if os.path.exists(TESTING_VGRID):
+            shutil.rmtree(TESTING_VGRID)
         if os.path.exists(RUNNER_DATA):
             shutil.rmtree(RUNNER_DATA)
 
     def testWorkflowRunnerCreation(self):
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
-            VGRID,
+            TESTING_VGRID,
             0,
-            daemon=True
+            daemon=True,
+            retro_active_jobs=False
         )
 
         self.assertTrue(runner.check_running_status())
@@ -60,14 +63,14 @@ class WorkflowTest(unittest.TestCase):
         self.assertTrue(os.path.exists(RUNNER_DATA))
         self.assertTrue(os.path.isdir(RUNNER_DATA))
 
-        self.assertTrue(os.path.exists(VGRID))
-        self.assertTrue(os.path.isdir(VGRID))
+        self.assertTrue(os.path.exists(TESTING_VGRID))
+        self.assertTrue(os.path.isdir(TESTING_VGRID))
 
         self.assertTrue(runner.stop_runner(clear_jobs=True))
 
         self.assertFalse(os.path.exists(RUNNER_DATA))
-        self.assertTrue(os.path.exists(VGRID))
-        self.assertTrue(os.path.isdir(VGRID))
+        self.assertTrue(os.path.exists(TESTING_VGRID))
+        self.assertTrue(os.path.isdir(TESTING_VGRID))
 
     def testWorkflowRunnerPatternImports(self):
         data = read_dir(directory='examples/meow_directory')
@@ -75,10 +78,11 @@ class WorkflowTest(unittest.TestCase):
 
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
-            VGRID,
+            TESTING_VGRID,
             0,
             patterns=patterns,
-            daemon=True
+            daemon=True,
+            retro_active_jobs=False
         )
 
         # Small pause here as we need to allow daemon processes to work
@@ -99,10 +103,11 @@ class WorkflowTest(unittest.TestCase):
 
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
-            VGRID,
+            TESTING_VGRID,
             0,
             recipes=recipes,
-            daemon=True
+            daemon=True,
+            retro_active_jobs=False
         )
 
         # Small pause here as we need to allow daemon processes to work
@@ -119,9 +124,10 @@ class WorkflowTest(unittest.TestCase):
     def testWorkflowRunnerPatternIdentification(self):
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
-            VGRID,
+            TESTING_VGRID,
             0,
-            daemon=True
+            daemon=True,
+            retro_active_jobs=False
         )
 
         self.assertEqual(runner.runner_state[PATTERNS], {})
@@ -145,9 +151,10 @@ class WorkflowTest(unittest.TestCase):
     def testWorklflowRunnerRecipeIdentification(self):
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
-            VGRID,
+            TESTING_VGRID,
             0,
-            daemon=True
+            daemon=True,
+            retro_active_jobs=False
         )
 
         self.assertEqual(runner.runner_state[RECIPES], {})
@@ -175,11 +182,12 @@ class WorkflowTest(unittest.TestCase):
 
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
-            VGRID,
+            TESTING_VGRID,
             0,
             patterns=patterns,
             recipes=recipes,
-            daemon=True
+            daemon=True,
+            retro_active_jobs=False
         )
 
         # Small pause here as we need to allow daemon processes to work
@@ -205,11 +213,12 @@ class WorkflowTest(unittest.TestCase):
 
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
-            VGRID,
+            TESTING_VGRID,
             0,
             patterns=patterns,
             recipes=recipes,
-            daemon=True
+            daemon=True,
+            retro_active_jobs=False
         )
 
         # Small pause here as we need to allow daemon processes to work
@@ -246,11 +255,12 @@ class WorkflowTest(unittest.TestCase):
 
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
-            VGRID,
+            TESTING_VGRID,
             0,
             patterns=patterns,
             recipes=recipes,
-            daemon=True
+            daemon=True,
+            retro_active_jobs=False
         )
 
         # Small pause here as we need to allow daemon processes to work
@@ -287,12 +297,13 @@ class WorkflowTest(unittest.TestCase):
 
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
-            VGRID,
+            TESTING_VGRID,
             0,
             patterns=patterns,
             recipes=recipes,
             daemon=True,
-            reuse_vgrid=False
+            reuse_vgrid=False,
+            retro_active_jobs=False
         )
 
         # Small pause here as we need to allow daemon processes to work
@@ -302,12 +313,12 @@ class WorkflowTest(unittest.TestCase):
         self.assertIsInstance(runner.runner_state[JOBS], list)
         self.assertEqual(len(runner.runner_state[JOBS]), 0)
 
-        data_directory = os.path.join(VGRID, 'initial_data')
+        data_directory = os.path.join(TESTING_VGRID, 'initial_data')
         os.mkdir(data_directory)
         self.assertTrue(os.path.exists(data_directory))
 
         data = np.random.randint(100, size=(5, 5))
-        data_filename = os.path.join(data_directory, 'datafile')
+        data_filename = os.path.join(data_directory, 'datafile.npy')
         self.assertFalse(os.path.exists(data_filename))
         np.save(data_filename, data)
 
@@ -316,11 +327,12 @@ class WorkflowTest(unittest.TestCase):
 
         self.assertEqual(len(runner.runner_state[JOBS]), 4)
 
-        incorrect_directory = os.path.join(VGRID, 'init_data')
+        incorrect_directory = os.path.join(TESTING_VGRID, 'init_data')
         os.mkdir(incorrect_directory)
         self.assertTrue(os.path.exists(incorrect_directory))
 
-        incorrect_filename = os.path.join(VGRID, 'init_data', 'datafile')
+        incorrect_filename = \
+            os.path.join(TESTING_VGRID, 'init_data', 'datafile.npy')
         np.save(incorrect_filename, data)
 
         # Small pause here as we need to allow daemon processes to work
@@ -337,12 +349,13 @@ class WorkflowTest(unittest.TestCase):
 
         runner = WorkflowRunner(logging=False)
         runner.run_local_workflow(
-            VGRID,
+            TESTING_VGRID,
             0,
             patterns=patterns,
             recipes=recipes,
             daemon=True,
-            reuse_vgrid=False
+            reuse_vgrid=False,
+            retro_active_jobs=False
         )
 
         # Small pause here as we need to allow daemon processes to work
@@ -352,14 +365,129 @@ class WorkflowTest(unittest.TestCase):
         self.assertIsInstance(runner.runner_state[JOBS], list)
         self.assertEqual(len(runner.runner_state[JOBS]), 0)
 
-        data_directory = os.path.join(VGRID, 'initial_data')
+        data_directory = os.path.join(TESTING_VGRID, 'initial_data')
         os.mkdir(data_directory)
         self.assertTrue(os.path.exists(data_directory))
 
         data = np.random.randint(100, size=(5, 5))
-        data_filename = os.path.join(data_directory, 'datafile')
+        data_filename = os.path.join(data_directory, 'datafile.npy')
         self.assertFalse(os.path.exists(data_filename))
         np.save(data_filename, data)
+
+        # Small pause here as we need to allow daemon processes to work
+        time.sleep(3)
+
+        self.assertEqual(len(runner.runner_state[JOBS]), 4)
+
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
+
+    def testWorkflowKeywordReplacement(self):
+
+        _end = os.path.join('path', 'with', 'ending')
+
+        to_test = {
+            1: os.path.join(_end, KEYWORD_PATH),
+            2: os.path.join(_end, KEYWORD_REL_PATH),
+            3: os.path.join(_end, KEYWORD_DIR),
+            4: os.path.join(_end, KEYWORD_REL_DIR),
+            5: os.path.join(_end, KEYWORD_FILENAME),
+            6: os.path.join(_end, KEYWORD_PREFIX),
+            7: os.path.join(_end, KEYWORD_VGRID),
+            8: os.path.join(_end, KEYWORD_EXTENSION),
+            9: os.path.join(_end, KEYWORD_JOB)
+        }
+
+        _vgrid = 'MyVgrid'
+        _id = 'abcdefgh123456'
+        _dir1 = 'first'
+        _dir2 = 'second'
+        _prefix = 'file'
+        _ext = '.txt'
+        _filename = _prefix + _ext
+        _src_path = os.path.join(_vgrid, _dir1, _dir2, _filename)
+
+        state = {
+            VGRID: _vgrid
+        }
+
+        replaced = replace_keywords(to_test, state, _id, _src_path)
+
+        self.assertIsInstance(replaced, dict)
+        for k in to_test.keys():
+            self.assertIn(k, replaced)
+
+        _one = os.path.join(_end, _src_path)
+        _two = os.path.join(_end, _dir1, _dir2, _filename)
+        _three = os.path.join(_end, _vgrid, _dir1, _dir2)
+        _four = os.path.join(_end, _dir1, _dir2)
+        _five = os.path.join(_end, _filename)
+        _six = os.path.join(_end, _prefix)
+        _seven = os.path.join(_end, _vgrid)
+        _eight = os.path.join(_end, _ext)
+        _nine = os.path.join(_end, _id)
+
+        self.assertEqual(_one, replaced[1])
+        self.assertEqual(_two, replaced[2])
+        self.assertEqual(_three, replaced[3])
+        self.assertEqual(_four, replaced[4])
+        self.assertEqual(_five, replaced[5])
+        self.assertEqual(_six, replaced[6])
+        self.assertEqual(_seven, replaced[7])
+        self.assertEqual(_eight, replaced[8])
+        self.assertEqual(_nine, replaced[9])
+
+    def testRetroActiveRules(self):
+        data = read_dir(directory='examples/meow_directory')
+        patterns = data[PATTERNS]
+        recipes = data[RECIPES]
+
+        retroless_runner = WorkflowRunner(logging=False)
+        retroless_runner.run_local_workflow(
+            TESTING_VGRID,
+            0,
+            patterns=patterns,
+            recipes=recipes,
+            daemon=True,
+            reuse_vgrid=False,
+            retro_active_jobs=False
+        )
+
+        # Small pause here as we need to allow daemon processes to work
+        time.sleep(3)
+
+        self.assertIsNotNone(retroless_runner.runner_state[RULES])
+        self.assertIsInstance(retroless_runner.runner_state[RULES], list)
+        self.assertEqual(len(retroless_runner.runner_state[RULES]), 4)
+        self.assertEqual(len(retroless_runner.runner_state[JOBS]), 0)
+
+        self.assertTrue(retroless_runner.stop_runner(clear_jobs=True))
+
+        data_directory = os.path.join(TESTING_VGRID, 'initial_data')
+        if not os.path.exists(data_directory):
+            os.mkdir(data_directory)
+        self.assertTrue(os.path.exists(data_directory))
+
+        data = np.random.randint(100, size=(5, 5))
+        data_filename = os.path.join(data_directory, 'datafile.npy')
+        np.save(data_filename, data)
+        self.assertTrue(os.path.exists(data_filename))
+
+        runner = WorkflowRunner(logging=False)
+        runner.run_local_workflow(
+            TESTING_VGRID,
+            0,
+            patterns=patterns,
+            recipes=recipes,
+            daemon=True,
+            reuse_vgrid=True,
+            retro_active_jobs=True
+        )
+
+        # Small pause here as we need to allow daemon processes to work
+        time.sleep(3)
+
+        self.assertIsNotNone(runner.runner_state[JOBS])
+        self.assertIsInstance(runner.runner_state[JOBS], list)
 
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)

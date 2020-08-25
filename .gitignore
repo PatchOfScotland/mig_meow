@@ -110,3 +110,4 @@ test_mig/
 test_dir/
 .workflow_processing/
 development_test_notebook.ipynb
+quicktest.py

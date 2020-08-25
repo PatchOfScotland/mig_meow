@@ -41,7 +41,9 @@ def monitor_widget(**kwargs):
     return widget.display_widget()
 
 
-def start_local_workflow(vgrid_name, patterns, recipes, workers, warning=True):
+def start_local_workflow(
+        vgrid_name, patterns, recipes, workers, warning=True,
+        print_logging=True, start_workers=True):
     if warning:
         print("This function is intended only as an illustration of MEOW "
               "functionality, and should therefore be used with caution. It "
@@ -55,5 +57,8 @@ def start_local_workflow(vgrid_name, patterns, recipes, workers, warning=True):
         workers,
         patterns=patterns,
         recipes=recipes,
-        start_workers=True
+        start_workers=start_workers,
+        print_logging=print_logging
     )
+
+    return runner

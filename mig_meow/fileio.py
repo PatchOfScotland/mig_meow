@@ -31,15 +31,12 @@ def read_yaml(filepath):
 
 def make_dir(path, can_exist=True):
     if not os.path.exists(path):
-        print("Creating dir at: %s" % path)
         os.mkdir(path)
     elif os.path.isfile(path):
         raise ValueError('Cannot make directory in %s as it already '
                          'exists and is a file' % path)
     else:
-        if can_exist:
-            print("Directory %s already exists" % path)
-        else:
+        if not can_exist:
             raise ValueError("Directory %s already exists. " % path)
 
 
