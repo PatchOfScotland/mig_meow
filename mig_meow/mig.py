@@ -19,7 +19,7 @@ from .meow import Pattern, is_valid_pattern_object
 MRSL_VGRID = 'VGRID'
 
 
-def export_pattern_to_vgrid(vgrid, pattern):
+def export_pattern_to_vgrid(vgrid, pattern, timeout=DEFAULT_JSON_TIMEOUT):
     """
     Exports a given pattern to a MiG based Vgrid. Raises a TypeError or
     ValueError if the pattern is not valid. Note this function is not used
@@ -58,11 +58,12 @@ def export_pattern_to_vgrid(vgrid, pattern):
         vgrid,
         VGRID_CREATE,
         VGRID_PATTERN_OBJECT_TYPE,
-        attributes
+        attributes,
+        timeout=timeout
     )
 
 
-def export_recipe_to_vgrid(vgrid, recipe):
+def export_recipe_to_vgrid(vgrid, recipe, timeout=DEFAULT_JSON_TIMEOUT):
     """
     Exports a given recipe to a MiG based Vgrid. Raises a TypeError or
     ValueError if the recipe is not valid. Note this function is not used
@@ -89,13 +90,14 @@ def export_recipe_to_vgrid(vgrid, recipe):
         vgrid,
         VGRID_CREATE,
         VGRID_RECIPE_OBJECT_TYPE,
-        recipe
+        recipe,
+        timeout=timeout
     )
 
 
 def vgrid_workflow_json_call(
         vgrid, operation, workflow_type, attributes, logfile=None,
-        ssl=True):
+        ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
     """
     Validates input for a JSON workflow call to VGRID. Raises a TypeError or
     ValueError if an invalid value is found. If no problems are found then a
@@ -167,13 +169,14 @@ def vgrid_workflow_json_call(
         attributes,
         url,
         logfile=logfile,
-        ssl=ssl
+        ssl=ssl,
+        timeout=timeout
     )
 
 
 def vgrid_job_json_call(
         vgrid, operation, workflow_type, attributes, logfile=None,
-        ssl=True):
+        ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
     """
     Validates input for a JSON job call to VGRID. Raises a TypeError or
     ValueError if an invalid value is found. If no problems are found then a
@@ -246,13 +249,14 @@ def vgrid_job_json_call(
         attributes,
         url,
         logfile=logfile,
-        ssl=ssl
+        ssl=ssl,
+        timeout=timeout
     )
 
 
 def __vgrid_json_call(
-        operation, workflow_type, attributes, url, logfile=None, verify=True,
-        ssl=True):
+        operation, workflow_type, attributes, url, logfile=None, ssl=True,
+        timeout=DEFAULT_JSON_TIMEOUT):
     """
     Makes JSON call to MiG. Will pull url and session_id from local
     environment variables, as setup by MiG notebook spawner. Will raise
@@ -272,9 +276,6 @@ def __vgrid_json_call(
 
     :param logfile: (str)[optional] Path to a logfile. If provided logs are
     recorded in this file. Default is None.
-
-    :param verify: (bool)[optional] Toggle for if to verify using SSL
-    certificates. Default is True.
 
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
@@ -314,7 +315,7 @@ def __vgrid_json_call(
             url,
             json=data,
             verify=ssl,
-            timeout=DEFAULT_JSON_TIMEOUT
+            timeout=timeout
         )
 
     except requests.Timeout:
@@ -347,7 +348,7 @@ def __vgrid_json_call(
     return header, body, footer
 
 
-def read_vgrid(vgrid, ssl=True):
+def read_vgrid(vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
     '''
     Reads a given vgrid. Returns a dict of Patterns and a dict of Recipes .
 
@@ -366,7 +367,8 @@ def read_vgrid(vgrid, ssl=True):
         VGRID_READ,
         VGRID_ANY_OBJECT_TYPE,
         {},
-        ssl=ssl
+        ssl=ssl,
+        timeout=timeout
     )
 
     output = {
@@ -430,7 +432,7 @@ def write_vgrid(patterns, recipes, vgrid, ssl=True):
     }
 
 
-def read_vgrid_pattern(pattern, vgrid, ssl=True):
+def read_vgrid_pattern(pattern, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
     '''
     Reads a given pattern from a given vgrid.
 
@@ -454,7 +456,8 @@ def read_vgrid_pattern(pattern, vgrid, ssl=True):
         VGRID_READ,
         VGRID_PATTERN_OBJECT_TYPE,
         attributes,
-        ssl=ssl
+        ssl=ssl,
+        timeout=timeout
     )
 
     if OBJECT_TYPE in response \
@@ -474,7 +477,7 @@ def read_vgrid_pattern(pattern, vgrid, ssl=True):
         return None
 
 
-def read_vgrid_recipe(recipe, vgrid, ssl=True):
+def read_vgrid_recipe(recipe, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
     '''
     Reads a given recipe from a given vgrid.
 
@@ -498,7 +501,8 @@ def read_vgrid_recipe(recipe, vgrid, ssl=True):
         VGRID_READ,
         VGRID_RECIPE_OBJECT_TYPE,
         attributes,
-        ssl=ssl
+        ssl=ssl,
+        timeout=timeout
     )
 
     if OBJECT_TYPE in response \
@@ -518,7 +522,8 @@ def read_vgrid_recipe(recipe, vgrid, ssl=True):
         return None
 
 
-def write_vgrid_pattern(pattern, vgrid, ssl=True):
+def write_vgrid_pattern(
+        pattern, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
     '''
     Creates a new Pattern on a given VGrid, or updates an existing Pattern.
 
@@ -555,7 +560,8 @@ def write_vgrid_pattern(pattern, vgrid, ssl=True):
         operation,
         VGRID_PATTERN_OBJECT_TYPE,
         attributes,
-        ssl=ssl
+        ssl=ssl,
+        timeout=timeout
     )
 
     if response['object_type'] != 'error_text':
@@ -573,7 +579,7 @@ def write_vgrid_pattern(pattern, vgrid, ssl=True):
     return pattern
 
 
-def write_vgrid_recipe(recipe, vgrid, ssl=True):
+def write_vgrid_recipe(recipe, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
     '''
     Creates a new recipe on a given VGrid, or updates an existing recipe.
 
@@ -606,7 +612,8 @@ def write_vgrid_recipe(recipe, vgrid, ssl=True):
         operation,
         VGRID_RECIPE_OBJECT_TYPE,
         attributes,
-        ssl=ssl
+        ssl=ssl,
+        timeout=timeout
     )
 
     if response['object_type'] != 'error_text':
@@ -624,7 +631,8 @@ def write_vgrid_recipe(recipe, vgrid, ssl=True):
     return recipe
 
 
-def delete_vgrid_pattern(pattern, vgrid, ssl=True):
+def delete_vgrid_pattern(
+        pattern, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
     '''
     Attempts to delete a given pattern from a given VGrid.
 
@@ -659,7 +667,8 @@ def delete_vgrid_pattern(pattern, vgrid, ssl=True):
         VGRID_DELETE,
         VGRID_PATTERN_OBJECT_TYPE,
         attributes,
-        ssl=ssl
+        ssl=ssl,
+        timeout=timeout
     )
 
     if response['object_type'] != 'error_text':
@@ -671,7 +680,7 @@ def delete_vgrid_pattern(pattern, vgrid, ssl=True):
     return pattern
 
 
-def delete_vgrid_recipe(recipe, vgrid, ssl=True):
+def delete_vgrid_recipe(recipe, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
     '''
     Attempts to delete a given recipe from a given VGrid.
 
@@ -705,7 +714,8 @@ def delete_vgrid_recipe(recipe, vgrid, ssl=True):
         VGRID_DELETE,
         VGRID_RECIPE_OBJECT_TYPE,
         attributes,
-        ssl=ssl
+        ssl=ssl,
+        timeout=timeout
     )
 
     if response['object_type'] != 'error_text':
