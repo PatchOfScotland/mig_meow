@@ -9,6 +9,7 @@ from .constants import LOGGING_DIR, WORKFLOW_LOGFILE_NAME, \
 
 lock = threading.Lock()
 
+
 def __create_logfile(mode, title):
     """
     Creates a new logfile within the logging directory.
@@ -89,7 +90,7 @@ def write_to_log(log, anchor, entry, to_print=False):
 
     :param entry: (str) Line to write to logfile.
 
-    :param print: (boolean) Also print entry. Default is False
+    :param to_print: (boolean) Also print entry. Default is False
 
     :return: No return.
     """

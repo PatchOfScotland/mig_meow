@@ -10,8 +10,8 @@ from shutil import copyfile
 from datetime import datetime
 from IPython.display import display
 
-from .validation import valid_file_path, valid_string, check_input_args, \
-    check_input, valid_dir_path, is_valid_recipe_dict, is_a_number
+from .validation import valid_string, check_input_args, \
+    check_input, valid_dir_path
 from .constants import GREEN, RED, NOTEBOOK_EXTENSIONS, NAME, \
     DEFAULT_JOB_NAME, SOURCE, OBJECT_TYPE, \
     VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
@@ -49,9 +49,7 @@ from .mig import vgrid_workflow_json_call
 from .meow import build_workflow_object, pattern_has_recipes, Pattern, \
     create_recipe_dict, check_patterns_dict, check_recipes_dict, \
     register_recipe
-from .fileio import patten_to_yaml_dict, pattern_from_yaml_dict, \
-    recipe_to_yaml_dict, recipe_from_yaml_dict, write_dir_pattern, \
-    write_dir_recipe, read_dir
+from .fileio import write_dir_pattern, write_dir_recipe, read_dir
 
 YAML_EXTENSIONS = [
     '.yaml',
@@ -864,8 +862,10 @@ class WorkflowWidget:
                 "WorkflowWidget has starting parameters ~ ["
                 + DEBUG_MODE + ": " + str(debug_mode) + "], ["
                 + MODE + ": " + self.mode + "], ["
-                + CWL_IMPORT_EXPORT_DIR_ARG + ": " + self.cwl_import_export_dir + "], ["
-                + MEOW_IMPORT_EXPORT_DIR_ARG + ": " + self.meow_import_export_dir + "], ["
+                + CWL_IMPORT_EXPORT_DIR_ARG + ": "
+                + self.cwl_import_export_dir + "], ["
+                + MEOW_IMPORT_EXPORT_DIR_ARG + ": "
+                + self.meow_import_export_dir + "], ["
                 + WORKFLOW_TITLE_ARG + ": " + self.workflow_title + "], ["
                 + VGRID + ": " + str(self.vgrid) + "], ["
                 + PATTERNS + ": " + str(patterns) + "], ["
@@ -2054,7 +2054,7 @@ class WorkflowWidget:
                     self.button_elements[CWL_EDIT_VARIABLES_BUTTON].disabled =\
                         False
                 else:
-                    self.button_elements[CWL_EDIT_VARIABLES_BUTTON].disabled = \
+                    self.button_elements[CWL_EDIT_VARIABLES_BUTTON].disabled =\
                         True
 
                 if self.meow[PATTERNS] or self.meow[RECIPES]:

@@ -10,7 +10,7 @@ from mig_meow.constants import PATTERNS, RECIPES, KEYWORD_DIR, KEYWORD_JOB, \
 from mig_meow.fileio import read_dir
 from mig_meow.localrunner import WorkflowRunner, RULES, JOBS, RUNNER_DATA, \
     RUNNER_RECIPES, RUNNER_PATTERNS, RULE_PATH, RULE_PATTERN, RULE_RECIPE, \
-    RULE_ID, WORKERS, QUEUE, replace_keywords
+    replace_keywords
 
 TESTING_VGRID = 'testing_directory'
 

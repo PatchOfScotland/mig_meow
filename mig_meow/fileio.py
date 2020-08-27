@@ -1,5 +1,4 @@
 
-import copy
 import os
 import json
 import yaml
@@ -15,21 +14,57 @@ from .validation import valid_pattern_name, dir_exists, valid_dir_path, \
 
 
 def write_notebook(source, filename):
+    """
+    Writes the given notebook source code to a given filename.
+
+    :param source: (dict) The notebook source dictionary.
+
+    :param filename: (str) The filename to write to.
+
+    :return: No return
+    """
     with open(filename, 'w') as job_file:
         json.dump(source, job_file)
 
 
 def write_yaml(source, filename):
+    """
+    Writes a given objcet to a yaml file.
+
+    :param source: (any) A python object to be written.
+
+    :param filename: (str) The filename to be written to.
+
+    :return: No return
+    """
     with open(filename, 'w') as param_file:
         yaml.dump(source, param_file, default_flow_style=False)
 
 
 def read_yaml(filepath):
+    """
+    Reads a file path as a yaml object.
+
+    :param filepath: (str) The file to read.
+
+    :return: (object) An object read from the file.
+    """
     with open(filepath, 'r') as yaml_file:
         return yaml.full_load(yaml_file)
 
 
 def make_dir(path, can_exist=True):
+    """
+    Creates a new directory at the given path.
+
+    :param path: (str) The directory path.
+
+    :param can_exist: (boolean) [optional] A toggle for if a previously
+    existing directory at the path will throw an error or not. Default is
+    true (e.g. no error is thrown if the path already exists)
+
+    :return: No return
+    """
     if not os.path.exists(path):
         os.mkdir(path)
     elif os.path.isfile(path):
@@ -63,27 +98,27 @@ def patten_to_yaml_dict(pattern):
     return pattern_yaml
 
 
-def pattern_from_yaml_dict(yaml, name):
+def pattern_from_yaml_dict(yaml_dict, name):
     """
     Creates a Pattern object from an imported YAML dict.
 
-    :param yaml: (dict) The imported YAML dict.
+    :param yaml_dict: (dict) The imported YAML dict.
 
     :param name: (str) The name of the imported Pattern.
 
     :return: (dict) A dict, expressing the given Pattern
     """
-    yaml[NAME] = name
-    if RECIPES in yaml and TRIGGER_RECIPES not in yaml:
+    yaml_dict[NAME] = name
+    if RECIPES in yaml_dict and TRIGGER_RECIPES not in yaml_dict:
         trigger_id = 'placeholder_id'
         recipe_dict = {
             trigger_id: {}
         }
-        for recipe in yaml[RECIPES]:
+        for recipe in yaml_dict[RECIPES]:
             recipe_dict[trigger_id][recipe] = {}
-        yaml[TRIGGER_RECIPES] = recipe_dict
-        yaml.pop(RECIPES)
-    pattern = Pattern(yaml)
+        yaml_dict[TRIGGER_RECIPES] = recipe_dict
+        yaml_dict.pop(RECIPES)
+    pattern = Pattern(yaml_dict)
     return pattern
 
 
@@ -107,24 +142,24 @@ def recipe_to_yaml_dict(recipe):
     return recipe_yaml
 
 
-def recipe_from_yaml_dict(yaml, name):
+def recipe_from_yaml_dict(yaml_dict, name):
     """
     Creates a Recipe dict from an imported YAML dict.
 
-    :param yaml: (dict) The imported YAML dict.
+    :param yaml_dict: (dict) The imported YAML dict.
 
     :param name: (str) The name of the imported Recipe.
 
     :return: (dict) A dict, expressing the given Recipe
     """
     recipe_dict = {}
-    recipe_dict.update(yaml)
+    recipe_dict.update(yaml_dict)
     recipe_dict[NAME] = name
     return recipe_dict
 
 
 def read_dir(directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
-    '''
+    """
     Reads in MEOW Patterns and Recipes from yaml files, contained in a local
     directory. This expects there to be two directories within the given
     directory, one containing the Patterns and another containing the Recipes.
@@ -132,8 +167,8 @@ def read_dir(directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
     :param directory: (str) The directory to read from. Default is
     'meow_directory'.
 
-    :return: (dict) A dict of Patterns and Recipe pbjects.
-    '''
+    :return: (dict) A dict of Patterns and Recipe objects.
+    """
     valid_dir_path(directory, 'directory')
     dir_exists(directory)
 
@@ -175,7 +210,7 @@ def read_dir(directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
 
 
 def write_dir(patterns, recipes, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
-    '''
+    """
     Saves the given patterns and recipes in the given directory.
 
     :param patterns: (dict) A dict of Pattern objects
@@ -186,7 +221,7 @@ def write_dir(patterns, recipes, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
     'meow_directory'
 
     :return: (No return)
-    '''
+    """
     valid, feedback = check_patterns_dict(patterns, integrity=True)
     if not valid:
         raise ValueError(feedback)
@@ -206,7 +241,7 @@ def write_dir(patterns, recipes, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
 
 def read_dir_pattern(pattern_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR,
                      print_errors=False):
-    '''
+    """
     Read a specific Pattern within the given local directory. There should be
     an intermediate directory, 'Patterns' between the two.
 
@@ -220,7 +255,7 @@ def read_dir_pattern(pattern_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR,
     an exception.
 
     :return: (Pattern) The read in pattern object.
-    '''
+    """
     valid_pattern_name(pattern_name)
     valid_dir_path(directory, 'directory')
     dir_exists(directory)
@@ -248,7 +283,7 @@ def read_dir_pattern(pattern_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR,
 
 def read_dir_recipe(recipe_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR,
                     print_errors=False):
-    '''
+    """
     Read a specific recipe within the given local directory. There should be
     an intermediate directory, 'Recipes' between the two.
 
@@ -261,7 +296,7 @@ def read_dir_recipe(recipe_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR,
     print statement or throwing an exception. Default is to throw an exception.
 
     :return: (dict) The read in recipe dict.
-    '''
+    """
     valid_recipe_name(recipe_name)
     valid_dir_path(directory, 'directory')
     dir_exists(directory)
@@ -288,7 +323,7 @@ def read_dir_recipe(recipe_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR,
 
 
 def write_dir_pattern(pattern, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
-    '''
+    """
     Saves a given pattern locally.
 
     :param pattern: (Pattern) the pattern to save.
@@ -296,7 +331,7 @@ def write_dir_pattern(pattern, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
     :param directory: (str) The directory to write the Pattern to.
 
     :return: (No return)
-    '''
+    """
     valid, feedback = is_valid_pattern_object(pattern, integrity=True)
 
     if not valid:
@@ -315,7 +350,7 @@ def write_dir_pattern(pattern, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
 
 
 def write_dir_recipe(recipe, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
-    '''
+    """
     Saves a given recipe locally.
 
     :param recipe: (dict) the recipe dict to save.
@@ -323,7 +358,7 @@ def write_dir_recipe(recipe, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
     :param directory: (str) The directory to write the Recipe to.
 
     :return: (No return)
-    '''
+    """
     valid, feedback = is_valid_recipe_dict(recipe)
     dir_exists(directory, create=True)
 
@@ -342,7 +377,7 @@ def write_dir_recipe(recipe, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
 
 
 def delete_dir_pattern(pattern_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
-    '''
+    """
     Removes a a saved pattern by the given name.
 
     :param pattern_name: (str or Pattern) Name of pattern to delete, or
@@ -352,7 +387,7 @@ def delete_dir_pattern(pattern_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
     'meow_directory'
 
     :return: (No return)
-    '''
+    """
     if isinstance(pattern_name, Pattern):
         pattern_name = Pattern.name
     if not isinstance(pattern_name, str):
@@ -369,7 +404,7 @@ def delete_dir_pattern(pattern_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
 
 
 def delete_dir_recipe(recipe_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
-    '''
+    """
     Removes a a saved recipe by the given name.
 
     :param recipe_name: (str or dict) Name of recipe to delete, or a recipe
@@ -379,7 +414,7 @@ def delete_dir_recipe(recipe_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
     'meow_directory'
 
     :return: (No return)
-    '''
+    """
     if isinstance(recipe_name, dict):
         recipe_name = recipe_name[NAME]
     if not isinstance(recipe_name, str):
@@ -393,5 +428,3 @@ def delete_dir_recipe(recipe_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
     file_path = os.path.join(recipe_dir, recipe_name)
     if os.path.exists(file_path):
         os.remove(file_path)
-
-

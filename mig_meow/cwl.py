@@ -6,8 +6,8 @@ from .constants import CWL_NAME, CWL_CWL_VERSION, CWL_CLASS, CWL_BASE_COMMAND,\
     CWL_VARIABLES, PLACEHOLDER, WORKFLOW_NAME, STEP_NAME, VARIABLES_NAME, \
     WORKFLOWS, STEPS, SETTINGS, CWL_CLASS_COMMAND_LINE_TOOL, \
     CWL_CLASS_WORKFLOW, CWL_WORKFLOW_RUN
-from .validation import check_input, is_valid_workflow_dict, is_valid_step_dict, \
-    is_valid_setting_dict
+from .validation import check_input, is_valid_workflow_dict, \
+    is_valid_step_dict, is_valid_setting_dict
 
 
 def make_step_dict(name, base_command):
@@ -458,7 +458,7 @@ def check_steps_dict(steps):
     """
     Validate that the given object is a dictionary of cwl steps.
 
-    :param workflows: (dict) A dictionary of cwl step dictionaries.
+    :param steps: (dict) A dictionary of cwl step dictionaries.
 
     :return: (Tuple (bool, string) Returns a tuple where if the provided
     object is not a dict of cwl steps dictionaries the first value will be

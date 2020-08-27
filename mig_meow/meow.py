@@ -3,19 +3,16 @@ import json
 import re
 import os
 import nbformat
-import yaml
 
 from .constants import NOTEBOOK_EXTENSIONS, DESCENDANTS, WORKFLOW_INPUTS, \
     WORKFLOW_OUTPUTS, ANCESTORS, DEFAULT_JOB_NAME, CHAR_UPPERCASE, \
-    CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, \
-    PLACEHOLDER, TRIGGER_RECIPES, \
+    CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_LINES, PLACEHOLDER, TRIGGER_RECIPES, \
     NO_OUTPUT_SET_WARNING, NO_INPUT_FILE_SET_ERROR, NO_INPUT_PATH_SET_ERROR, \
     NO_NAME_SET_ERROR, NO_RECIPES_SET_ERROR, PLACEHOLDER_ERROR, \
-    INVALID_INPUT_PATH_ERROR, SWEEP_START, SWEEP_STOP, \
-    SWEEP_JUMP, MIG_TRIGGER_KEYWORDS, PERSISTENCE_ID, RECIPE_NAME, \
-    PATTERN_NAME, INPUT_FILE, NAME, \
-    SWEEP, TRIGGER_PATHS, OUTPUT, RECIPES, VARIABLES, PATTERNS, RECIPE, \
-    SOURCE, DEFAULT_MEOW_IMPORT_EXPORT_DIR
+    INVALID_INPUT_PATH_ERROR, SWEEP_START, SWEEP_STOP, SWEEP_JUMP, \
+    MIG_TRIGGER_KEYWORDS, PERSISTENCE_ID, RECIPE_NAME, \
+    PATTERN_NAME, INPUT_FILE, NAME, SWEEP, TRIGGER_PATHS, OUTPUT, RECIPES, \
+    VARIABLES, RECIPE, SOURCE
 from .validation import valid_string, is_valid_pattern_dict, \
     valid_file_path, valid_param_sweep, \
     check_input, is_valid_recipe_dict, valid_pattern_name, \
@@ -55,10 +52,10 @@ def check_patterns_dict(patterns, integrity=False):
     """
     Validates that the given object is a dictionary of valid patterns.
 
-    :param patterns: (dict) A dictionary of Pattern class objects.
+    :param: patterns: (dict) A dictionary of Pattern class objects.
 
-    :param: integrity: (boolean) toggle for if to perform integrity check on
-    pattern object. Default is false.
+    :param: integrity: (boolean) [optional] toggle for if to perform integrity
+    check on pattern object. Default is false.
 
     :return: (Tuple (bool, string) Returns a tuple where if the provided
     object is not a dict of valid Pattern objects the first value will be
@@ -123,6 +120,10 @@ def parameter_sweep_entry(name, start, stop, increment):
     """
     Helper function to create parameter sweep entry
 
+    :param name: (str) The name of the parameter sweep variable.
+
+    :param start: (
+
     :return: (dict) A dictionary expressing a parameter sweep
     """
     check_input(name, str, 'name')
@@ -135,6 +136,11 @@ def parameter_sweep_entry(name, start, stop, increment):
 
 
 def get_parameter_sweep_values(sweep):
+    """
+
+    :param sweep:
+    :return:
+    """
     valid_param_sweep(sweep, 'parameter_sweep')
 
     variables = []

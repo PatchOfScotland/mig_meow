@@ -4,8 +4,6 @@
 # is clearer to group them here with appropriate variables.
 # Variables may also need to be saved here if needed for testing.
 
-import os
-
 DEFAULT_JSON_TIMEOUT = 15
 DEFAULT_WORKFLOW_TITLE = 'workflow'
 DEFAULT_MEOW_IMPORT_EXPORT_DIR = 'meow_directory'

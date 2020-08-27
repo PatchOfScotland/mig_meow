@@ -30,6 +30,9 @@ def export_pattern_to_vgrid(vgrid, pattern, timeout=DEFAULT_JSON_TIMEOUT):
 
     :param pattern: (Pattern) Pattern object to export.
 
+    :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
+    call. Default is 15
+
     :return: (function call to vgrid_workflow_json_call) if pattern is valid,
     will call function 'vgrid_workflow_json_call'.
     """
@@ -74,6 +77,9 @@ def export_recipe_to_vgrid(vgrid, recipe, timeout=DEFAULT_JSON_TIMEOUT):
 
     :param recipe: (dict) Recipe object to export.
 
+    :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
+    call. Default is 15
+
     :return: (function call to vgrid_workflow_json_call) if recipe is valid,
     will call function 'vgrid_workflow_json_call'.
     """
@@ -113,6 +119,9 @@ def vgrid_workflow_json_call(
 
     :param attributes: (dict) A dictionary of arguments defining the specifics
     of the requested operation.
+
+    :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
+    call. Default is 15
 
     :param logfile: (str)[optional] Path to a logfile. If provided logs are
     recorded in this file. Default is None.
@@ -196,8 +205,11 @@ def vgrid_job_json_call(
     :param logfile: (str)[optional] Path to a logfile. If provided logs are
     recorded in this file. Default is None.
 
-    :param skip_ssl: (boolean)[optional] Toggle to skip ssl checks. Default
+    :param ssl: (boolean)[optional] Toggle to skip ssl checks. Default
     False
+
+    :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
+    call. Default is 15
 
     :return: (function call to __vgrid_json_call) If all inputs are valid,
     will call function '__vgrid_json_call'.
@@ -279,6 +291,9 @@ def __vgrid_json_call(
 
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
+    :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
+    call. Default is 15
+
     :return: (Tuple (dict, dict, dict) Returns JSON call results as three
     dicts. First is the header, then the body then the footer. Header contains
     keys 'headers' and 'object_type', Body contains 'workflows' and
@@ -325,7 +340,7 @@ def __vgrid_json_call(
         msg += 'Please check that the MiG is still online. If the problem ' \
                'persists contact an admin. '
         raise Exception(msg)
-    except requests.ConnectionError :
+    except requests.ConnectionError:
         msg = 'Connection could not be established. '
         write_to_log(logfile, '__vgrid_json_call', msg)
         write_to_log(logfile, '__vgrid_json_call', traceback.format_exc())
@@ -349,16 +364,19 @@ def __vgrid_json_call(
 
 
 def read_vgrid(vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
-    '''
+    """
     Reads a given vgrid. Returns a dict of Patterns and a dict of Recipes .
 
     :param vgrid: (str) A vgrid to read
 
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
+    :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
+    call. Default is 15
+
     :return: (dict) A dictionary of responses. Contains separate keys for the
     patterns and the recipes.
-    '''
+    """
 
     check_input(vgrid, str, VGRID)
 
@@ -398,8 +416,9 @@ def read_vgrid(vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
         return output
 
 
-def write_vgrid(patterns, recipes, vgrid, ssl=True):
-    '''
+def write_vgrid(
+        patterns, recipes, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
+    """
     Writes a collection of patterns and recipes to a given vgrid.
 
     :param patterns: (dict) A dictionary of pattern objects.
@@ -410,20 +429,33 @@ def write_vgrid(patterns, recipes, vgrid, ssl=True):
 
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
+    :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
+    call. Default is 15
+
     :return: (dict) Dicts of updated patterns and recipes.
-    '''
+    """
     check_input(vgrid, str, VGRID)
     check_input(patterns, dict, 'patterns', or_none=True)
     check_input(recipes, dict, 'recipes', or_none=True)
 
     updated_patterns = {}
     for pattern in patterns.values():
-        new_pattern = write_vgrid_pattern(pattern, vgrid, ssl=ssl)
+        new_pattern = write_vgrid_pattern(
+            pattern,
+            vgrid,
+            ssl=ssl,
+            timeout=timeout
+        )
         updated_patterns[pattern.name] = new_pattern
 
     updated_recipes = {}
     for recipe in recipes.values():
-        new_recipe = write_vgrid_recipe(recipe, vgrid, ssl=ssl)
+        new_recipe = write_vgrid_recipe(
+            recipe,
+            vgrid,
+            ssl=ssl,
+            timeout=timeout
+        )
         updated_recipes[recipe[NAME]] = new_recipe
 
     return {
@@ -433,7 +465,7 @@ def write_vgrid(patterns, recipes, vgrid, ssl=True):
 
 
 def read_vgrid_pattern(pattern, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
-    '''
+    """
     Reads a given pattern from a given vgrid.
 
     :param pattern: (str) The pattern name to read.
@@ -442,8 +474,12 @@ def read_vgrid_pattern(pattern, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
 
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
-    :return: (Pattern) A pattern object, or None if a Pattern could not be found
-    '''
+    :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
+    call. Default is 15
+
+    :return: (Pattern) A pattern object, or None if a Pattern could not be
+    found
+    """
     check_input(vgrid, str, VGRID)
     valid_pattern_name(pattern)
 
@@ -478,7 +514,7 @@ def read_vgrid_pattern(pattern, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
 
 
 def read_vgrid_recipe(recipe, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
-    '''
+    """
     Reads a given recipe from a given vgrid.
 
     :param recipe: (str) The recipe name to read.
@@ -487,8 +523,11 @@ def read_vgrid_recipe(recipe, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
 
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
+    :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
+    call. Default is 15
+
     :return: (dict) A recipe dict, or None if a recipe could not be found
-    '''
+    """
     check_input(vgrid, str, VGRID)
     valid_recipe_name(recipe)
 
@@ -524,7 +563,7 @@ def read_vgrid_recipe(recipe, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
 
 def write_vgrid_pattern(
         pattern, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
-    '''
+    """
     Creates a new Pattern on a given VGrid, or updates an existing Pattern.
 
     :param pattern: (Pattern) The pattern object to write to the VGrid.
@@ -533,8 +572,11 @@ def write_vgrid_pattern(
 
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
+    :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
+    call. Default is 15
+
     :return: (Pattern) The registered Pattern object.
-    '''
+    """
 
     check_input(vgrid, str, VGRID)
     is_valid_pattern_object(pattern)
@@ -580,7 +622,7 @@ def write_vgrid_pattern(
 
 
 def write_vgrid_recipe(recipe, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
-    '''
+    """
     Creates a new recipe on a given VGrid, or updates an existing recipe.
 
     :param recipe: (dict) The recipe to write to the VGrid.
@@ -589,8 +631,11 @@ def write_vgrid_recipe(recipe, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
 
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
+    :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
+    call. Default is 15
+
     :return: (dict) The registered Recipe dict.
-    '''
+    """
 
     check_input(vgrid, str, VGRID)
     is_valid_recipe_dict(recipe)
@@ -633,7 +678,7 @@ def write_vgrid_recipe(recipe, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
 
 def delete_vgrid_pattern(
         pattern, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
-    '''
+    """
     Attempts to delete a given pattern from a given VGrid.
 
     :param pattern: (Pattern) A valid workflow Pattern object
@@ -642,9 +687,12 @@ def delete_vgrid_pattern(
 
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
+    :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
+    call. Default is 15
+
     :return: (dict) Returns a Pattern object. If the deletion is successful
     the persistence_id attribute is removed
-    '''
+    """
 
     check_input(vgrid, str, VGRID)
     is_valid_pattern_object(pattern)
@@ -681,7 +729,7 @@ def delete_vgrid_pattern(
 
 
 def delete_vgrid_recipe(recipe, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
-    '''
+    """
     Attempts to delete a given recipe from a given VGrid.
 
     :param recipe: (dict) A valid workflow recipe
@@ -690,9 +738,12 @@ def delete_vgrid_recipe(recipe, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
 
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
+    :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
+    call. Default is 15
+
     :return: (dict) Returns a recipe dictionary. If the deletion is successful
     the persistence_id attribute is removed
-    '''
+    """
 
     check_input(vgrid, str, VGRID)
     is_valid_recipe_dict(recipe)

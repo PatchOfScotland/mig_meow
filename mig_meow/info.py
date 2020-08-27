@@ -1,5 +1,5 @@
-import os
 from .version import __name__, __version__, __fullname__
+
 
 def info():
     """

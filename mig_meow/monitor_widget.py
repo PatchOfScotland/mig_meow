@@ -1,13 +1,12 @@
 
 import ipywidgets as widgets
-import threading
 import time
 
 from IPython.display import display
 
 from .validation import check_input
-from .constants import VGRID, VGRID_READ, VGRID_QUEUE_OBJECT_TYPE,\
-    CANCEL_JOB, VGRID_CREATE, VGRID_UPDATE, VGRID_JOB_OBJECT_TYPE, \
+from .constants import VGRID_READ, VGRID_QUEUE_OBJECT_TYPE,\
+    VGRID_CREATE, VGRID_UPDATE, VGRID_JOB_OBJECT_TYPE, \
     OBJECT_TYPE
 from .logging import create_monitor_logfile, write_to_log
 from .mig import vgrid_job_json_call

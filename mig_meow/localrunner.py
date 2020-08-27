@@ -13,8 +13,7 @@ import threading
 import multiprocessing
 
 from .constants import PATTERNS, RECIPES, NAME, SOURCE, CHAR_LOWERCASE, \
-    CHAR_UPPERCASE, CHAR_NUMERIC, SWEEP_START, SWEEP_STOP, SWEEP_JUMP, \
-    RECIPE, MIG_TRIGGER_KEYWORDS, KEYWORD_DIR, KEYWORD_EXTENSION, \
+    CHAR_UPPERCASE, CHAR_NUMERIC, RECIPE, KEYWORD_DIR, KEYWORD_EXTENSION, \
     KEYWORD_FILENAME, KEYWORD_JOB, KEYWORD_PATH, KEYWORD_PREFIX, \
     KEYWORD_REL_DIR, KEYWORD_REL_PATH, KEYWORD_VGRID, VGRID
 from .logging import create_localrunner_logfile, write_to_log
@@ -95,9 +94,19 @@ _job_lock = threading.Lock()
 _queue_lock = threading.Lock()
 _worker_lock = threading.Lock()
 
-def generate_id():
+
+def generate_id(length=16):
+    """
+    Generates a random id by using randomly generated alphanumeric strings.
+    Uniqueness is not guaranteed, but is a reasonable assumption.
+
+    :param length: (int) [optional] The length of the id to be generated.
+    Default is 16
+
+    :return: (str) A random collection of alphanumeric characters.
+    """
     charset = CHAR_UPPERCASE + CHAR_LOWERCASE + CHAR_NUMERIC
-    return ''.join(SystemRandom().choice(charset) for _ in range(16))
+    return ''.join(SystemRandom().choice(charset) for _ in range(length))
 
 
 def make_fake_event(path, state, is_directory=False):
@@ -128,11 +137,35 @@ def is_fake_event(event):
     return getattr(event, _trigger_event, False)
 
 
-def get_job_dir(state, id):
-    return os.path.join(state[JOBS_DIR], id)
+def get_job_dir(state, job_id):
+    """
+    Gets the path of a jobs directory.
+
+    :param state: (dict) The shared state.
+
+    :param job_id: (str) The job id.
+
+    :return: (str) The path to the jobs directory.
+    """
+    return os.path.join(state[JOBS_DIR], job_id)
 
 
-def replace_keywords(old_dict, state, id, src_path):
+def replace_keywords(old_dict, state, job_id, src_path):
+    """
+    Replaces MiG trigger keywords with with actual values.
+
+    :param old_dict: (dict) A values dict potentially containing MiG keywords.
+
+    :param state: (dict) The shared runner state
+
+    :param job_id: (str) The appropriate job ID, corresponding to old_dict.
+
+    :param src_path: (str) The triggering path for the event generating the
+    job_id job
+
+    :return: (dict) A dict corresponding to old_dict, with the MiG keywords
+    replaced with appropriate values.
+    """
     new_dict = {}
 
     filename = os.path.basename(src_path)
@@ -151,7 +184,7 @@ def replace_keywords(old_dict, state, id, src_path):
             val = val.replace(KEYWORD_PREFIX, prefix)
             val = val.replace(KEYWORD_VGRID, state[VGRID])
             val = val.replace(KEYWORD_EXTENSION, extension)
-            val = val.replace(KEYWORD_JOB, id)
+            val = val.replace(KEYWORD_JOB, job_id)
 
             new_dict[var] = val
 
@@ -159,6 +192,23 @@ def replace_keywords(old_dict, state, id, src_path):
 
 
 def schedule_job(runner_state, rule, src_path, recipe_code, yaml_dict):
+    """
+    Schedules a new job in the workflow runner. This creates the appropriate
+    job files in a shared directory, adds the job to the queue, and add it to
+    the list of all jobs.
+
+    :param runner_state: (dict) The shared runner state.
+
+    :param rule: (dict) The rule causing this job to be scheduled.
+
+    :param src_path: (str) The path which generated the triggering event.
+
+    :param recipe_code: (dict) The recipe code to be run through.
+
+    :param yaml_dict: (dict) Any variables to be applied.
+
+    :return: No return.
+    """
     job_dict = {
         JOB_ID: generate_id(),
         JOB_PATTERN: rule[RULE_PATTERN],

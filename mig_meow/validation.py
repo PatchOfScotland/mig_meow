@@ -157,7 +157,7 @@ def valid_dir_path(path, name):
 
 
 def dir_exists(path, create=False):
-    '''
+    """
     Checks a given path exists and is a directory. Raises a ValueError if the
     path either does not exist or is not a directory.
 
@@ -167,7 +167,7 @@ def dir_exists(path, create=False):
     is false
 
     :return: (no return)
-    '''
+    """
     if not os.path.exists(path):
         if create:
             os.mkdir(path)
@@ -281,13 +281,13 @@ def valid_param_sweep(to_test, name):
 
 
 def valid_recipe_name(name):
-    '''
+    """
     Validates that a given name is a valid recipe name.
 
     :param name: (str) The name to test.
 
     :return: No return
-    '''
+    """
     valid_string(
         name,
         'recipe name',
@@ -299,13 +299,13 @@ def valid_recipe_name(name):
 
 
 def valid_pattern_name(name):
-    '''
+    """
     Validates that a given name is a valid pattern name.
 
     :param name: (str) The name to test.
 
     :return: No return
-    '''
+    """
     valid_string(
         name,
         'pattern name',
@@ -404,7 +404,7 @@ def is_valid_pattern_dict(to_test, strict=False):
     Validates that the passed dictionary can be used to create a new Pattern
     object.
 
-    :param: to_test: (dict) object to be tested.
+    :param to_test: (dict) object to be tested.
 
     :param strict: (bool)[optional] Option to be strict about arguments. If
     True then any extra arguments that have been provided will fail. Default
@@ -456,10 +456,10 @@ def is_valid_pattern_dict(to_test, strict=False):
             return False, "Trigger is empty. Should contain at least a " \
                           "single recipe"
 
-        for id, recipe in trigger.items():
-            if not isinstance(id, str):
+        for rec_id, recipe in trigger.items():
+            if not isinstance(rec_id, str):
                 return False, "Recipe id %s is a %s, not the expected str." \
-                       % (str(id), prep_html(type(id)))
+                       % (str(rec_id), prep_html(type(rec_id)))
             valid, msg = is_valid_recipe_dict(recipe)
             if not valid:
                 return False, msg
