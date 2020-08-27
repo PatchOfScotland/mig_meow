@@ -488,6 +488,7 @@ class WorkflowRunner:
 
         return job_queue
 
+
 class JobProcessor(threading.Thread):
     def __init__(self, worker_id, runner_state):
         threading.Thread.__init__(self)
@@ -912,13 +913,6 @@ class LocalWorkflowMonitor(PatternMatchingEventHandler):
             case_sensitive=False):
         """Constructor"""
 
-        write_to_log(
-            runner_state[LOGGER],
-            'LocalWorkflowRunner',
-            'Starting new workflow runner',
-            to_print=self.runner_state[PRINT]
-        )
-
         PatternMatchingEventHandler.__init__(
             self,
             patterns,
@@ -927,6 +921,13 @@ class LocalWorkflowMonitor(PatternMatchingEventHandler):
             case_sensitive
         )
         self.runner_state = runner_state
+
+        write_to_log(
+            runner_state[LOGGER],
+            'LocalWorkflowRunner',
+            'Starting new workflow runner',
+            to_print=self.runner_state[PRINT]
+        )
 
     def __handle_trigger(self, event, handle_path, rule):
         pid = multiprocessing.current_process().pid
