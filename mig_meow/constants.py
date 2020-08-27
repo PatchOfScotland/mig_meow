@@ -4,7 +4,7 @@
 # is clearer to group them here with appropriate variables.
 # Variables may also need to be saved here if needed for testing.
 
-DEFAULT_JSON_TIMEOUT = 15
+DEFAULT_JSON_TIMEOUT = 60
 DEFAULT_WORKFLOW_TITLE = 'workflow'
 DEFAULT_MEOW_IMPORT_EXPORT_DIR = 'meow_directory'
 DEFAULT_CWL_IMPORT_EXPORT_DIR = 'cwl_directory'

@@ -31,7 +31,7 @@ def export_pattern_to_vgrid(vgrid, pattern, timeout=DEFAULT_JSON_TIMEOUT):
     :param pattern: (Pattern) Pattern object to export.
 
     :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
-    call. Default is 15
+    call. Default is 60
 
     :return: (function call to vgrid_workflow_json_call) if pattern is valid,
     will call function 'vgrid_workflow_json_call'.
@@ -78,7 +78,7 @@ def export_recipe_to_vgrid(vgrid, recipe, timeout=DEFAULT_JSON_TIMEOUT):
     :param recipe: (dict) Recipe object to export.
 
     :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
-    call. Default is 15
+    call. Default is 60
 
     :return: (function call to vgrid_workflow_json_call) if recipe is valid,
     will call function 'vgrid_workflow_json_call'.
@@ -121,7 +121,7 @@ def vgrid_workflow_json_call(
     of the requested operation.
 
     :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
-    call. Default is 15
+    call. Default is 60
 
     :param logfile: (str)[optional] Path to a logfile. If provided logs are
     recorded in this file. Default is None.
@@ -209,7 +209,7 @@ def vgrid_job_json_call(
     False
 
     :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
-    call. Default is 15
+    call. Default is 60
 
     :return: (function call to __vgrid_json_call) If all inputs are valid,
     will call function '__vgrid_json_call'.
@@ -292,7 +292,7 @@ def __vgrid_json_call(
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
-    call. Default is 15
+    call. Default is 60
 
     :return: (Tuple (dict, dict, dict) Returns JSON call results as three
     dicts. First is the header, then the body then the footer. Header contains
@@ -372,7 +372,7 @@ def read_vgrid(vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
-    call. Default is 15
+    call. Default is 60
 
     :return: (dict) A dictionary of responses. Contains separate keys for the
     patterns and the recipes.
@@ -430,7 +430,7 @@ def write_vgrid(
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
-    call. Default is 15
+    call. Default is 60
 
     :return: (dict) Dicts of updated patterns and recipes.
     """
@@ -475,7 +475,7 @@ def read_vgrid_pattern(pattern, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
-    call. Default is 15
+    call. Default is 60
 
     :return: (Pattern) A pattern object, or None if a Pattern could not be
     found
@@ -524,7 +524,7 @@ def read_vgrid_recipe(recipe, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
-    call. Default is 15
+    call. Default is 60
 
     :return: (dict) A recipe dict, or None if a recipe could not be found
     """
@@ -573,7 +573,7 @@ def write_vgrid_pattern(
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
-    call. Default is 15
+    call. Default is 60
 
     :return: (Pattern) The registered Pattern object.
     """
@@ -632,7 +632,7 @@ def write_vgrid_recipe(recipe, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
-    call. Default is 15
+    call. Default is 60
 
     :return: (dict) The registered Recipe dict.
     """
@@ -688,7 +688,7 @@ def delete_vgrid_pattern(
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
-    call. Default is 15
+    call. Default is 60
 
     :return: (dict) Returns a Pattern object. If the deletion is successful
     the persistence_id attribute is removed
@@ -739,7 +739,7 @@ def delete_vgrid_recipe(recipe, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
     :param ssl: (boolean)[optional] Toggle to use ssl checks. Default True
 
     :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
-    call. Default is 15
+    call. Default is 60
 
     :return: (dict) Returns a recipe dictionary. If the deletion is successful
     the persistence_id attribute is removed
