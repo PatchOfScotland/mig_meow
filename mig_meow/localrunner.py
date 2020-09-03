@@ -18,8 +18,10 @@ from .constants import PATTERNS, RECIPES, NAME, SOURCE, CHAR_LOWERCASE, \
     KEYWORD_REL_DIR, KEYWORD_REL_PATH, KEYWORD_VGRID, VGRID
 from .logging import create_localrunner_logfile, write_to_log
 from .fileio import write_dir_pattern, write_dir_recipe, make_dir, \
-    read_dir_recipe, read_dir_pattern, write_notebook, write_yaml, read_yaml
-from .meow import get_parameter_sweep_values
+    read_dir_recipe, read_dir_pattern, write_notebook, write_yaml, read_yaml, \
+    delete_dir_pattern, delete_dir_recipe
+from .meow import get_parameter_sweep_values, is_valid_pattern_object, Pattern
+from .validation import valid_dir_path, check_input, is_valid_recipe_dict
 
 from datetime import datetime
 from random import SystemRandom
@@ -44,7 +46,7 @@ _unit_periods = {
 
 _trigger_event = '_trigger_event'
 
-RUNNER_DATA = '.workflow_data'
+RUNNER_DATA = '.workflow_runner_data'
 RUNNER_PATTERNS = os.path.join(RUNNER_DATA, PATTERNS)
 RUNNER_RECIPES = os.path.join(RUNNER_DATA, RECIPES)
 
@@ -93,6 +95,7 @@ _recent_jobs_lock = threading.Lock()
 _job_lock = threading.Lock()
 _queue_lock = threading.Lock()
 _worker_lock = threading.Lock()
+_rules_lock = threading.Lock()
 
 
 def generate_id(length=16):
@@ -251,9 +254,42 @@ def schedule_job(runner_state, rule, src_path, recipe_code, yaml_dict):
     _queue_lock.release()
 
 
+def runner_log(runner_state, func_name, log_msg):
+    # queue_count = len(runner_state[QUEUE])
+    # jobs_count = len(runner_state[JOBS])
+
+    # status_msg = f"({queue_count}, {jobs_count}) {log_msg}"
+    status_msg = func_name + ': ' +log_msg
+
+    write_to_log(
+        runner_state[LOGGER],
+        func_name,
+        status_msg
+    )
+
+    if runner_state[PRINT]:
+        print(status_msg)
+        # print('\r' + status_msg, end='')
+
+
 class WorkflowRunner:
-    def __init__(self, logging=True):
-        runner_log_file = create_localrunner_logfile(debug_mode=logging)
+    def __init__(self, path, workers, patterns=None, recipes=None,
+                 meow_data=RUNNER_DATA, job_data=JOB_DIR, daemon=False,
+                 reuse_vgrid=True, start_workers=False, retro_active_jobs=True,
+                 print_logging=True, file_logging=False):
+
+        valid_dir_path(path, 'path')
+        check_input(workers, int, 'workers', or_none=True)
+        check_input(patterns, dict, PATTERNS, or_none=True)
+        check_input(recipes, dict, RECIPES, or_none=True)
+        valid_dir_path(meow_data, 'meow_data')
+        valid_dir_path(job_data, 'job_data')
+        check_input(daemon, bool, 'daemon')
+        check_input(reuse_vgrid, bool, 'reuse_vgrid')
+        check_input(start_workers, bool, 'start_workers')
+        check_input(retro_active_jobs, bool, 'retro_active_jobs')
+        check_input(print_logging, bool, 'print_logging')
+        check_input(file_logging, bool, 'file_logging')
 
         self.runner_state = {
             PATTERNS: {},
@@ -261,43 +297,58 @@ class WorkflowRunner:
             RULES: [],
             JOBS: [],
             QUEUE: [],
-            LOGGER: runner_log_file,
+            LOGGER: None,
             ADMIN: None,
             MONITOR: None,
             WORKERS: [],
             DATA_DIR: None,
             JOBS_DIR: None,
             VGRID: None,
-            RETRO_ACTIVE: True,
-            PRINT: True
+            RETRO_ACTIVE: retro_active_jobs,
+            PRINT: print_logging
         }
 
-        write_to_log(
-            self.runner_state[LOGGER],
+        runner_log_file = create_localrunner_logfile(debug_mode=file_logging)
+        self.runner_state[LOGGER] = runner_log_file
+        runner_log(
+            self.runner_state,
             'run_local_workflow',
-            'created new log at %s' % self.runner_state[LOGGER],
-            to_print=self.runner_state[PRINT]
+            'created new log at %s' % self.runner_state[LOGGER]
         )
 
-    def run_local_workflow(
-            self, path, workers, patterns=None, recipes=None,
-            meow_data=RUNNER_DATA, job_data=JOB_DIR, daemon=False,
-            reuse_vgrid=True, start_workers=False, retro_active_jobs=True,
-            print_logging=True
-    ):
         make_dir(path, can_exist=reuse_vgrid)
         make_dir(job_data)
-        make_dir(meow_data, can_exist=False)
-        make_dir(RUNNER_PATTERNS, can_exist=False)
-        make_dir(RUNNER_RECIPES, can_exist=False)
+        make_dir(meow_data, ensure_clean=True)
+        make_dir(RUNNER_PATTERNS, ensure_clean=True)
+        make_dir(RUNNER_RECIPES, ensure_clean=True)
 
         self.runner_state[VGRID] = path
 
-        write_to_log(
-            self.runner_state[LOGGER],
+        runner_log(
+            self.runner_state,
             'run_local_workflow',
-            'Starting file monitor',
-            to_print=print_logging
+            'Starting MEOW monitor'
+        )
+
+        self.runner_state[DATA_DIR] = meow_data
+        self.runner_state[JOBS_DIR] = job_data
+
+        workflow_administrator = LocalWorkflowAdministrator(
+            runner_state=self.runner_state
+        )
+        administrator_observer = Observer()
+        self.runner_state[ADMIN] = administrator_observer
+        administrator_observer.schedule(
+            workflow_administrator,
+            meow_data,
+            recursive=True
+        )
+        administrator_observer.start()
+
+        runner_log(
+            self.runner_state,
+            'run_local_workflow',
+            'Starting file monitor'
         )
 
         workflow_monitor = LocalWorkflowMonitor(
@@ -312,50 +363,24 @@ class WorkflowRunner:
         )
         monitor_observer.start()
 
-        write_to_log(
-            self.runner_state[LOGGER],
+        runner_log(
+            self.runner_state,
             'run_local_workflow',
-            'Starting MEOW monitor',
-            to_print=print_logging
-        )
-
-        self.runner_state[DATA_DIR] = meow_data
-        self.runner_state[JOBS_DIR] = job_data
-        self.runner_state[RETRO_ACTIVE] = retro_active_jobs
-        self.runner_state[PRINT] = print_logging
-
-        workflow_administrator = LocalWorkflowAdministrator(
-            runner_state=self.runner_state
-        )
-        administrator_observer = Observer()
-        self.runner_state[ADMIN] = administrator_observer
-        administrator_observer.schedule(
-            workflow_administrator,
-            meow_data,
-            recursive=print_logging
-        )
-        administrator_observer.start()
-
-        write_to_log(
-            self.runner_state[LOGGER],
-            'run_local_workflow',
-            'Monitor setup complete',
-            to_print=print_logging
+            'Monitor setup complete'
         )
 
         if patterns:
             for name, pattern in patterns.items():
-                write_dir_pattern(pattern, directory=RUNNER_DATA)
+                write_dir_pattern(pattern, directory=meow_data)
 
         if recipes:
             for name, recipe in recipes.items():
-                write_dir_recipe(recipe, directory=RUNNER_DATA)
+                write_dir_recipe(recipe, directory=meow_data)
 
-        write_to_log(
-            self.runner_state[LOGGER],
+        runner_log(
+            self.runner_state,
             'run_local_workflow',
-            'Initial Pattern and Recipe definitions complete',
-            to_print=print_logging
+            'Initial Pattern and Recipe definitions complete'
         )
 
         _worker_lock.acquire()
@@ -384,11 +409,10 @@ class WorkflowRunner:
             workers = self.runner_state[WORKERS]
 
             for worker in workers:
-                write_to_log(
-                    self.runner_state[LOGGER],
+                runner_log(
+                    self.runner_state,
                     'start_workers',
-                    "Starting worker %s" % worker.worker_id,
-                    to_print=self.runner_state[PRINT]
+                    "Starting worker %s" % worker.worker_id
                 )
 
                 worker.start()
@@ -404,18 +428,25 @@ class WorkflowRunner:
         if not self.runner_state[MONITOR]:
             return (False, 'The Workflow Monitor is not running. You should '
                            'start another workflow runner. ')
+        running, total = self.get_runnering_status()
+        if running == total:
+            return (True, 'All workers are running. ')
+        else:
+            return (False, '%d workers are not running. ' % (total - running))
+
+    def get_runnering_status(self):
         _worker_lock.acquire()
+        total = len(self.runner_state[WORKERS])
+        running = 0
         try:
             for worker in self.runner_state[WORKERS]:
-                if not worker.isalive():
-                    return (False, "Worker %s is not running. You may be able"
-                                   "to fix this by running the 'start_workers'"
-                                   "function. ")
+                if worker.isAlive():
+                    running += 1
         except Exception as ex:
             _worker_lock.release()
             raise Exception(ex)
         _worker_lock.release()
-        return (True, 'All systems are running. ')
+        return (running, total)
 
     def stop_runner(self, clear_jobs=False):
 
@@ -488,130 +519,265 @@ class WorkflowRunner:
 
         return job_queue
 
+    def get_all_input_paths(self):
+        input_paths = []
+        _rules_lock.acquire()
+        try:
+            for rule in self.runner_state[RULES]:
+                input_paths.append(rule[RULE_PATH])
+            _rules_lock.release()
+        except Exception as ex:
+            _rules_lock.release()
+            raise Exception(ex)
+        return  input_paths
+
+    def check_status(self):
+        queued_jobs = len(self.get_queued_jobs())
+        all_jobs = len(self.get_all_jobs())
+        input_paths = self.get_all_input_paths()
+
+        status = f"[{queued_jobs}-{all_jobs}] () {input_paths}"
+
+        return status
+
+    def add_pattern(self, pattern):
+        status, msg = is_valid_pattern_object(pattern)
+        if not status:
+            runner_log(
+                self.runner_state,
+                'add_pattern',
+                'Could not add pattern. %s' % msg
+            )
+        else:
+            write_dir_pattern(pattern, directory=self.runner_state[DATA_DIR])
+
+            runner_log(
+                self.runner_state,
+                'add_pattern',
+                'Added pattern: %s' % msg
+            )
+
+    def modify_pattern(self, pattern):
+        status, msg = is_valid_pattern_object(pattern)
+        if not status:
+            runner_log(
+                self.runner_state,
+                'modify_pattern',
+                'Could not modify pattern. %s' % msg
+            )
+        else:
+            write_dir_pattern(pattern, directory=self.runner_state[DATA_DIR])
+
+            runner_log(
+                self.runner_state,
+                'modify_pattern',
+                'Modified pattern: %s' % msg
+            )
+
+    def remove_pattern(self, pattern):
+        if isinstance(pattern, str):
+            name = pattern
+        elif isinstance(pattern, Pattern):
+            name = pattern.name
+        else:
+            runner_log(
+                self.runner_state,
+                'remove_pattern',
+                'Invalid pattern parameter. Must be either Pattern object, '
+                'or a str name. '
+            )
+            return
+
+        delete_dir_pattern(name, directory=self.runner_state[DATA_DIR])
+        runner_log(
+            self.runner_state,
+            'remove_pattern',
+            'Removed pattern: %s' % name
+        )
+
+    def add_recipe(self, recipe):
+        status, msg = is_valid_recipe_dict(recipe)
+        if not status:
+            runner_log(
+                self.runner_state,
+                'add_recipe',
+                'Could not add recipe. %s' % msg
+            )
+        else:
+            write_dir_recipe(recipe, directory=self.runner_state[DATA_DIR])
+
+            runner_log(
+                self.runner_state,
+                'add_recipe',
+                'Added user recipe: %s' % msg
+            )
+
+    def modify_recipe(self, recipe):
+        status, msg = is_valid_recipe_dict(recipe)
+        if not status:
+            runner_log(
+                self.runner_state,
+                'modify_recipe',
+                'Could not modify recipe. %s' % msg
+            )
+        else:
+            write_dir_recipe(recipe, directory=self.runner_state[DATA_DIR])
+
+            runner_log(
+                self.runner_state,
+                'modify_recipe',
+                'Modified recipe: %s' % msg
+            )
+
+    def remove_recipe(self, recipe):
+        if isinstance(recipe, str):
+            name = recipe
+        elif isinstance(recipe, dict):
+            name = recipe[NAME]
+        else:
+            runner_log(
+                self.runner_state,
+                'remove_recipe',
+                'Invalid recipe parameter. Must be either recipe dict, '
+                'or a str name. '
+            )
+            return
+
+        delete_dir_recipe(name, directory=self.runner_state[DATA_DIR])
+        runner_log(
+            self.runner_state,
+            'remove_recipe',
+            'Removed recipe: %s' % name
+        )
+
 
 class JobProcessor(threading.Thread):
     def __init__(self, worker_id, runner_state):
         threading.Thread.__init__(self)
         self.worker_id = worker_id
-        self._stop = threading.Event()
+        self._stop_flag = threading.Event()
         self.runner_state = runner_state
 
     def run(self):
-        while True:
-            if self._stop.isSet():
-                return
-            _queue_lock.acquire()
-            try:
-                queue = self.runner_state[JOBS]
+        try:
+            while True:
+                if self._stop_flag.isSet():
+                    return
+                _queue_lock.acquire()
+                try:
+                    queue = self.runner_state[JOBS]
 
-                write_to_log(
-                    self.runner_state[LOGGER],
-                    'worker %s' % self.worker_id,
-                    "There are %d jobs in the queue" % len(queue),
-                    to_print=self.runner_state[PRINT]
-                )
+                    runner_log(
+                        self.runner_state,
+                        'worker %s' % self.worker_id,
+                        "There are %d jobs in the queue" % len(queue)
+                    )
 
-                running_job = None
-                running_data = None
-                for job in queue:
-                    job_dir = get_job_dir(self.runner_state, job)
-                    meta_path = os.path.join(job_dir, META_FILE)
+                    running_job = None
+                    running_data = None
+                    for job in queue:
+                        job_dir = get_job_dir(self.runner_state, job)
+                        meta_path = os.path.join(job_dir, META_FILE)
 
-                    job_data = read_yaml(meta_path)
+                        job_data = read_yaml(meta_path)
 
-                    if job_data[JOB_STATUS] == QUEUED:
-                        running_job = job
-                        running_data = job_data
-                        job_data[JOB_STATUS] = RUNNING
-                        job_data[JOB_START_TIME] = datetime.now()
+                        if job_data[JOB_STATUS] == QUEUED:
+                            running_job = job
+                            running_data = job_data
+                            job_data[JOB_STATUS] = RUNNING
+                            job_data[JOB_START_TIME] = datetime.now()
 
-                        write_yaml(job_data, meta_path)
+                            write_yaml(job_data, meta_path)
 
-                        write_to_log(
-                            self.runner_state[LOGGER],
-                            'worker %s' % self.worker_id,
-                            "Found job %s" % job_data[JOB_ID],
-                            to_print=self.runner_state[PRINT]
-                        )
-                        break
-            except Exception as ex:
-                _queue_lock.release()
-                raise Exception(ex)
-            if running_job:
-                self.runner_state[JOBS].remove(running_job)
-                _queue_lock.release()
-            else:
-                _queue_lock.release()
-                time.sleep(10 + (self.worker_id % 10))
-                continue
+                            runner_log(
+                                self.runner_state,
+                                'worker %s' % self.worker_id,
+                                "Found job %s" % job_data[JOB_ID]
+                            )
+                            break
+                except Exception as ex:
+                    _queue_lock.release()
+                    raise Exception(ex)
+                if running_job:
+                    self.runner_state[JOBS].remove(running_job)
+                    _queue_lock.release()
+                else:
+                    _queue_lock.release()
+                    time.sleep(10 + (self.worker_id % 10))
+                    continue
 
-            job_dir = get_job_dir(self.runner_state, running_job)
-            meta_path = os.path.join(job_dir, META_FILE)
-            base_path = os.path.join(job_dir, BASE_FILE)
-            param_path = os.path.join(job_dir, PARAMS_FILE)
-            job_path = os.path.join(job_dir, JOB_FILE)
-            result_path = os.path.join(job_dir, RESULT_FILE)
+                job_dir = get_job_dir(self.runner_state, running_job)
+                meta_path = os.path.join(job_dir, META_FILE)
+                base_path = os.path.join(job_dir, BASE_FILE)
+                param_path = os.path.join(job_dir, PARAMS_FILE)
+                job_path = os.path.join(job_dir, JOB_FILE)
+                result_path = os.path.join(job_dir, RESULT_FILE)
 
-            error = False
-            cmd = 'notebook_parameterizer ' \
-                  + base_path + ' ' \
-                  + param_path + ' ' \
-                  + '-o ' + job_path
-            try:
-                os.system(cmd)
-            except Exception as ex:
-                error = ex
+                error = False
+                cmd = 'notebook_parameterizer ' \
+                      + base_path + ' ' \
+                      + param_path + ' ' \
+                      + '-o ' + job_path
+                try:
+                    os.system(cmd)
+                except Exception as ex:
+                    error = ex
 
-            if not os.path.exists(job_path) or error:
-                running_data[JOB_STATUS] = FAILED
+                if not os.path.exists(job_path) or error:
+                    running_data[JOB_STATUS] = FAILED
+                    running_data[JOB_END_TIME] = datetime.now()
+                    msg = 'Job file %s was not created successfully'
+                    if error:
+                        msg += '. %s' % error
+                    running_data[JOB_ERROR] = msg
+                    write_yaml(running_data, meta_path)
+                    runner_log(
+                        self.runner_state,
+                        'worker %s' % self.worker_id,
+                        "Job worker encountered and error. %s" % msg
+                    )
+                    time.sleep(10 + (self.worker_id % 10))
+                    continue
+
+                cmd = 'papermill ' \
+                      + job_path + ' ' \
+                      + result_path
+                try:
+                    os.system(cmd)
+                except Exception as ex:
+                    error = ex
+
+                if not os.path.exists(result_path) or error:
+                    running_data[JOB_STATUS] = FAILED
+                    running_data[JOB_END_TIME] = datetime.now()
+                    msg = 'Result file %s was not created successfully'
+                    if error:
+                        msg += '. %s' % error
+                    running_data[JOB_ERROR] = msg
+                    write_yaml(running_data, meta_path)
+                    runner_log(
+                        self.runner_state,
+                        'worker %s' % self.worker_id,
+                        "Job worker encountered and error. %s" % msg
+                    )
+                    time.sleep(10 + (self.worker_id % 10))
+                    continue
+
+                running_data[JOB_STATUS] = DONE
                 running_data[JOB_END_TIME] = datetime.now()
-                msg = 'Job file %s was not created successfully'
-                if error:
-                    msg += '. %s' % error
-                running_data[JOB_ERROR] = msg
                 write_yaml(running_data, meta_path)
-                write_to_log(
-                    self.runner_state[LOGGER],
-                    'worker %s' % self.worker_id,
-                    "Job worker encountered and error. %s" % msg,
-                    to_print=self.runner_state[PRINT]
-                )
+
                 time.sleep(10 + (self.worker_id % 10))
-                continue
-
-            cmd = 'papermill ' \
-                  + job_path + ' ' \
-                  + result_path
-            try:
-                os.system(cmd)
-            except Exception as ex:
-                error = ex
-
-            if not os.path.exists(result_path) or error:
-                running_data[JOB_STATUS] = FAILED
-                running_data[JOB_END_TIME] = datetime.now()
-                msg = 'Result file %s was not created successfully'
-                if error:
-                    msg += '. %s' % error
-                running_data[JOB_ERROR] = msg
-                write_yaml(running_data, meta_path)
-                write_to_log(
-                    self.runner_state[LOGGER],
-                    'worker %s' % self.worker_id,
-                    "Job worker encountered and error. %s" % msg,
-                    to_print=self.runner_state[PRINT]
-                )
-                time.sleep(10 + (self.worker_id % 10))
-                continue
-
-            running_data[JOB_STATUS] = DONE
-            running_data[JOB_END_TIME] = datetime.now()
-            write_yaml(running_data, meta_path)
-
-            time.sleep(10 + (self.worker_id % 10))
+        except Exception as ex:
+            runner_log(
+                self.runner_state,
+                'worker %s' % self.worker_id,
+                "Worker has crashed. %s" % ex
+            )
+            raise Exception(ex)
 
     def stop(self):
-        self._stop.set()
+        self._stop_flag.set()
 
 
 class LocalWorkflowAdministrator(PatternMatchingEventHandler):
@@ -639,15 +805,26 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
         if event.is_directory:
             return
 
-        write_to_log(
-            self.runner_state[LOGGER],
+        runner_log(
+            self.runner_state,
             'update_rules',
             "Handling %s rule update at %s"
-            % (event.event_type, event.src_path),
-            to_print=self.runner_state[PRINT]
+            % (event.event_type, event.src_path)
         )
+        print("Handling %s rule change at %s" % (event.event_type, event.src_path))
 
         src_path = event.src_path
+
+        try:
+            valid_dir_path(src_path, 'src_path')
+        except ValueError as ve:
+            runner_log(
+                self.runner_state,
+                'update_rules',
+                "Ignoring events at %s. %s" % (src_path, ve)
+            )
+            return
+
         event_type = event.event_type
         file_type = ''
         file_path = ''
@@ -663,20 +840,18 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
                             + len(RUNNER_RECIPES)+1:]
                 file_type = RECIPES
         except Exception as exc:
-            write_to_log(
-                self.runner_state[LOGGER],
+            runner_log(
+                self.runner_state,
                 'update_rules-pattern',
                 'Cannot process event at %s due to error: %s'
-                % (src_path, exc),
-                to_print=self.runner_state[PRINT]
+                % (src_path, exc)
             )
             return
         if os.path.sep in file_path:
-            write_to_log(
-                self.runner_state[LOGGER],
+            runner_log(
+                self.runner_state,
                 'update_rules-pattern',
-                'Cannot process nested event at %s' % src_path,
-                to_print=self.runner_state[PRINT]
+                'Cannot process nested event at %s' % src_path
             )
             return
 
@@ -688,11 +863,10 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
                         directory=RUNNER_DATA
                     )
                 except Exception as exc:
-                    write_to_log(
-                        self.runner_state[LOGGER],
+                    runner_log(
+                        self.runner_state,
                         'update_rules-pattern',
-                        exc,
-                        to_print=self.runner_state[PRINT]
+                        exc
                     )
                     return
                 self.add_pattern(pattern)
@@ -703,11 +877,10 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
                         directory=RUNNER_DATA
                     )
                 except Exception as exc:
-                    write_to_log(
-                        self.runner_state[LOGGER],
+                    runner_log(
+                        self.runner_state,
                         'update_rules-recipe',
-                        exc,
-                        to_print=self.runner_state[PRINT]
+                        exc
                     )
                     return
                 self.add_recipe(recipe)
@@ -742,11 +915,10 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
                 op = 'Modified'
         self.runner_state[PATTERNS][pattern.name] = pattern
         self.identify_rules(new_pattern=pattern)
-        write_to_log(
-            self.runner_state[LOGGER],
+        runner_log(
+            self.runner_state,
             'add_pattern',
-            '%s pattern %s' % (op, pattern),
-            to_print=self.runner_state[PRINT]
+            '%s pattern %s' % (op, pattern)
         )
 
     def add_recipe(self, recipe):
@@ -759,35 +931,46 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
                 op = 'Modified'
         self.runner_state[RECIPES][recipe[NAME]] = recipe
         self.identify_rules(new_recipe=recipe)
-        write_to_log(
-            self.runner_state[LOGGER],
+        runner_log(
+            self.runner_state,
             'add_recipe',
             '%s recipe %s from source %s'
-            % (op, recipe[NAME], recipe[SOURCE]),
-            to_print=self.runner_state[PRINT]
+            % (op, recipe[NAME], recipe[SOURCE])
         )
 
     def remove_pattern(self, pattern_name):
         if pattern_name in self.runner_state[PATTERNS]:
             self.runner_state[PATTERNS].pop(pattern_name)
-        self.remove_rules(deleted_pattern_name=pattern_name)
-        write_to_log(
-            self.runner_state[LOGGER],
-            'remove_pattern',
-            'Removed pattern %s' % pattern_name,
-            to_print=self.runner_state[PRINT]
-        )
+            self.remove_rules(deleted_pattern_name=pattern_name)
+            runner_log(
+                self.runner_state,
+                'remove_pattern',
+                'Removed pattern %s' % pattern_name
+            )
+        else:
+            runner_log(
+                self.runner_state,
+                'remove_pattern',
+                'Pattern %s was not present in the pattern list to be '
+                'removed' % pattern_name
+            )
 
     def remove_recipe(self, recipe_name):
         if recipe_name in self.runner_state[RECIPES]:
             self.runner_state[RECIPES].pop(recipe_name)
-        self.remove_rules(deleted_recipe_name=recipe_name)
-        write_to_log(
-            self.runner_state[LOGGER],
-            'remove_recipe',
-            'Removed recipe %s' % recipe_name,
-            to_print=self.runner_state[PRINT]
-        )
+            self.remove_rules(deleted_recipe_name=recipe_name)
+            runner_log(
+                self.runner_state,
+                'remove_recipe',
+                'Removed recipe %s' % recipe_name
+            )
+        else:
+            runner_log(
+                self.runner_state,
+                'remove_recipe',
+                'Recipe %s was not present in the recipe list to be removed'
+                % recipe_name
+            )
 
     def create_new_rule(self, pattern_name, recipe_name, path):
         rule = {
@@ -796,13 +979,19 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
             RULE_RECIPE: recipe_name,
             RULE_PATH: path
         }
-        self.runner_state[RULES].append(rule)
-        write_to_log(
-            self.runner_state[LOGGER],
+        _rules_lock.acquire()
+        try:
+            self.runner_state[RULES].append(rule)
+            _rules_lock.release()
+        except Exception as ex:
+            _rules_lock.release()
+            raise Exception(ex)
+
+        runner_log(
+            self.runner_state,
             'create_new_rule',
             'Created rule for path: %s with id %s.'
-            % (path, rule[RULE_ID]),
-            to_print=self.runner_state[PRINT]
+            % (path, rule[RULE_ID])
         )
 
         notebook_code = self.runner_state[RECIPES][rule[RULE_RECIPE]][RECIPE]
@@ -849,8 +1038,8 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
     def identify_rules(self, new_pattern=None, new_recipe=None):
         if new_pattern:
             if len(new_pattern.recipes) > 1:
-                write_to_log(
-                    self.runner_state[LOGGER],
+                runner_log(
+                    self.runner_state,
                     'identify_rules-pattern',
                     'Rule creation aborted. Currently only supports one '
                     'recipe per pattern.',
@@ -867,8 +1056,8 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
         if new_recipe:
             for name, pattern in self.runner_state[PATTERNS].items():
                 if len(pattern.recipes) > 1:
-                    write_to_log(
-                        self.runner_state[LOGGER],
+                    runner_log(
+                        self.runner_state,
                         'identify_rules-recipe',
                         'Rule creation avoided for %s. Currently only '
                         'supports one recipe per pattern.' % name,
@@ -885,21 +1074,26 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
     def remove_rules(
             self, deleted_pattern_name=None, deleted_recipe_name=None):
         to_delete = []
-        for rule in self.runner_state[RULES]:
-            if deleted_pattern_name:
-                if rule[RULE_PATTERN] == deleted_pattern_name:
-                    to_delete.append(rule)
-            if deleted_recipe_name:
-                if rule[RULE_RECIPE] == deleted_recipe_name:
-                    to_delete.append(rule)
-        for delete in to_delete:
-            self.runner_state[RULES].remove(delete)
-            write_to_log(
-                self.runner_state[LOGGER],
-                'remove_rules',
-                'Removing rule: %s.' % delete,
-                to_print=self.runner_state[PRINT]
-            )
+        _rules_lock.acquire()
+        try:
+            for rule in self.runner_state[RULES]:
+                if deleted_pattern_name:
+                    if rule[RULE_PATTERN] == deleted_pattern_name:
+                        to_delete.append(rule)
+                if deleted_recipe_name:
+                    if rule[RULE_RECIPE] == deleted_recipe_name:
+                        to_delete.append(rule)
+            for delete in to_delete:
+                self.runner_state[RULES].remove(delete)
+                runner_log(
+                    self.runner_state,
+                    'remove_rules',
+                    'Removing rule: %s.' % delete
+                )
+            _rules_lock.release()
+        except Exception as ex:
+            _rules_lock.release()
+            raise Exception(ex)
 
 
 class LocalWorkflowMonitor(PatternMatchingEventHandler):
@@ -922,11 +1116,10 @@ class LocalWorkflowMonitor(PatternMatchingEventHandler):
         )
         self.runner_state = runner_state
 
-        write_to_log(
-            runner_state[LOGGER],
+        runner_log(
+            runner_state,
             'LocalWorkflowRunner',
-            'Starting new workflow runner',
-            to_print=self.runner_state[PRINT]
+            'Starting new workflow runner'
         )
 
     def __handle_trigger(self, event, handle_path, rule):
@@ -935,8 +1128,8 @@ class LocalWorkflowMonitor(PatternMatchingEventHandler):
         src_path = event.src_path
         time_stamp = event.time_stamp
 
-        write_to_log(
-            self.runner_state[LOGGER],
+        runner_log(
+            self.runner_state,
             '__handle_trigger',
             'Running threaded handler at (%s) to handle %s event at %s '
             'with rule %s'
@@ -953,8 +1146,8 @@ class LocalWorkflowMonitor(PatternMatchingEventHandler):
                     if difference <= 1:
                         recent_jobs[src_path][RULE_ID] = \
                             max(recent_timestamp, time_stamp)
-                        write_to_log(
-                            self.runner_state[LOGGER],
+                        runner_log(
+                            self.runner_state,
                             '__handle_trigger',
                             'Skipping due to recent hit'
                         )
@@ -975,11 +1168,10 @@ class LocalWorkflowMonitor(PatternMatchingEventHandler):
 
         pattern = self.runner_state[PATTERNS][rule[RULE_PATTERN]]
 
-        write_to_log(
-            self.runner_state[LOGGER],
+        runner_log(
+            self.runner_state,
             'run_handler',
-            'Starting new job for %s using rule %s' % (src_path, rule),
-            to_print=self.runner_state[PRINT]
+            'Starting new job for %s using rule %s' % (src_path, rule)
         )
 
         yaml_dict = {}
@@ -1018,11 +1210,10 @@ class LocalWorkflowMonitor(PatternMatchingEventHandler):
         while handle_path.startswith(os.path.sep):
             handle_path = handle_path[1:]
 
-        write_to_log(
-            self.runner_state[LOGGER],
+        runner_log(
+            self.runner_state,
             'run_handler',
-            'Handling %s event at %s' % (event_type, handle_path),
-            to_print=self.runner_state[PRINT]
+            'Handling %s event at %s' % (event_type, handle_path)
         )
 
         for rule in self.runner_state[RULES]:
@@ -1080,4 +1271,3 @@ class LocalWorkflowMonitor(PatternMatchingEventHandler):
             event.is_directory
         )
         self.handle_event(fake)
-

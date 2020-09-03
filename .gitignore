@@ -109,5 +109,6 @@ test_vgrid/
 test_mig/
 test_dir/
 .workflow_processing/
+.workflow_runner_data/
 development_test_notebook.ipynb
 quicktest.py

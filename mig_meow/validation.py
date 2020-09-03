@@ -78,6 +78,25 @@ def check_input(variable, expected_type, name, or_none=False):
             )
 
 
+def is_valid_list_entry(arg, valid_entries, name):
+    """
+    Checks that a given args ia in a given list. Will raise an exception if
+    arg is not in valid_entries.
+
+    :param arg: (object) The object to check.
+
+    :param valid_entries: (list) The list to check against.
+
+    :param name: (str) The name of the variable. Only used for error printing.
+
+    :return: No return.
+    """
+    check_input(valid_entries, list, name)
+    if arg not in valid_entries:
+        raise ValueError('Invalid entry for %s. %s is not in %s'
+                         % (name, arg, valid_entries))
+
+
 def check_input_args(args, valid_args):
     """
     Checks that given args are allowed. Raises ValueError or TypeError as

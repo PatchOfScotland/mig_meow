@@ -252,7 +252,7 @@ WIDGET_MODES = [
     CWL_MODE
 ]
 
-LOGGING_DIR = 'mig_meow_widget_logs'
+LOGGING_DIR = 'mig_meow_logs'
 WORKFLOW_LOGFILE_NAME = 'workfow_widget'
 MONITOR_LOGFILE_NAME = 'monitor_widget'
 RUNNER_LOGFILE_NAME = 'workflow_runner'

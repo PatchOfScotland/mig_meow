@@ -182,9 +182,8 @@ class Pattern:
             self.outputs = {}
             self.variables = {}
             self.sweep = {}
-            return
         # if given dict we are importing from a stored pattern object
-        if isinstance(parameters, dict):
+        elif isinstance(parameters, dict):
             valid, msg = is_valid_pattern_dict(parameters)
 
             if not valid:
@@ -228,12 +227,12 @@ class Pattern:
             if SWEEP in parameters:
                 for name, value in parameters[SWEEP].items():
                     self.add_param_sweep(name, value)
-            return
-        raise TypeError(
-            'Pattern requires either a str input as a name for a new pattern, '
-            'or a dict defining a complete pattern. Was instead given a %s. '
-            % type(parameters)
-        )
+        else:
+            raise TypeError(
+                'Pattern requires either a str input as a name for a new '
+                'pattern, or a dict defining a complete pattern. Was instead '
+                'given a %s. ' % type(parameters)
+            )
 
     def __str__(self):
         """

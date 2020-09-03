@@ -1,6 +1,7 @@
 
 import os
 import json
+import shutil
 import yaml
 
 from .constants import NAME, PERSISTENCE_ID, INPUT_FILE, TRIGGER_PATHS, \
@@ -53,7 +54,7 @@ def read_yaml(filepath):
         return yaml.full_load(yaml_file)
 
 
-def make_dir(path, can_exist=True):
+def make_dir(path, can_exist=True, ensure_clean=False):
     """
     Creates a new directory at the given path.
 
@@ -62,6 +63,10 @@ def make_dir(path, can_exist=True):
     :param can_exist: (boolean) [optional] A toggle for if a previously
     existing directory at the path will throw an error or not. Default is
     true (e.g. no error is thrown if the path already exists)
+
+    :param ensure_clean: (boolean) [optional] A toggle for if a previously
+    existing directory at the path will be replaced with a new emtpy directory.
+    Default is False.
 
     :return: No return
     """
@@ -72,7 +77,11 @@ def make_dir(path, can_exist=True):
                          'exists and is a file' % path)
     else:
         if not can_exist:
-            raise ValueError("Directory %s already exists. " % path)
+            if ensure_clean:
+                shutil.rmtree(path)
+                os.mkdir(path)
+            else:
+                raise ValueError("Directory %s already exists. " % path)
 
 
 def patten_to_yaml_dict(pattern):
