@@ -404,7 +404,8 @@ class WorkflowTest(unittest.TestCase):
             6: os.path.join(_end, KEYWORD_PREFIX),
             7: os.path.join(_end, KEYWORD_VGRID),
             8: os.path.join(_end, KEYWORD_EXTENSION),
-            9: os.path.join(_end, KEYWORD_JOB)
+            9: os.path.join(_end, KEYWORD_JOB),
+            10: 10
         }
 
         _vgrid = 'MyVgrid'
@@ -435,6 +436,7 @@ class WorkflowTest(unittest.TestCase):
         _seven = os.path.join(_end, _vgrid)
         _eight = os.path.join(_end, _ext)
         _nine = os.path.join(_end, _id)
+        _ten = 10
 
         self.assertEqual(_one, replaced[1])
         self.assertEqual(_two, replaced[2])
@@ -445,6 +447,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(_seven, replaced[7])
         self.assertEqual(_eight, replaced[8])
         self.assertEqual(_nine, replaced[9])
+        self.assertEqual(_ten, replaced[10])
 
     def testRetroActiveRules(self):
         data = read_dir(directory='examples/meow_directory')

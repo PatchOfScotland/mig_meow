@@ -190,6 +190,8 @@ def replace_keywords(old_dict, state, job_id, src_path):
             val = val.replace(KEYWORD_JOB, job_id)
 
             new_dict[var] = val
+        else:
+            new_dict[var] = val
 
     return new_dict
 
@@ -665,6 +667,10 @@ class WorkflowRunner:
         jobs_dict = copy.deepcopy(self.__runner_state[JOBS])
         return jobs_dict
 
+    def check_queue(self):
+        jobs_dict = copy.deepcopy(self.__runner_state[QUEUE])
+        return jobs_dict
+
 
 class JobProcessor(threading.Thread):
     def __init__(self, worker_id, runner_state):
@@ -682,11 +688,11 @@ class JobProcessor(threading.Thread):
                 try:
                     queue = self.runner_state[JOBS]
 
-                    runner_log(
-                        self.runner_state,
-                        'worker %s' % self.worker_id,
-                        "There are %d jobs in the queue" % len(queue)
-                    )
+                    # runner_log(
+                    #     self.runner_state,
+                    #     'worker %s' % self.worker_id,
+                    #     "There are %d jobs in the queue" % len(queue)
+                    # )
 
                     running_job = None
                     running_data = None
@@ -741,7 +747,8 @@ class JobProcessor(threading.Thread):
                 if not os.path.exists(job_path) or error:
                     running_data[JOB_STATUS] = FAILED
                     running_data[JOB_END_TIME] = datetime.now()
-                    msg = 'Job file %s was not created successfully'
+                    msg = 'Job file %s was not created successfully' \
+                          % running_job
                     if error:
                         msg += '. %s' % error
                     running_data[JOB_ERROR] = msg
@@ -826,7 +833,6 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
             "Handling %s rule update at %s"
             % (event.event_type, event.src_path)
         )
-        print("Handling %s rule change at %s" % (event.event_type, event.src_path))
 
         src_path = event.src_path
 
