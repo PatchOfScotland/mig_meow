@@ -8,7 +8,7 @@ from mig_meow.constants import PATTERNS, RECIPES, KEYWORD_DIR, KEYWORD_JOB, \
     KEYWORD_VGRID, KEYWORD_EXTENSION, KEYWORD_PREFIX, KEYWORD_FILENAME, \
     KEYWORD_REL_DIR, KEYWORD_REL_PATH, KEYWORD_PATH, VGRID, SOURCE
 from mig_meow.fileio import read_dir, read_dir_pattern, read_dir_recipe
-from mig_meow.localrunner import WorkflowRunner, RULES, JOBS, RUNNER_DATA, \
+from mig_meow.localrunner import WorkflowRunner, RUNNER_DATA, \
     RUNNER_RECIPES, RUNNER_PATTERNS, RULE_PATH, RULE_PATTERN, RULE_RECIPE, \
     replace_keywords
 
@@ -91,16 +91,16 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertIsNotNone(runner.runner_state[PATTERNS])
-        self.assertIsInstance(runner.runner_state[PATTERNS], dict)
+        self.assertIsNotNone(runner.check_patterns())
+        self.assertIsInstance(runner.check_patterns(), dict)
         self.assertIn('adder', patterns)
-        self.assertIn('adder', runner.runner_state[PATTERNS])
+        self.assertIn('adder', runner.check_patterns())
         self.assertIn('first_mult', patterns)
-        self.assertIn('first_mult', runner.runner_state[PATTERNS])
+        self.assertIn('first_mult', runner.check_patterns())
         self.assertIn('second_mult', patterns)
-        self.assertIn('second_mult', runner.runner_state[PATTERNS])
+        self.assertIn('second_mult', runner.check_patterns())
         self.assertIn('third_choo', patterns)
-        self.assertIn('third_choo', runner.runner_state[PATTERNS])
+        self.assertIn('third_choo', runner.check_patterns())
 
         self.assertTrue(runner.stop_runner(clear_jobs=True))
 
@@ -120,14 +120,14 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertIsNotNone(runner.runner_state[RECIPES])
-        self.assertIsInstance(runner.runner_state[RECIPES], dict)
+        self.assertIsNotNone(runner.check_recipes())
+        self.assertIsInstance(runner.check_recipes(), dict)
         self.assertIn('add', recipes)
-        self.assertIn('add', runner.runner_state[RECIPES])
+        self.assertIn('add', runner.check_recipes())
         self.assertIn('mult', recipes)
-        self.assertIn('mult', runner.runner_state[RECIPES])
+        self.assertIn('mult', runner.check_recipes())
         self.assertIn('choo', recipes)
-        self.assertIn('choo', runner.runner_state[RECIPES])
+        self.assertIn('choo', runner.check_recipes())
 
         self.assertTrue(runner.stop_runner(clear_jobs=True))
 
@@ -140,7 +140,7 @@ class WorkflowTest(unittest.TestCase):
             print_logging=False
         )
 
-        self.assertEqual(runner.runner_state[PATTERNS], {})
+        self.assertEqual(runner.check_patterns(), {})
 
         base_path = 'examples/meow_directory/patterns/adder'
         self.assertTrue(os.path.exists(base_path))
@@ -154,9 +154,9 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertIsNotNone(runner.runner_state[PATTERNS])
-        self.assertIsInstance(runner.runner_state[PATTERNS], dict)
-        self.assertIn('late_adder', runner.runner_state[PATTERNS])
+        self.assertIsNotNone(runner.check_patterns())
+        self.assertIsInstance(runner.check_patterns(), dict)
+        self.assertIn('late_adder', runner.check_patterns())
 
     def testWorklflowRunnerRecipeIdentification(self):
         runner = WorkflowRunner(
@@ -167,7 +167,7 @@ class WorkflowTest(unittest.TestCase):
             print_logging=False
         )
 
-        self.assertEqual(runner.runner_state[RECIPES], {})
+        self.assertEqual(runner.check_recipes(), {})
 
         base_path = 'examples/meow_directory/recipes/add'
         self.assertTrue(os.path.exists(base_path))
@@ -181,9 +181,9 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertIsNotNone(runner.runner_state[RECIPES])
-        self.assertIsInstance(runner.runner_state[RECIPES], dict)
-        self.assertIn('late_add', runner.runner_state[RECIPES])
+        self.assertIsNotNone(runner.check_recipes())
+        self.assertIsInstance(runner.check_recipes(), dict)
+        self.assertIn('late_add', runner.check_recipes())
 
     def testWorkflowRunnerRuleCreation(self):
         data = read_dir(directory='examples/meow_directory')
@@ -203,14 +203,14 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertIsNotNone(runner.runner_state[RULES])
-        self.assertIsInstance(runner.runner_state[RULES], list)
-        self.assertEqual(len(runner.runner_state[RULES]), 4)
+        self.assertIsNotNone(runner.check_rules())
+        self.assertIsInstance(runner.check_rules(), list)
+        self.assertEqual(len(runner.check_rules()), 4)
         idless_rules = [{
             RULE_PATH: r[RULE_PATH],
             RULE_PATTERN: r[RULE_PATTERN],
             RULE_RECIPE: r[RULE_RECIPE]
-        } for r in runner.runner_state[RULES]]
+        } for r in runner.check_rules()]
         for rule in STANDARD_RULES:
             self.assertIn(rule, idless_rules)
 
@@ -238,7 +238,7 @@ class WorkflowTest(unittest.TestCase):
             RULE_PATH: r[RULE_PATH],
             RULE_PATTERN: r[RULE_PATTERN],
             RULE_RECIPE: r[RULE_RECIPE]
-        } for r in runner.runner_state[RULES]]
+        } for r in runner.check_rules()]
         for rule in STANDARD_RULES:
             self.assertIn(rule, idless_rules)
 
@@ -247,12 +247,12 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertEqual(len(runner.runner_state[RULES]), 3)
+        self.assertEqual(len(runner.check_rules()), 3)
         idless_rules = [{
             RULE_PATH: r[RULE_PATH],
             RULE_PATTERN: r[RULE_PATTERN],
             RULE_RECIPE: r[RULE_RECIPE]
-        } for r in runner.runner_state[RULES]]
+        } for r in runner.check_rules()]
         for rule in STANDARD_RULES[1:]:
             self.assertIn(rule, idless_rules)
 
@@ -280,7 +280,7 @@ class WorkflowTest(unittest.TestCase):
             RULE_PATH: r[RULE_PATH],
             RULE_PATTERN: r[RULE_PATTERN],
             RULE_RECIPE: r[RULE_RECIPE]
-        } for r in runner.runner_state[RULES]]
+        } for r in runner.check_rules()]
         for rule in STANDARD_RULES:
             self.assertIn(rule, idless_rules)
 
@@ -289,12 +289,12 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertEqual(len(runner.runner_state[RULES]), 2)
+        self.assertEqual(len(runner.check_rules()), 2)
         idless_rules = [{
             RULE_PATH: r[RULE_PATH],
             RULE_PATTERN: r[RULE_PATTERN],
             RULE_RECIPE: r[RULE_RECIPE]
-        } for r in runner.runner_state[RULES]]
+        } for r in runner.check_rules()]
         for rule in [STANDARD_RULES[0], STANDARD_RULES[3]]:
             self.assertIn(rule, idless_rules)
 
@@ -319,9 +319,9 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertIsNotNone(runner.runner_state[JOBS])
-        self.assertIsInstance(runner.runner_state[JOBS], list)
-        self.assertEqual(len(runner.runner_state[JOBS]), 0)
+        self.assertIsNotNone(runner.check_jobs())
+        self.assertIsInstance(runner.check_jobs(), list)
+        self.assertEqual(len(runner.check_jobs()), 0)
 
         data_directory = os.path.join(TESTING_VGRID, 'initial_data')
         os.mkdir(data_directory)
@@ -335,7 +335,7 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertEqual(len(runner.runner_state[JOBS]), 4)
+        self.assertEqual(len(runner.check_jobs()), 4)
 
         incorrect_directory = os.path.join(TESTING_VGRID, 'init_data')
         os.mkdir(incorrect_directory)
@@ -348,7 +348,7 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertEqual(len(runner.runner_state[JOBS]), 4)
+        self.assertEqual(len(runner.check_jobs()), 4)
 
         self.assertTrue(runner.stop_runner(clear_jobs=True))
 
@@ -371,9 +371,9 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertIsNotNone(runner.runner_state[JOBS])
-        self.assertIsInstance(runner.runner_state[JOBS], list)
-        self.assertEqual(len(runner.runner_state[JOBS]), 0)
+        self.assertIsNotNone(runner.check_jobs())
+        self.assertIsInstance(runner.check_jobs(), list)
+        self.assertEqual(len(runner.check_jobs()), 0)
 
         data_directory = os.path.join(TESTING_VGRID, 'initial_data')
         os.mkdir(data_directory)
@@ -387,7 +387,7 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertEqual(len(runner.runner_state[JOBS]), 4)
+        self.assertEqual(len(runner.check_jobs()), 4)
 
         self.assertTrue(runner.stop_runner(clear_jobs=True))
 
@@ -465,10 +465,10 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertIsNotNone(retroless_runner.runner_state[RULES])
-        self.assertIsInstance(retroless_runner.runner_state[RULES], list)
-        self.assertEqual(len(retroless_runner.runner_state[RULES]), 4)
-        self.assertEqual(len(retroless_runner.runner_state[JOBS]), 0)
+        self.assertIsNotNone(retroless_runner.check_rules())
+        self.assertIsInstance(retroless_runner.check_rules(), list)
+        self.assertEqual(len(retroless_runner.check_rules()), 4)
+        self.assertEqual(len(retroless_runner.check_jobs()), 0)
 
         self.assertTrue(retroless_runner.stop_runner(clear_jobs=True))
 
@@ -496,13 +496,13 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertIsNotNone(runner.runner_state[JOBS])
-        self.assertIsInstance(runner.runner_state[JOBS], list)
+        self.assertIsNotNone(runner.check_jobs())
+        self.assertIsInstance(runner.check_jobs(), list)
 
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertEqual(len(runner.runner_state[JOBS]), 4)
+        self.assertEqual(len(runner.check_jobs()), 4)
 
         self.assertTrue(runner.stop_runner(clear_jobs=True))
 
@@ -515,7 +515,7 @@ class WorkflowTest(unittest.TestCase):
             print_logging=False
         )
 
-        self.assertEqual(runner.runner_state[PATTERNS], {})
+        self.assertEqual(runner.check_patterns(), {})
 
         base_path = 'examples/meow_directory/patterns/adder'
         self.assertTrue(os.path.exists(base_path))
@@ -533,9 +533,9 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertIsNotNone(runner.runner_state[PATTERNS])
-        self.assertIsInstance(runner.runner_state[PATTERNS], dict)
-        self.assertIn('adder', runner.runner_state[PATTERNS])
+        self.assertIsNotNone(runner.check_patterns())
+        self.assertIsInstance(runner.check_patterns(), dict)
+        self.assertIn('adder', runner.check_patterns())
 
         self.assertTrue(os.path.exists(new_path))
 
@@ -567,11 +567,11 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertIsNotNone(runner.runner_state[PATTERNS])
-        self.assertIsInstance(runner.runner_state[PATTERNS], dict)
-        self.assertIn('adder', runner.runner_state[PATTERNS])
+        self.assertIsNotNone(runner.check_patterns())
+        self.assertIsInstance(runner.check_patterns(), dict)
+        self.assertIn('adder', runner.check_patterns())
         self.assertEqual(
-            runner.runner_state[PATTERNS]['adder'].trigger_paths,
+            runner.check_patterns()['adder'].trigger_paths,
             new_paths
          )
 
@@ -591,9 +591,9 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertIsNotNone(runner.runner_state[PATTERNS])
-        self.assertIsInstance(runner.runner_state[PATTERNS], dict)
-        self.assertIn('adder', runner.runner_state[PATTERNS])
+        self.assertIsNotNone(runner.check_patterns())
+        self.assertIsInstance(runner.check_patterns(), dict)
+        self.assertIn('adder', runner.check_patterns())
 
         removed_path = os.path.join(RUNNER_DATA, PATTERNS, 'adder')
         self.assertTrue(os.path.exists(removed_path))
@@ -603,7 +603,7 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertNotIn('adder', runner.runner_state[PATTERNS])
+        self.assertNotIn('adder', runner.check_patterns())
 
         self.assertFalse(os.path.exists(removed_path))
 
@@ -616,7 +616,7 @@ class WorkflowTest(unittest.TestCase):
             print_logging=False
         )
 
-        self.assertEqual(runner.runner_state[RECIPES], {})
+        self.assertEqual(runner.check_recipes(), {})
 
         base_path = 'examples/meow_directory/recipes/add'
         self.assertTrue(os.path.exists(base_path))
@@ -634,9 +634,9 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertIsNotNone(runner.runner_state[RECIPES])
-        self.assertIsInstance(runner.runner_state[RECIPES], dict)
-        self.assertIn('add', runner.runner_state[RECIPES])
+        self.assertIsNotNone(runner.check_recipes())
+        self.assertIsInstance(runner.check_recipes(), dict)
+        self.assertIn('add', runner.check_recipes())
 
         self.assertTrue(os.path.exists(new_path))
 
@@ -668,11 +668,11 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertIsNotNone(runner.runner_state[RECIPES])
-        self.assertIsInstance(runner.runner_state[RECIPES], dict)
-        self.assertIn('add', runner.runner_state[RECIPES])
+        self.assertIsNotNone(runner.check_recipes())
+        self.assertIsInstance(runner.check_recipes(), dict)
+        self.assertIn('add', runner.check_recipes())
         self.assertEqual(
-            runner.runner_state[RECIPES]['add'][SOURCE],
+            runner.check_recipes()['add'][SOURCE],
             new_source
         )
 
@@ -692,9 +692,9 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertIsNotNone(runner.runner_state[RECIPES])
-        self.assertIsInstance(runner.runner_state[RECIPES], dict)
-        self.assertIn('add', runner.runner_state[RECIPES])
+        self.assertIsNotNone(runner.check_recipes())
+        self.assertIsInstance(runner.check_recipes(), dict)
+        self.assertIn('add', runner.check_recipes())
 
         removed_path = os.path.join(RUNNER_DATA, RECIPES, 'add')
         self.assertTrue(os.path.exists(removed_path))
@@ -704,7 +704,7 @@ class WorkflowTest(unittest.TestCase):
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
 
-        self.assertNotIn('add', runner.runner_state[RECIPES])
+        self.assertNotIn('add', runner.check_recipes())
 
         removed_path = os.path.join(RUNNER_DATA, RECIPES, 'add')
         self.assertFalse(os.path.exists(removed_path))

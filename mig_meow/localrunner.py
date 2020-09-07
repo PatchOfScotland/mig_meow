@@ -291,7 +291,7 @@ class WorkflowRunner:
         check_input(print_logging, bool, 'print_logging')
         check_input(file_logging, bool, 'file_logging')
 
-        self.runner_state = {
+        self.__runner_state = {
             PATTERNS: {},
             RECIPES: {},
             RULES: [],
@@ -309,11 +309,11 @@ class WorkflowRunner:
         }
 
         runner_log_file = create_localrunner_logfile(debug_mode=file_logging)
-        self.runner_state[LOGGER] = runner_log_file
+        self.__runner_state[LOGGER] = runner_log_file
         runner_log(
-            self.runner_state,
+            self.__runner_state,
             'run_local_workflow',
-            'created new log at %s' % self.runner_state[LOGGER]
+            'created new log at %s' % self.__runner_state[LOGGER]
         )
 
         make_dir(path, can_exist=reuse_vgrid)
@@ -322,22 +322,22 @@ class WorkflowRunner:
         make_dir(RUNNER_PATTERNS, ensure_clean=True)
         make_dir(RUNNER_RECIPES, ensure_clean=True)
 
-        self.runner_state[VGRID] = path
+        self.__runner_state[VGRID] = path
 
         runner_log(
-            self.runner_state,
+            self.__runner_state,
             'run_local_workflow',
             'Starting MEOW monitor'
         )
 
-        self.runner_state[DATA_DIR] = meow_data
-        self.runner_state[JOBS_DIR] = job_data
+        self.__runner_state[DATA_DIR] = meow_data
+        self.__runner_state[JOBS_DIR] = job_data
 
         workflow_administrator = LocalWorkflowAdministrator(
-            runner_state=self.runner_state
+            runner_state=self.__runner_state
         )
         administrator_observer = Observer()
-        self.runner_state[ADMIN] = administrator_observer
+        self.__runner_state[ADMIN] = administrator_observer
         administrator_observer.schedule(
             workflow_administrator,
             meow_data,
@@ -346,16 +346,16 @@ class WorkflowRunner:
         administrator_observer.start()
 
         runner_log(
-            self.runner_state,
+            self.__runner_state,
             'run_local_workflow',
             'Starting file monitor'
         )
 
         workflow_monitor = LocalWorkflowMonitor(
-            runner_state=self.runner_state
+            runner_state=self.__runner_state
         )
         monitor_observer = Observer()
-        self.runner_state[MONITOR] = monitor_observer
+        self.__runner_state[MONITOR] = monitor_observer
         monitor_observer.schedule(
             workflow_monitor,
             path,
@@ -364,7 +364,7 @@ class WorkflowRunner:
         monitor_observer.start()
 
         runner_log(
-            self.runner_state,
+            self.__runner_state,
             'run_local_workflow',
             'Monitor setup complete'
         )
@@ -378,7 +378,7 @@ class WorkflowRunner:
                 write_dir_recipe(recipe, directory=meow_data)
 
         runner_log(
-            self.runner_state,
+            self.__runner_state,
             'run_local_workflow',
             'Initial Pattern and Recipe definitions complete'
         )
@@ -386,8 +386,8 @@ class WorkflowRunner:
         _worker_lock.acquire()
         try:
             for id in range(0, workers):
-                worker = JobProcessor(id, self.runner_state)
-                self.runner_state[WORKERS].append(worker)
+                worker = JobProcessor(id, self.__runner_state)
+                self.__runner_state[WORKERS].append(worker)
         except Exception as ex:
             _worker_lock.release()
             raise Exception(ex)
@@ -406,11 +406,11 @@ class WorkflowRunner:
     def start_workers(self):
         _worker_lock.acquire()
         try:
-            workers = self.runner_state[WORKERS]
+            workers = self.__runner_state[WORKERS]
 
             for worker in workers:
                 runner_log(
-                    self.runner_state,
+                    self.__runner_state,
                     'start_workers',
                     "Starting worker %s" % worker.worker_id
                 )
@@ -422,10 +422,10 @@ class WorkflowRunner:
         _worker_lock.release()
 
     def check_running_status(self):
-        if not self.runner_state[ADMIN]:
+        if not self.__runner_state[ADMIN]:
             return (False, 'The Workflow Admin is not running. You should '
                            'start another workflow runner. ')
-        if not self.runner_state[MONITOR]:
+        if not self.__runner_state[MONITOR]:
             return (False, 'The Workflow Monitor is not running. You should '
                            'start another workflow runner. ')
         running, total = self.get_runnering_status()
@@ -436,10 +436,10 @@ class WorkflowRunner:
 
     def get_runnering_status(self):
         _worker_lock.acquire()
-        total = len(self.runner_state[WORKERS])
+        total = len(self.__runner_state[WORKERS])
         running = 0
         try:
-            for worker in self.runner_state[WORKERS]:
+            for worker in self.__runner_state[WORKERS]:
                 if worker.isAlive():
                     running += 1
         except Exception as ex:
@@ -449,12 +449,11 @@ class WorkflowRunner:
         return (running, total)
 
     def stop_runner(self, clear_jobs=False):
-
         _worker_lock.acquire()
         try:
-            monitor_observer = self.runner_state[MONITOR]
-            administrator_observer = self.runner_state[ADMIN]
-            workers = self.runner_state[WORKERS]
+            monitor_observer = self.__runner_state[MONITOR]
+            administrator_observer = self.__runner_state[ADMIN]
+            workers = self.__runner_state[WORKERS]
 
             to_join = []
 
@@ -473,22 +472,22 @@ class WorkflowRunner:
             for thread in to_join:
                 thread.join()
 
-            self.runner_state[MONITOR] = None
-            self.runner_state[ADMIN] = None
-            self.runner_state[WORKERS] = []
+            self.__runner_state[MONITOR] = None
+            self.__runner_state[ADMIN] = None
+            self.__runner_state[WORKERS] = []
         except Exception as ex:
             _worker_lock.release()
             raise Exception(ex)
         _worker_lock.release()
 
-        meow_data = self.runner_state[DATA_DIR]
+        meow_data = self.__runner_state[DATA_DIR]
         if os.path.exists(meow_data) and os.path.isdir(meow_data):
             shutil.rmtree(meow_data)
 
-        job_data = self.runner_state[JOBS_DIR]
+        job_data = self.__runner_state[JOBS_DIR]
         if clear_jobs and os.path.exists(job_data):
-            for job in self.runner_state[JOBS]:
-                job_dir = get_job_dir(self.runner_state, job)
+            for job in self.__runner_state[JOBS]:
+                job_dir = get_job_dir(self.__runner_state, job)
                 if os.path.exists(job_dir):
                     shutil.rmtree(job_dir)
             if len(os.listdir(job_data)) == 0:
@@ -500,7 +499,7 @@ class WorkflowRunner:
 
         _job_lock.acquire()
         try:
-            job_queue = copy.deepcopy(self.runner_state[JOBS])
+            job_queue = copy.deepcopy(self.__runner_state[JOBS])
         except:
             pass
         _job_lock.release()
@@ -512,7 +511,7 @@ class WorkflowRunner:
 
         _job_lock.acquire()
         try:
-            job_queue = copy.deepcopy(self.runner_state[QUEUE])
+            job_queue = copy.deepcopy(self.__runner_state[QUEUE])
         except:
             pass
         _job_lock.release()
@@ -523,7 +522,7 @@ class WorkflowRunner:
         input_paths = []
         _rules_lock.acquire()
         try:
-            for rule in self.runner_state[RULES]:
+            for rule in self.__runner_state[RULES]:
                 input_paths.append(rule[RULE_PATH])
             _rules_lock.release()
         except Exception as ex:
@@ -544,15 +543,15 @@ class WorkflowRunner:
         status, msg = is_valid_pattern_object(pattern)
         if not status:
             runner_log(
-                self.runner_state,
+                self.__runner_state,
                 'add_pattern',
                 'Could not add pattern. %s' % msg
             )
         else:
-            write_dir_pattern(pattern, directory=self.runner_state[DATA_DIR])
+            write_dir_pattern(pattern, directory=self.__runner_state[DATA_DIR])
 
             runner_log(
-                self.runner_state,
+                self.__runner_state,
                 'add_pattern',
                 'Added pattern: %s' % msg
             )
@@ -561,15 +560,15 @@ class WorkflowRunner:
         status, msg = is_valid_pattern_object(pattern)
         if not status:
             runner_log(
-                self.runner_state,
+                self.__runner_state,
                 'modify_pattern',
                 'Could not modify pattern. %s' % msg
             )
         else:
-            write_dir_pattern(pattern, directory=self.runner_state[DATA_DIR])
+            write_dir_pattern(pattern, directory=self.__runner_state[DATA_DIR])
 
             runner_log(
-                self.runner_state,
+                self.__runner_state,
                 'modify_pattern',
                 'Modified pattern: %s' % msg
             )
@@ -581,16 +580,16 @@ class WorkflowRunner:
             name = pattern.name
         else:
             runner_log(
-                self.runner_state,
+                self.__runner_state,
                 'remove_pattern',
                 'Invalid pattern parameter. Must be either Pattern object, '
                 'or a str name. '
             )
             return
 
-        delete_dir_pattern(name, directory=self.runner_state[DATA_DIR])
+        delete_dir_pattern(name, directory=self.__runner_state[DATA_DIR])
         runner_log(
-            self.runner_state,
+            self.__runner_state,
             'remove_pattern',
             'Removed pattern: %s' % name
         )
@@ -599,15 +598,15 @@ class WorkflowRunner:
         status, msg = is_valid_recipe_dict(recipe)
         if not status:
             runner_log(
-                self.runner_state,
+                self.__runner_state,
                 'add_recipe',
                 'Could not add recipe. %s' % msg
             )
         else:
-            write_dir_recipe(recipe, directory=self.runner_state[DATA_DIR])
+            write_dir_recipe(recipe, directory=self.__runner_state[DATA_DIR])
 
             runner_log(
-                self.runner_state,
+                self.__runner_state,
                 'add_recipe',
                 'Added user recipe: %s' % msg
             )
@@ -616,15 +615,15 @@ class WorkflowRunner:
         status, msg = is_valid_recipe_dict(recipe)
         if not status:
             runner_log(
-                self.runner_state,
+                self.__runner_state,
                 'modify_recipe',
                 'Could not modify recipe. %s' % msg
             )
         else:
-            write_dir_recipe(recipe, directory=self.runner_state[DATA_DIR])
+            write_dir_recipe(recipe, directory=self.__runner_state[DATA_DIR])
 
             runner_log(
-                self.runner_state,
+                self.__runner_state,
                 'modify_recipe',
                 'Modified recipe: %s' % msg
             )
@@ -636,19 +635,35 @@ class WorkflowRunner:
             name = recipe[NAME]
         else:
             runner_log(
-                self.runner_state,
+                self.__runner_state,
                 'remove_recipe',
                 'Invalid recipe parameter. Must be either recipe dict, '
                 'or a str name. '
             )
             return
 
-        delete_dir_recipe(name, directory=self.runner_state[DATA_DIR])
+        delete_dir_recipe(name, directory=self.__runner_state[DATA_DIR])
         runner_log(
-            self.runner_state,
+            self.__runner_state,
             'remove_recipe',
             'Removed recipe: %s' % name
         )
+
+    def check_recipes(self):
+        recipes_dict = copy.deepcopy(self.__runner_state[RECIPES])
+        return recipes_dict
+
+    def check_patterns(self):
+        patterns_dict = copy.deepcopy(self.__runner_state[PATTERNS])
+        return patterns_dict
+
+    def check_rules(self):
+        rules_dict = copy.deepcopy(self.__runner_state[RULES])
+        return rules_dict
+
+    def check_jobs(self):
+        jobs_dict = copy.deepcopy(self.__runner_state[JOBS])
+        return jobs_dict
 
 
 class JobProcessor(threading.Thread):

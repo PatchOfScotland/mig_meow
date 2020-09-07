@@ -98,7 +98,7 @@ VALID_RECIPE_DICT = {
         'cells': [],
         'metadata': {},
         'nbformat': 4,
-        'nbformat_minor': 2
+        'nbformat_minor': 4
     }
 }
 
@@ -1081,6 +1081,9 @@ class WorkflowTest(unittest.TestCase):
             VALID_RECIPE_DICT[NAME],
             EMPTY_NOTEBOOK
         )
+
+        print('got recipe:')
+        print(recipe_dict)
 
         # Test that created recipe has expected values.
         self.assertTrue(recipe_dict == VALID_RECIPE_DICT)
