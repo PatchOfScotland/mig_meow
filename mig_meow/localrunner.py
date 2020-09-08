@@ -49,6 +49,7 @@ _trigger_event = '_trigger_event'
 RUNNER_DATA = '.workflow_runner_data'
 RUNNER_PATTERNS = os.path.join(RUNNER_DATA, PATTERNS)
 RUNNER_RECIPES = os.path.join(RUNNER_DATA, RECIPES)
+OUTPUT_DATA = 'job_output'
 
 JOB_DIR = '.workflow_processing'
 
@@ -65,6 +66,7 @@ JOBS = 'jobs'
 QUEUE = 'queue'
 DATA_DIR = 'data_dir'
 JOBS_DIR = 'jobs_dir'
+OUTPUT_DIR = 'output_dir'
 RETRO_ACTIVE = 'retro'
 PRINT = 'print'
 
@@ -276,8 +278,9 @@ def runner_log(runner_state, func_name, log_msg):
 
 class WorkflowRunner:
     def __init__(self, path, workers, patterns=None, recipes=None,
-                 meow_data=RUNNER_DATA, job_data=JOB_DIR, daemon=False,
-                 reuse_vgrid=True, start_workers=False, retro_active_jobs=True,
+                 meow_data=RUNNER_DATA, job_data=JOB_DIR,
+                 output_data=OUTPUT_DATA, daemon=False, reuse_vgrid=True,
+                 start_workers=False, retro_active_jobs=True,
                  print_logging=True, file_logging=False):
 
         valid_dir_path(path, 'path')
@@ -286,6 +289,7 @@ class WorkflowRunner:
         check_input(recipes, dict, RECIPES, or_none=True)
         valid_dir_path(meow_data, 'meow_data')
         valid_dir_path(job_data, 'job_data')
+        valid_dir_path(output_data, 'output_data')
         check_input(daemon, bool, 'daemon')
         check_input(reuse_vgrid, bool, 'reuse_vgrid')
         check_input(start_workers, bool, 'start_workers')
@@ -305,6 +309,7 @@ class WorkflowRunner:
             WORKERS: [],
             DATA_DIR: None,
             JOBS_DIR: None,
+            OUTPUT_DIR: None,
             VGRID: None,
             RETRO_ACTIVE: retro_active_jobs,
             PRINT: print_logging
@@ -321,6 +326,7 @@ class WorkflowRunner:
         make_dir(path, can_exist=reuse_vgrid)
         make_dir(job_data)
         make_dir(meow_data, ensure_clean=True)
+        make_dir(output_data)
         make_dir(RUNNER_PATTERNS, ensure_clean=True)
         make_dir(RUNNER_RECIPES, ensure_clean=True)
 
@@ -334,6 +340,7 @@ class WorkflowRunner:
 
         self.__runner_state[DATA_DIR] = meow_data
         self.__runner_state[JOBS_DIR] = job_data
+        self.__runner_state[OUTPUT_DIR] = output_data
 
         workflow_administrator = LocalWorkflowAdministrator(
             runner_state=self.__runner_state
@@ -788,6 +795,11 @@ class JobProcessor(threading.Thread):
                 running_data[JOB_STATUS] = DONE
                 running_data[JOB_END_TIME] = datetime.now()
                 write_yaml(running_data, meta_path)
+
+                job_output_dir = \
+                    os.path.join(self.runner_state[OUTPUT_DIR], running_job)
+
+                shutil.copytree(job_dir, job_output_dir)
 
                 time.sleep(10 + (self.worker_id % 10))
         except Exception as ex:
