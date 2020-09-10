@@ -108,6 +108,7 @@ venv.bak/
 test_vgrid/
 test_mig/
 test_dir/
+job_output/
 .workflow_processing/
 .workflow_runner_data/
 development_test_notebook.ipynb

@@ -241,6 +241,8 @@ def schedule_job(runner_state, rule, src_path, recipe_code, yaml_dict):
         src_path
     )
 
+    print('edited yaml dict to: %s' % yaml_dict)
+
     job_dir = get_job_dir(runner_state, job_dict[JOB_ID])
     make_dir(job_dir)
 
@@ -451,13 +453,13 @@ class WorkflowRunner:
         if not self.__runner_state[MONITOR]:
             return (False, 'The Workflow Monitor is not running. You should '
                            'start another workflow runner. ')
-        running, total = self.get_runnering_status()
+        running, total = self.get_running_status()
         if running == total:
             return (True, 'All workers are running. ')
         else:
             return (False, '%d workers are not running. ' % (total - running))
 
-    def get_runnering_status(self):
+    def get_running_status(self):
         _worker_lock.acquire()
         total = len(self.__runner_state[WORKERS])
         running = 0
@@ -1087,12 +1089,24 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
             yaml_dict[var] = val
         yaml_dict[pattern.trigger_file] = path
 
+        # print('setting up yaml dict')
+        #
+        # yaml_dict = {}
+        # for var, val in pattern.variables.items():
+        #     yaml_dict[var] = val
+        # for var, val in pattern.outputs.items():
+        #     yaml_dict[var] = val
+        # yaml_dict[pattern.trigger_file] = src_path
+        #
+        # print('got yaml dict: %s' % yaml_dict)
+
         if self.runner_state[RETRO_ACTIVE]:
             testing_path = os.path.join(self.runner_state[VGRID], path)
 
             globbed = glob.glob(testing_path)
 
             for globble in globbed:
+                yaml_dict[pattern.trigger_file] = globble
 
                 local_path = globble[globble.find(os.path.sep)+1:]
 
@@ -1256,12 +1270,16 @@ class LocalWorkflowMonitor(PatternMatchingEventHandler):
             'Starting new job for %s using rule %s' % (src_path, rule)
         )
 
+        print('setting up yaml dict')
+
         yaml_dict = {}
         for var, val in pattern.variables.items():
             yaml_dict[var] = val
         for var, val in pattern.outputs.items():
             yaml_dict[var] = val
         yaml_dict[pattern.trigger_file] = src_path
+
+        print('got yaml dict: %s' % yaml_dict)
 
         if not pattern.sweep:
             schedule_job(
