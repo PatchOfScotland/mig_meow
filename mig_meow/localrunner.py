@@ -878,7 +878,6 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
                    'LocalWorkflowAdministrator._init',
                     str(exc)
                 )
-                return
             self.add_recipe(recipe)
 
     def update_rules(self, event):
