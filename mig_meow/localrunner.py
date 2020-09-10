@@ -9,6 +9,7 @@ import time
 import shutil
 import re
 import fnmatch
+import subprocess
 import threading
 import multiprocessing
 
@@ -241,7 +242,6 @@ def schedule_job(runner_state, rule, src_path, recipe_code, yaml_dict):
         src_path
     )
 
-    print('edited yaml dict to: %s' % yaml_dict)
 
     job_dir = get_job_dir(runner_state, job_dict[JOB_ID])
     make_dir(job_dir)
@@ -283,7 +283,6 @@ def runner_log(runner_state, func_name, log_msg):
 
     if runner_state[PRINT]:
         print(status_msg)
-        # print('\r' + status_msg, end='')
 
 
 class WorkflowRunner:
@@ -761,11 +760,19 @@ class JobProcessor(threading.Thread):
 
                 error = False
                 cmd = 'notebook_parameterizer ' \
-                      + base_path + ' ' \
-                      + param_path + ' ' \
-                      + '-o ' + job_path
+                      + BASE_FILE + ' ' \
+                      + PARAMS_FILE + ' ' \
+                      + '-o ' + JOB_FILE
                 try:
                     os.system(cmd)
+                    process = subprocess.Popen(cmd,
+                                               stdout=subprocess.PIPE,
+                                               stderr=subprocess.PIPE,
+                                               shell=True,
+                                               cwd=job_dir)
+                    # TODO: implement a timeout (max simulation time)
+                    (stdout, stderr) = process.communicate()
+
                 except Exception as ex:
                     error = ex
 
@@ -1089,17 +1096,6 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
             yaml_dict[var] = val
         yaml_dict[pattern.trigger_file] = path
 
-        # print('setting up yaml dict')
-        #
-        # yaml_dict = {}
-        # for var, val in pattern.variables.items():
-        #     yaml_dict[var] = val
-        # for var, val in pattern.outputs.items():
-        #     yaml_dict[var] = val
-        # yaml_dict[pattern.trigger_file] = src_path
-        #
-        # print('got yaml dict: %s' % yaml_dict)
-
         if self.runner_state[RETRO_ACTIVE]:
             testing_path = os.path.join(self.runner_state[VGRID], path)
 
@@ -1270,16 +1266,12 @@ class LocalWorkflowMonitor(PatternMatchingEventHandler):
             'Starting new job for %s using rule %s' % (src_path, rule)
         )
 
-        print('setting up yaml dict')
-
         yaml_dict = {}
         for var, val in pattern.variables.items():
             yaml_dict[var] = val
         for var, val in pattern.outputs.items():
             yaml_dict[var] = val
         yaml_dict[pattern.trigger_file] = src_path
-
-        print('got yaml dict: %s' % yaml_dict)
 
         if not pattern.sweep:
             schedule_job(
