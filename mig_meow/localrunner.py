@@ -794,10 +794,17 @@ class JobProcessor(threading.Thread):
                     continue
 
                 cmd = 'papermill ' \
-                      + job_path + ' ' \
-                      + result_path
+                      + JOB_FILE + ' ' \
+                      + RESULT_FILE
                 try:
                     os.system(cmd)
+                    process = subprocess.Popen(cmd,
+                                               stdout=subprocess.PIPE,
+                                               stderr=subprocess.PIPE,
+                                               shell=True,
+                                               cwd=job_dir)
+                    # TODO: implement a timeout (max simulation time)
+                    (stdout, stderr) = process.communicate()
                 except Exception as ex:
                     error = ex
 
