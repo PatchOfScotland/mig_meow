@@ -42,7 +42,7 @@ def monitor_widget(**kwargs):
 
 def start_local_workflow(
         vgrid_name, patterns, recipes, workers, warning=True,
-        print_logging=True, start_workers=True, daemon=False):
+        print_logging=True, start_workers=True, daemon=False, settle_time=3):
     if warning:
         print("This function is intended only as an illustration of MEOW "
               "functionality, and should therefore be used with caution. It "
@@ -57,7 +57,8 @@ def start_local_workflow(
         recipes=recipes,
         start_workers=start_workers,
         print_logging=print_logging,
-        daemon=daemon
+        daemon=daemon,
+        settle_time=settle_time
     )
 
     return runner

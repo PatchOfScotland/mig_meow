@@ -9,8 +9,8 @@ from mig_meow.constants import PATTERNS, RECIPES, KEYWORD_DIR, KEYWORD_JOB, \
     KEYWORD_REL_DIR, KEYWORD_REL_PATH, KEYWORD_PATH, VGRID, SOURCE
 from mig_meow.fileio import read_dir, read_dir_pattern, read_dir_recipe
 from mig_meow.localrunner import WorkflowRunner, RUNNER_DATA, \
-    RUNNER_RECIPES, RUNNER_PATTERNS, RULE_PATH, RULE_PATTERN, RULE_RECIPE, \
-    replace_keywords
+    get_runner_recipes, get_runner_patterns, RULE_PATH, RULE_PATTERN, \
+    RULE_RECIPE, replace_keywords
 
 TESTING_VGRID = 'testing_directory'
 
@@ -145,7 +145,7 @@ class WorkflowTest(unittest.TestCase):
         base_path = 'examples/meow_directory/patterns/adder'
         self.assertTrue(os.path.exists(base_path))
 
-        target_path = os.path.join(RUNNER_PATTERNS, 'late_adder')
+        target_path = os.path.join(RUNNER_DATA, PATTERNS, 'late_adder')
         self.assertFalse(os.path.exists(target_path))
 
         shutil.copyfile(base_path, target_path)
@@ -172,7 +172,7 @@ class WorkflowTest(unittest.TestCase):
         base_path = 'examples/meow_directory/recipes/add'
         self.assertTrue(os.path.exists(base_path))
 
-        target_path = os.path.join(RUNNER_RECIPES, 'late_add')
+        target_path = os.path.join(RUNNER_DATA, RECIPES, 'late_add')
         self.assertFalse(os.path.exists(target_path))
 
         shutil.copyfile(base_path, target_path)
@@ -242,7 +242,7 @@ class WorkflowTest(unittest.TestCase):
         for rule in STANDARD_RULES:
             self.assertIn(rule, idless_rules)
 
-        os.remove(os.path.join(RUNNER_PATTERNS, 'adder'))
+        os.remove(os.path.join(RUNNER_DATA, PATTERNS, 'adder'))
 
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)
@@ -284,7 +284,7 @@ class WorkflowTest(unittest.TestCase):
         for rule in STANDARD_RULES:
             self.assertIn(rule, idless_rules)
 
-        os.remove(os.path.join(RUNNER_RECIPES, 'mult'))
+        os.remove(os.path.join(RUNNER_DATA, RECIPES, 'mult'))
 
         # Small pause here as we need to allow daemon processes to work
         time.sleep(3)

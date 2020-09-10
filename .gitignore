@@ -112,4 +112,5 @@ test_dir/
 .workflow_runner_data/
 development_test_notebook.ipynb
 quickstart.py
+quicktest.py
 fullstart.py

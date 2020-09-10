@@ -43,12 +43,12 @@ _unit_periods = {
     'd': 24 * 60 * 60,
     'w': 7 * 24 * 60 * 60,
 }
+DEFAULT_SETTLE_TIME = 3
+SETTLE_TIME = 'settle_time'
 
 _trigger_event = '_trigger_event'
 
 RUNNER_DATA = '.workflow_runner_data'
-RUNNER_PATTERNS = os.path.join(RUNNER_DATA, PATTERNS)
-RUNNER_RECIPES = os.path.join(RUNNER_DATA, RECIPES)
 OUTPUT_DATA = 'job_output'
 
 JOB_DIR = '.workflow_processing'
@@ -98,6 +98,14 @@ _job_lock = threading.Lock()
 _queue_lock = threading.Lock()
 _worker_lock = threading.Lock()
 _rules_lock = threading.Lock()
+
+
+def get_runner_patterns(runner_data):
+    return os.path.join(runner_data, PATTERNS)
+
+
+def get_runner_recipes(runner_data):
+    return os.path.join(runner_data, RECIPES)
 
 
 def generate_id(length=16):
@@ -281,7 +289,8 @@ class WorkflowRunner:
                  meow_data=RUNNER_DATA, job_data=JOB_DIR,
                  output_data=OUTPUT_DATA, daemon=False, reuse_vgrid=True,
                  start_workers=False, retro_active_jobs=True,
-                 print_logging=True, file_logging=False):
+                 print_logging=True, file_logging=False,
+                 settle_time=DEFAULT_SETTLE_TIME):
 
         valid_dir_path(path, 'path')
         check_input(workers, int, 'workers', or_none=True)
@@ -296,6 +305,7 @@ class WorkflowRunner:
         check_input(retro_active_jobs, bool, 'retro_active_jobs')
         check_input(print_logging, bool, 'print_logging')
         check_input(file_logging, bool, 'file_logging')
+        check_input(settle_time, int, 'settle_time')
 
         self.__runner_state = {
             PATTERNS: {},
@@ -312,7 +322,8 @@ class WorkflowRunner:
             OUTPUT_DIR: None,
             VGRID: None,
             RETRO_ACTIVE: retro_active_jobs,
-            PRINT: print_logging
+            PRINT: print_logging,
+            SETTLE_TIME: settle_time
         }
 
         runner_log_file = create_localrunner_logfile(debug_mode=file_logging)
@@ -325,10 +336,13 @@ class WorkflowRunner:
 
         make_dir(path, can_exist=reuse_vgrid)
         make_dir(job_data)
-        make_dir(meow_data, ensure_clean=True)
+        if meow_data == RUNNER_DATA:
+            make_dir(meow_data, ensure_clean=True)
+        else:
+            make_dir(meow_data)
         make_dir(output_data)
-        make_dir(RUNNER_PATTERNS, ensure_clean=True)
-        make_dir(RUNNER_RECIPES, ensure_clean=True)
+        make_dir(get_runner_patterns(meow_data), ensure_clean=True)
+        make_dir(get_runner_recipes(meow_data), ensure_clean=True)
 
         self.__runner_state[VGRID] = path
 
@@ -490,7 +504,9 @@ class WorkflowRunner:
         _worker_lock.release()
 
         meow_data = self.__runner_state[DATA_DIR]
-        if os.path.exists(meow_data) and os.path.isdir(meow_data):
+        if os.path.exists(meow_data) \
+                and os.path.isdir(meow_data) \
+                and meow_data == RUNNER_DATA:
             shutil.rmtree(meow_data)
 
         job_data = self.__runner_state[JOBS_DIR]
@@ -806,7 +822,7 @@ class JobProcessor(threading.Thread):
             runner_log(
                 self.runner_state,
                 'worker %s' % self.worker_id,
-                "Worker has crashed. %s" % ex
+                "Worker has crashed. %s" % str(ex)
             )
             raise Exception(ex)
 
@@ -832,6 +848,38 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
             case_sensitive
         )
         self.runner_state = runner_state
+
+        # Check pre-existing Patterns and Recipes
+        runner_patterns = get_runner_patterns(runner_state[DATA_DIR])
+        for file_path in os.listdir(runner_patterns):
+            try:
+                pattern = read_dir_pattern(
+                    file_path,
+                    directory=self.runner_state[DATA_DIR]
+                )
+            except Exception as exc:
+                runner_log(
+                    self.runner_state,
+                    'LocalWorkflowAdministrator._init',
+                    str(exc)
+                )
+            self.add_pattern(pattern)
+
+        runner_recipes = get_runner_recipes(runner_state[DATA_DIR])
+        for file_path in os.listdir(runner_recipes):
+            try:
+                recipe = read_dir_recipe(
+                    file_path,
+                    directory=self.runner_state[DATA_DIR]
+                )
+            except Exception as exc:
+                runner_log(
+                    self.runner_state,
+                   'LocalWorkflowAdministrator._init',
+                    str(exc)
+                )
+                return
+            self.add_recipe(recipe)
 
     def update_rules(self, event):
         """Handle all rule updates"""
@@ -862,15 +910,17 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
         file_type = ''
         file_path = ''
         try:
-            if RUNNER_PATTERNS in src_path:
+            runner_patterns = get_runner_patterns(self.runner_state[DATA_DIR])
+            runner_recipes = get_runner_recipes(self.runner_state[DATA_DIR])
+            if runner_patterns in src_path:
                 file_path = src_path[
-                            src_path.find(RUNNER_PATTERNS)
-                            + len(RUNNER_PATTERNS)+1:]
+                            src_path.find(runner_patterns)
+                            + len(runner_patterns)+1:]
                 file_type = PATTERNS
-            elif RUNNER_RECIPES in src_path:
+            elif runner_recipes in src_path:
                 file_path = src_path[
-                            src_path.find(RUNNER_RECIPES)
-                            + len(RUNNER_RECIPES)+1:]
+                            src_path.find(runner_recipes)
+                            + len(runner_recipes)+1:]
                 file_type = RECIPES
         except Exception as exc:
             runner_log(
@@ -893,13 +943,13 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
                 try:
                     pattern = read_dir_pattern(
                         file_path,
-                        directory=RUNNER_DATA
+                        directory=self.runner_state[DATA_DIR]
                     )
                 except Exception as exc:
                     runner_log(
                         self.runner_state,
                         'update_rules-pattern',
-                        exc
+                        str(exc)
                     )
                     return
                 self.add_pattern(pattern)
@@ -907,13 +957,13 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
                 try:
                     recipe = read_dir_recipe(
                         file_path,
-                        directory=RUNNER_DATA
+                        directory=self.runner_state[DATA_DIR]
                     )
                 except Exception as exc:
                     runner_log(
                         self.runner_state,
                         'update_rules-recipe',
-                        exc
+                        str(exc)
                     )
                     return
                 self.add_recipe(recipe)
