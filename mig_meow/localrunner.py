@@ -760,16 +760,14 @@ class JobProcessor(threading.Thread):
 
                 error = False
                 cmd = 'notebook_parameterizer ' \
-                      + BASE_FILE + ' ' \
-                      + PARAMS_FILE + ' ' \
-                      + '-o ' + JOB_FILE
+                      + base_path + ' ' \
+                      + param_path + ' ' \
+                      + '-o ' + job_path
                 try:
-                    os.system(cmd)
                     process = subprocess.Popen(cmd,
                                                stdout=subprocess.PIPE,
                                                stderr=subprocess.PIPE,
-                                               shell=True,
-                                               cwd=job_dir)
+                                               shell=True)
                     # TODO: implement a timeout (max simulation time)
                     (stdout, stderr) = process.communicate()
 
@@ -797,7 +795,12 @@ class JobProcessor(threading.Thread):
                       + job_path + ' ' \
                       + result_path
                 try:
-                    os.system(cmd)
+                    process = subprocess.Popen(cmd,
+                                               stdout=subprocess.PIPE,
+                                               stderr=subprocess.PIPE,
+                                               shell=True)
+                    # TODO: implement a timeout (max simulation time)
+                    (stdout, stderr) = process.communicate()
                 except Exception as ex:
                     error = ex
 
