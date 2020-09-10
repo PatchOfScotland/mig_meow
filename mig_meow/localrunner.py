@@ -857,13 +857,13 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
                     file_path,
                     directory=self.runner_state[DATA_DIR]
                 )
+                self.add_pattern(pattern)
             except Exception as exc:
                 runner_log(
                     self.runner_state,
                     'LocalWorkflowAdministrator._init',
                     str(exc)
                 )
-            self.add_pattern(pattern)
 
         runner_recipes = get_runner_recipes(runner_state[DATA_DIR])
         for file_path in os.listdir(runner_recipes):
@@ -872,13 +872,13 @@ class LocalWorkflowAdministrator(PatternMatchingEventHandler):
                     file_path,
                     directory=self.runner_state[DATA_DIR]
                 )
+                self.add_recipe(recipe)
             except Exception as exc:
                 runner_log(
                     self.runner_state,
                    'LocalWorkflowAdministrator._init',
                     str(exc)
                 )
-            self.add_recipe(recipe)
 
     def update_rules(self, event):
         """Handle all rule updates"""
