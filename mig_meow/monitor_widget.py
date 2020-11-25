@@ -173,7 +173,7 @@ class MonitorWidget:
     such as cancelling or resubmitting can also be performed. Will update
     periodically.
     """
-    def __init__(self, vgrid, timer=60, displayed_jobs=30, debug=True):
+    def __init__(self, vgrid, timer=60, displayed_jobs=30, debug=False):
         """
         Constructor for MonitorWidget.
 
@@ -186,7 +186,7 @@ class MonitorWidget:
         page. Default is 30.
 
         :param debug: (bool)[optional] Flag for if the widget is running in
-        debug mode. Default value is True.
+        debug mode. Default value is False.
         """
 
         self.logfile = create_monitor_logfile(debug)
@@ -607,7 +607,7 @@ class MonitorWidget:
         """
         Returns the widget in a display ready state.
 
-        :return: (widgets.Output) The output are to be displayed ina  notebook.
+        :return: (widgets.Output) The output are to be displayed in a notebook.
         """
         return self.monitor_display_area
 

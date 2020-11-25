@@ -8,3 +8,4 @@ nbformat==5.0.7
 watchdog
 notebook_parameterizer
 papermill
+ipydatetime

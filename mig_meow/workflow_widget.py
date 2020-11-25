@@ -784,11 +784,11 @@ class WorkflowWidget:
         'workflow'.
 
         :param debug: (bool)[optional] Flag for if the widget is running in
-        debug mode. Default value is True.
+        debug mode. Default value is False.
         """
         check_input_args(kwargs, SUPPORTED_ARGS)
 
-        debug_mode = kwargs.get(DEBUG_MODE, True)
+        debug_mode = kwargs.get(DEBUG_MODE, False)
         self.logfile = create_workflow_logfile(debug_mode)
 
         write_to_log(
@@ -2184,14 +2184,14 @@ class WorkflowWidget:
                                                 and SWEEP_START_KEY in item \
                                                 and SWEEP_START_KEY in item \
                                                 and SWEEP_JUMP_KEY in item:
-                                            key = keys[index]
-                                            item[NAME_KEY].value = key
+                                            k = keys[index]
+                                            item[NAME_KEY].value = k
                                             item[SWEEP_START_KEY].value = \
-                                                str(value_list[key][SWEEP_START])
+                                                str(value_list[k][SWEEP_START])
                                             item[SWEEP_STOP_KEY].value = \
-                                                str(value_list[key][SWEEP_STOP])
+                                                str(value_list[k][SWEEP_STOP])
                                             item[SWEEP_JUMP_KEY].value = \
-                                                str(value_list[key][SWEEP_JUMP])
+                                                str(value_list[k][SWEEP_JUMP])
                                 else:
                                     if index < len(selected_object[update]):
                                         item.value = value_list[index]

@@ -5,7 +5,7 @@ import threading
 from datetime import datetime
 
 from .constants import LOGGING_DIR, WORKFLOW_LOGFILE_NAME, \
-    MONITOR_LOGFILE_NAME, RUNNER_LOGFILE_NAME
+    MONITOR_LOGFILE_NAME, RUNNER_LOGFILE_NAME, REPORT_LOGFILE_NAME
 
 lock = threading.Lock()
 
@@ -62,6 +62,18 @@ def create_monitor_logfile(debug_mode=None):
     :return: (function call to __create_logfile)
     """
     return __create_logfile(debug_mode, MONITOR_LOGFILE_NAME)
+
+
+def create_report_logfile(debug_mode=None):
+    """
+    Creates a new logfile for a report widget.
+
+    :param debug_mode: (boolean)[optional] flag for widget debug mode. If True
+    then a log is created. If false it is not. Default is None.
+
+    :return: (function call to __create_logfile)
+    """
+    return __create_logfile(debug_mode, REPORT_LOGFILE_NAME)
 
 
 def create_localrunner_logfile(debug_mode=None):

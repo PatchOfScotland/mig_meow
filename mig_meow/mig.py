@@ -9,7 +9,7 @@ from .constants import VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
     VALID_OPERATIONS, VALID_WORKFLOW_TYPES, VALID_JOB_TYPES, \
     DEFAULT_JSON_TIMEOUT, PATTERNS, VGRID_WORKFLOWS_OBJECT, VGRID_TEXT_TYPE, \
     OBJECT_TYPE, VGRID_ERROR_TYPE, RECIPE_NAME, RECIPE, SOURCE, VGRID_UPDATE, \
-    PERSISTENCE_ID, PATTERN_NAME, SWEEP
+    PERSISTENCE_ID, PATTERN_NAME, SWEEP, VGRID_REPORT_OBJECT_TYPE
 from .validation import check_input, valid_recipe_name, is_valid_recipe_dict, \
     valid_pattern_name
 from .logging import write_to_log
@@ -191,7 +191,7 @@ def vgrid_job_json_call(
     ValueError if an invalid value is found. If no problems are found then a
     JSON message is setup.
 
-    :param vgrid: (str) Vgrid to which recipe will be exported.
+    :param vgrid: (str) Vgrid from which job will be retrieved.
 
     :param operation: (str) The operation type to be performed by the MiG based
     JSON API. Valid operations are 'create', 'read', 'update' and 'delete'.
@@ -221,10 +221,10 @@ def vgrid_job_json_call(
     check_input(ssl, bool, 'ssl')
 
     try:
-        url = os.environ['JOBS_URL']
+        url = os.environ['WORKFLOWS_URL']
     except KeyError:
         msg = \
-            'MiGrid JOBS_URL was not specified in the local ' \
+            'MiGrid WORKFLOWS_URL was not specified in the local ' \
             'environment. This should be created automatically as part of ' \
             'the Notebook creation if the Notebook was created on IDMC. ' \
             'Currently this is the only supported way to interact with a ' \
@@ -251,6 +251,89 @@ def vgrid_job_json_call(
             'Requested workflow type %s is not a valid workflow type. Valid ' \
             'workflow types are: %s' % (workflow_type, VALID_JOB_TYPES)
         write_to_log(logfile, 'vgrid_job_json_call', msg)
+        raise ValueError(msg)
+
+    attributes[VGRID] = vgrid
+
+    return __vgrid_json_call(
+        operation,
+        workflow_type,
+        attributes,
+        url,
+        logfile=logfile,
+        ssl=ssl,
+        timeout=timeout
+    )
+
+
+def vgrid_report_json_call(
+        vgrid, operation, workflow_type, attributes, logfile=None,
+        ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
+    """
+    Validates input for a JSON report call to VGRID. Raises a TypeError or
+    ValueError if an invalid value is found. If no problems are found then a
+    JSON message is setup.
+
+    :param vgrid: (str) Vgrid from which report will be retrieved.
+
+    :param operation: (str) The operation type to be performed by the MiG based
+    JSON API. Valid operations are 'create', 'read', 'update' and 'delete'.
+
+    :param workflow_type: (str) MiG workflow action type. Valid are
+    'workflow_report'
+
+    :param attributes: (dict) A dictionary of arguments defining the specifics
+    of the requested operation.
+
+    :param logfile: (str)[optional] Path to a logfile. If provided logs are
+    recorded in this file. Default is None.
+
+    :param ssl: (boolean)[optional] Toggle to skip ssl checks. Default
+    False
+
+    :param timeout: (int) [optional] Timeout duration in seconds for Vgrid
+    call. Default is 60
+
+    :return: (function call to __vgrid_json_call) If all inputs are valid,
+    will call function '__vgrid_json_call'.
+    """
+    check_input(vgrid, str, 'vgrid')
+    check_input(operation, str, 'operation')
+    check_input(workflow_type, str, 'workflow_type')
+    check_input(attributes, dict, 'attributes', or_none=True)
+    check_input(ssl, bool, 'ssl')
+
+    try:
+        url = os.environ['WORKFLOWS_URL']
+    except KeyError:
+        msg = \
+            'MiGrid WORKFLOWS_URL was not specified in the local ' \
+            'environment. This should be created automatically as part of ' \
+            'the Notebook creation if the Notebook was created on IDMC. ' \
+            'Currently this is the only supported way to interact with a ' \
+            'VGrid. '
+        write_to_log(logfile, 'vgrid_report_json_call', msg)
+        raise EnvironmentError(msg)
+
+    write_to_log(
+        logfile,
+        'vgrid_job_json_call',
+        'A vgrid call has been requested. vgrid=%s, workflow_type=%s, '
+        'attributes=%s' % (vgrid, workflow_type, attributes)
+    )
+
+    if operation not in VALID_OPERATIONS:
+        msg = \
+            'Requested operation %s is not a valid operation. Valid ' \
+            'operations are: %s' % (operation, VALID_OPERATIONS)
+        write_to_log(logfile, 'vgrid_report_json_call',  msg)
+        raise ValueError(msg)
+
+    if workflow_type != VGRID_REPORT_OBJECT_TYPE:
+        msg = \
+            'Requested workflow type %s is not a valid workflow type. Valid ' \
+            'workflow type is: %s' % (workflow_type, VGRID_REPORT_OBJECT_TYPE)
+        write_to_log(logfile, 'vgrid_report_json_call', msg)
         raise ValueError(msg)
 
     attributes[VGRID] = vgrid
@@ -352,7 +435,7 @@ def __vgrid_json_call(
         json_response = response.json()
 
     except json.JSONDecodeError as err:
-        msg = 'Unexpected feedback from MiG. %s' % err
+        msg = 'Unexpected feedback from MiG. %s. %s' % (err, response)
         write_to_log(logfile, '__vgrid_json_call', msg)
         raise Exception(msg)
 

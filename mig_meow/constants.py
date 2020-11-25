@@ -69,6 +69,7 @@ VGRID_WORKFLOWS_OBJECT = 'workflows'
 VGRID_PATTERN_OBJECT_TYPE = 'workflowpattern'
 VGRID_RECIPE_OBJECT_TYPE = 'workflowrecipe'
 VGRID_ANY_OBJECT_TYPE = 'any'
+VGRID_REPORT_OBJECT_TYPE = 'workflow_report'
 
 VALID_WORKFLOW_TYPES = [
     VGRID_WORKFLOWS_OBJECT,
@@ -255,6 +256,7 @@ WIDGET_MODES = [
 LOGGING_DIR = 'mig_meow_logs'
 WORKFLOW_LOGFILE_NAME = 'workfow_widget'
 MONITOR_LOGFILE_NAME = 'monitor_widget'
+REPORT_LOGFILE_NAME = 'report_widget'
 RUNNER_LOGFILE_NAME = 'workflow_runner'
 
 KEYWORD_PATH = "{PATH}"

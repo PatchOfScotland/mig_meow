@@ -4,6 +4,7 @@ import threading
 from .localrunner import WorkflowRunner
 from .workflow_widget import WorkflowWidget
 from .monitor_widget import MonitorWidget, update_monitor
+from .report_widget import ReportWidget
 
 
 def workflow_widget(**kwargs):
@@ -36,6 +37,18 @@ def monitor_widget(**kwargs):
     )
 
     monitor_thread.start()
+
+    return widget.display_widget()
+
+
+def report_widget(**kwargs):
+    """
+
+    :param kwargs:
+    :return:
+    """
+
+    widget = ReportWidget(**kwargs)
 
     return widget.display_widget()
 
