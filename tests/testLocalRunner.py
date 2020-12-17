@@ -6,11 +6,10 @@ import numpy as np
 
 from mig_meow.constants import PATTERNS, RECIPES, KEYWORD_DIR, KEYWORD_JOB, \
     KEYWORD_VGRID, KEYWORD_EXTENSION, KEYWORD_PREFIX, KEYWORD_FILENAME, \
-    KEYWORD_REL_DIR, KEYWORD_REL_PATH, KEYWORD_PATH, VGRID, SOURCE
+    KEYWORD_REL_DIR, KEYWORD_REL_PATH, KEYWORD_PATH, SOURCE
 from mig_meow.fileio import read_dir, read_dir_pattern, read_dir_recipe
-from mig_meow.localrunner import WorkflowRunner, RUNNER_DATA, \
-    get_runner_recipes, get_runner_patterns, RULE_PATH, RULE_PATTERN, \
-    RULE_RECIPE, replace_keywords
+from mig_meow.localrunner import WorkflowRunner, RUNNER_DATA, RULE_PATH, \
+    RULE_PATTERN, RULE_RECIPE, replace_keywords
 
 TESTING_VGRID = 'testing_directory'
 
@@ -104,7 +103,7 @@ class WorkflowTest(unittest.TestCase):
 
         self.assertTrue(runner.stop_runner(clear_jobs=True))
 
-    def testWorklflowRunnerRecipeImports(self):
+    def testWorkflowRunnerRecipeImports(self):
         data = read_dir(directory='examples/meow_directory')
         recipes = data[RECIPES]
 
@@ -158,13 +157,15 @@ class WorkflowTest(unittest.TestCase):
         self.assertIsInstance(runner.check_patterns(), dict)
         self.assertIn('late_adder', runner.check_patterns())
 
-    def testWorklflowRunnerRecipeIdentification(self):
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
+
+    def testWorkflowRunnerRecipeIdentification(self):
         runner = WorkflowRunner(
             TESTING_VGRID,
             0,
             daemon=True,
             retro_active_jobs=False,
-            print_logging=False
+            print_logging=True
         )
 
         self.assertEqual(runner.check_recipes(), {})
@@ -184,6 +185,8 @@ class WorkflowTest(unittest.TestCase):
         self.assertIsNotNone(runner.check_recipes())
         self.assertIsInstance(runner.check_recipes(), dict)
         self.assertIn('late_add', runner.check_recipes())
+
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
 
     def testWorkflowRunnerRuleCreation(self):
         data = read_dir(directory='examples/meow_directory')
@@ -313,7 +316,7 @@ class WorkflowTest(unittest.TestCase):
             daemon=True,
             reuse_vgrid=False,
             retro_active_jobs=False,
-            print_logging=False
+            print_logging=True
         )
 
         # Small pause here as we need to allow daemon processes to work
@@ -417,11 +420,7 @@ class WorkflowTest(unittest.TestCase):
         _filename = _prefix + _ext
         _src_path = os.path.join(_vgrid, _dir1, _dir2, _filename)
 
-        state = {
-            VGRID: _vgrid
-        }
-
-        replaced = replace_keywords(to_test, state, _id, _src_path)
+        replaced = replace_keywords(to_test, _id, _src_path, _vgrid)
 
         self.assertIsInstance(replaced, dict)
         for k in to_test.keys():
@@ -542,6 +541,8 @@ class WorkflowTest(unittest.TestCase):
 
         self.assertTrue(os.path.exists(new_path))
 
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
+
     def testModifyPatternFunction(self):
         data = read_dir(directory='examples/meow_directory')
         patterns = data[PATTERNS]
@@ -578,6 +579,8 @@ class WorkflowTest(unittest.TestCase):
             new_paths
          )
 
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
+
     def testRemovePatternFunction(self):
         data = read_dir(directory='examples/meow_directory')
         patterns = data[PATTERNS]
@@ -609,6 +612,8 @@ class WorkflowTest(unittest.TestCase):
         self.assertNotIn('adder', runner.check_patterns())
 
         self.assertFalse(os.path.exists(removed_path))
+
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
 
     def testAddRecipeFunction(self):
         runner = WorkflowRunner(
@@ -642,6 +647,8 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn('add', runner.check_recipes())
 
         self.assertTrue(os.path.exists(new_path))
+
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
 
     def testModifyRecipeFunction(self):
         data = read_dir(directory='examples/meow_directory')
@@ -679,6 +686,8 @@ class WorkflowTest(unittest.TestCase):
             new_source
         )
 
+        self.assertTrue(runner.stop_runner(clear_jobs=True))
+
     def testRemoveRecipeFunction(self):
         data = read_dir(directory='examples/meow_directory')
         recipes = data[RECIPES]
@@ -711,3 +720,5 @@ class WorkflowTest(unittest.TestCase):
 
         removed_path = os.path.join(RUNNER_DATA, RECIPES, 'add')
         self.assertFalse(os.path.exists(removed_path))
+
+        self.assertTrue(runner.stop_runner(clear_jobs=True))

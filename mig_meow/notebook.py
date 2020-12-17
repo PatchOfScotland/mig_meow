@@ -70,8 +70,7 @@ def start_local_workflow(
         recipes=recipes,
         start_workers=start_workers,
         print_logging=print_logging,
-        daemon=daemon,
-        settle_time=settle_time
+        daemon=daemon
     )
 
     return runner
