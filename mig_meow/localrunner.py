@@ -9,10 +9,12 @@ import time
 import shutil
 import re
 import fnmatch
-import select
+#import select
 import subprocess
 import threading
-import multiprocessing
+
+from multiprocessing import Process, Pipe, current_process
+from multiprocessing.connection import wait
 
 from .constants import PATTERNS, RECIPES, NAME, SOURCE, CHAR_LOWERCASE, \
     CHAR_UPPERCASE, CHAR_NUMERIC, RECIPE, KEYWORD_DIR, KEYWORD_EXTENSION, \
@@ -212,7 +214,7 @@ def administrator(
                 op = OP_MODIFIED
         patterns[pattern.name] = pattern
         identify_rules(new_pattern=pattern)
-        to_logger.put(
+        to_logger.send(
             (
                 'add_pattern',
                 '%s pattern %s' % (op, pattern)
@@ -229,7 +231,7 @@ def administrator(
                 op = OP_MODIFIED
         recipes[recipe[NAME]] = recipe
         identify_rules(new_recipe=recipe)
-        to_logger.put(
+        to_logger.send(
             (
                 'add_recipe',
                 '%s recipe %s from source %s'
@@ -241,14 +243,14 @@ def administrator(
         if pattern_name in patterns:
             patterns.pop(pattern_name)
             remove_rules(deleted_pattern_name=pattern_name)
-            to_logger.put(
+            to_logger.send(
                 (
                     'remove_pattern',
                     'Removed pattern %s' % pattern_name
                 )
             )
         else:
-            to_logger.put(
+            to_logger.send(
                 (
                     'remove_pattern',
                     'Pattern %s was not present in the pattern list to be '
@@ -260,14 +262,14 @@ def administrator(
         if recipe_name in recipes:
             recipes.pop(recipe_name)
             remove_rules(deleted_recipe_name=recipe_name)
-            to_logger.put(
+            to_logger.send(
                 (
                     'remove_recipe',
                     'Removed recipe %s' % recipe_name
                 )
             )
         else:
-            to_logger.put(
+            to_logger.send(
                 (
                     'remove_recipe',
                     'Recipe %s was not present in the recipe list to be '
@@ -284,7 +286,7 @@ def administrator(
         }
         rules.append(rule)
 
-        to_logger.put(
+        to_logger.send(
             (
                 'create_new_rule',
                 'Created rule for path: %s with id %s.'
@@ -335,7 +337,7 @@ def administrator(
     def identify_rules(new_pattern=None, new_recipe=None):
         if new_pattern:
             if len(new_pattern.recipes) > 1:
-                to_logger.put(
+                to_logger.send(
                     (
                         'identify_rules-pattern',
                         'Rule creation aborted. Currently only supports one '
@@ -354,7 +356,7 @@ def administrator(
         if new_recipe:
             for name, pattern in patterns.items():
                 if len(pattern.recipes) > 1:
-                    to_logger.put(
+                    to_logger.send(
                         (
                             'identify_rules-recipe',
                             'Rule creation avoided for %s. Currently only '
@@ -381,7 +383,7 @@ def administrator(
                     to_delete.append(rule)
         for delete in to_delete:
             rules.remove(delete)
-            to_logger.put(
+            to_logger.send(
                 (
                     'remove_rules',
                     'Removing rule: %s.' % delete
@@ -435,7 +437,7 @@ def administrator(
 
         jobs.append(job_dict[JOB_ID])
 
-        to_queue.put(job_dict[JOB_ID])
+        to_queue.send(job_dict[JOB_ID])
 
     def handle_event(event):
         src_path = event.src_path
@@ -445,7 +447,7 @@ def administrator(
         while handle_path.startswith(os.path.sep):
             handle_path = handle_path[1:]
 
-        to_logger.put(
+        to_logger.send(
             (
                 'handle_event',
                 'Handling %s event at %s' % (event_type, handle_path)
@@ -464,7 +466,7 @@ def administrator(
 
                 pattern = patterns[rule[RULE_PATTERN]]
 
-                to_logger.put(
+                to_logger.send(
                     (
                         'run_handler',
                         'Starting new job for %s using rule %s'
@@ -500,13 +502,13 @@ def administrator(
 
     def start_workers():
         for to_worker in to_worker_writers:
-            to_worker.put('start')
+            to_worker.send('start')
 
         return True
 
     def stop_workers():
         for to_worker in to_worker_writers:
-            to_worker.put('stop')
+            to_worker.send('stop')
 
         return True
 
@@ -523,10 +525,10 @@ def administrator(
 
         for i in range(len(to_worker_writers)):
             to_worker = to_worker_writers[i]
-            to_worker.put('check')
+            to_worker.send('check')
 
             from_worker = from_worker_readers[i]
-            status = from_worker.get()
+            status = from_worker.recv()
             if status == 'running':
                 running += 1
         return running, total
@@ -553,8 +555,8 @@ def administrator(
         return jobs_queue
 
     def get_queued_jobs():
-        to_queue.put('get_queue')
-        queue = from_queue.get()
+        to_queue.send('get_queue')
+        queue = from_queue.recv()
         return queue
 
     def get_all_input_paths():
@@ -575,7 +577,7 @@ def administrator(
     def add_pattern_dir(pattern):
         status, msg = is_valid_pattern_object(pattern)
         if not status:
-            to_logger.put(
+            to_logger.send(
                 (
                     'add_pattern',
                     'Could not add pattern. %s' % msg
@@ -586,7 +588,7 @@ def administrator(
         else:
             write_dir_pattern(pattern, directory=meow_data)
 
-            to_logger.put(
+            to_logger.send(
                 (
                     'add_pattern',
                     'Added pattern: %s' % msg
@@ -598,7 +600,7 @@ def administrator(
     def modify_pattern_dir(pattern):
         status, msg = is_valid_pattern_object(pattern)
         if not status:
-            to_logger.put(
+            to_logger.send(
                 (
                     'modify_pattern',
                     'Could not modify pattern. %s' % msg
@@ -609,7 +611,7 @@ def administrator(
         else:
             write_dir_pattern(pattern, directory=meow_data)
 
-            to_logger.put(
+            to_logger.send(
                 (
                     'modify_pattern',
                     'Modified pattern: %s' % msg
@@ -624,7 +626,7 @@ def administrator(
         elif isinstance(pattern, Pattern):
             name = pattern.name
         else:
-            to_logger.put(
+            to_logger.send(
                 (
                     'remove_pattern',
                     'Invalid pattern parameter. Must be either Pattern '
@@ -634,7 +636,7 @@ def administrator(
             return False
 
         delete_dir_pattern(name, directory=meow_data)
-        to_logger.put(
+        to_logger.send(
             (
                 'remove_pattern',
                 'Removed pattern: %s' % name
@@ -646,7 +648,7 @@ def administrator(
     def add_recipe_dir(recipe):
         status, msg = is_valid_recipe_dict(recipe)
         if not status:
-            to_logger.put(
+            to_logger.send(
                 (
                     'add_recipe',
                     'Could not add recipe. %s' % msg
@@ -656,7 +658,7 @@ def administrator(
         else:
             write_dir_recipe(recipe, directory=meow_data)
 
-            to_logger.put(
+            to_logger.send(
                 (
                     'add_recipe',
                     'Added user recipe: %s' % msg
@@ -667,7 +669,7 @@ def administrator(
     def modify_recipe_dir(recipe):
         status, msg = is_valid_recipe_dict(recipe)
         if not status:
-            to_logger.put(
+            to_logger.send(
                 (
                     'modify_recipe',
                     'Could not modify recipe. %s' % msg
@@ -677,7 +679,7 @@ def administrator(
         else:
             write_dir_recipe(recipe, directory=meow_data)
 
-            to_logger.put(
+            to_logger.send(
                 (
                     'modify_recipe',
                     'Modified recipe: %s' % msg
@@ -691,7 +693,7 @@ def administrator(
         elif isinstance(recipe, dict):
             name = recipe[NAME]
         else:
-            to_logger.put(
+            to_logger.send(
                 (
                     'remove_recipe',
                     'Invalid recipe parameter. Must be either recipe dict, '
@@ -701,7 +703,7 @@ def administrator(
             return False
 
         delete_dir_recipe(name, directory=meow_data)
-        to_logger.put(
+        to_logger.send(
             (
                 'remove_recipe',
                 'Removed recipe: %s' % name
@@ -739,14 +741,15 @@ def administrator(
         start_workers()
 
     while True:
-        (selected_input, [], []) = select.select([
-            from_state._reader,
-            from_file._reader,
-            from_user._reader
-        ], [], [])
 
-        if from_state._reader in selected_input:
-            input_message = from_state.get()
+        ready = wait([
+            from_state,
+            from_user,
+            from_file
+        ])
+
+        if from_state in ready:
+            input_message = from_state.recv()
             operation = input_message['operation']
             if 'pattern' in input_message:
                 if operation == OP_CREATE:
@@ -759,139 +762,113 @@ def administrator(
                 elif operation == OP_DELETED:
                     remove_recipe(input_message['recipe'])
 
-        elif from_file._reader in selected_input:
-            input_message = from_file.get()
-            handle_event(input_message)
-
-        elif from_user._reader in selected_input:
-            input_message = from_user.get()
+        elif from_user in ready:
+            input_message = from_user.recv()
             operation = input_message[0]
             args = input_message[1]
 
             if operation == 'start_workers':
                 result = start_workers()
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'stop_workers':
                 result = stop_workers()
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'check_running_status':
                 result = check_running_status()
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'get_running_status':
                 result = get_running_status()
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'stop_runner':
                 result = stop_runner(clear_jobs=args)
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'get_all_jobs':
                 result = get_all_jobs()
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'get_queued_jobs':
                 result = get_queued_jobs()
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'get_all_input_paths':
                 result = get_all_input_paths()
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'check_status':
                 result = check_status()
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'add_pattern':
                 result = add_pattern_dir(args)
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'modify_pattern':
                 result = modify_pattern_dir(args)
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'remove_pattern':
                 result = remove_pattern_dir(args)
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'add_recipe':
                 result = add_recipe_dir(args)
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'modify_recipe':
                 result = modify_recipe_dir(args)
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'remove_recipe':
                 result = remove_recipe_dir(args)
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'check_recipes':
                 result = check_recipes()
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'check_patterns':
                 result = check_patterns()
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'check_rules':
                 result = check_rules()
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'check_jobs':
                 result = check_jobs()
-                to_user.put(result)
+                to_user.send(result)
 
             elif operation == 'check_queue':
                 result = check_queue()
-                to_user.put(result)
+                to_user.send(result)
 
-
-# def state_monitor(to_admin, to_logger, meow_data):
-#     workflow_administrator = LocalWorkflowStateMonitor(
-#         to_admin, to_logger, meow_data)
-#     administrator_observer = Observer()
-#     administrator_observer.schedule(
-#         workflow_administrator,
-#         meow_data,
-#         recursive=True
-#     )
-#     administrator_observer.start()
-#
-#
-# def file_monitor(to_admin, to_logger, path):
-#     workflow_monitor = LocalWorkflowFileMonitor(
-#         to_admin, to_logger)
-#     monitor_observer = Observer()
-#     monitor_observer.schedule(
-#         workflow_monitor,
-#         path,
-#         recursive=True
-#     )
-#     monitor_observer.start()
+        elif from_file in ready:
+            input_message = from_file.recv()
+            handle_event(input_message)
 
 
 def job_queue(from_admin, to_admin, from_worker_readers, to_worker_writers,
               to_logger):
     queue = []
 
-    all_input_guards = [
-        from_admin._reader
-    ]
+    all_inputs = [from_admin]
 
     for channel_reader in from_worker_readers:
-        all_input_guards.append(channel_reader._reader)
+        all_inputs.append(channel_reader)
 
     while True:
-        (selected_input, [], []) = select.select(all_input_guards, [], [])
+        ready = wait(all_inputs)
 
-        if from_admin._reader in selected_input:
-            input_message = from_admin.get()
+        if from_admin in ready:
+            input_message = from_admin.recv()
             if input_message == 'get_queue':
                 current_queue = copy.deepcopy(queue)
-                to_admin.put(current_queue)
+                to_admin.send(current_queue)
 
             # submitting new job
             else:
@@ -900,48 +877,45 @@ def job_queue(from_admin, to_admin, from_worker_readers, to_worker_writers,
         # Is from worker
         else:
             for i in range(len(from_worker_readers)):
-                if from_worker_readers[i]._reader in selected_input:
-                    input_message = from_worker_readers[i].get()
+                if from_worker_readers[i] in ready:
+                    input_message = from_worker_readers[i].recv()
                     to_worker = to_worker_writers[i]
                     if input_message == 'request':
                         if queue:
                             first_job = queue.pop(0)
-                            to_worker.put(first_job)
+                            to_worker.send(first_job)
                         else:
-                            to_worker.put(None)
+                            to_worker.send(None)
 
 
 def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
                   from_queue, to_logger, processor_id, job_data, output_data):
     state = 'stopped'
 
-    to_timer.put('sleep')
+    to_timer.send('sleep')
 
     while True:
-        (selected_input, [], []) = select.select([
-            from_admin._reader,
-            from_timer._reader
-        ], [], [])
+        ready = wait([from_admin, from_timer])
 
-        if from_admin._reader in selected_input:
-            input_message = from_admin.get()
+        if from_admin in ready:
+            input_message = from_admin.recv()
 
             if input_message == 'start':
                 state = 'running'
 
             if input_message == 'check':
-                to_admin.put(state)
+                to_admin.send(state)
 
             if input_message == 'stop':
                 state = 'stopped'
 
-        if from_timer._reader in selected_input:
-            input_message = from_timer.get()
+        elif from_timer in ready:
+            input_message = from_timer.recv()
 
             if state == 'running':
-                to_queue.put('request')
+                to_queue.send('request')
 
-                job_id = from_queue.get()
+                job_id = from_queue.recv()
 
                 if job_id:
                     job_dir = os.path.join(job_data, job_id)
@@ -958,7 +932,7 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
 
                     write_yaml(job_data, meta_path)
 
-                    to_logger.put(
+                    to_logger.send(
                         (
                             'worker %s' % processor_id,
                             "Found job %s" % job_data[JOB_ID]
@@ -990,7 +964,7 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
                             msg += '. %s' % error
                         job_data[JOB_ERROR] = msg
                         write_yaml(job_data, meta_path)
-                        to_logger.put(
+                        to_logger.send(
                             (
                                 'worker %s' % processor_id,
                                 "Job worker encountered an error. %s" % msg
@@ -1019,7 +993,7 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
                             msg += '. %s' % error
                         job_data[JOB_ERROR] = msg
                         write_yaml(job_data, meta_path)
-                        to_logger.put(
+                        to_logger.send(
                             (
                                 'worker %s' % processor_id,
                                 "Job worker encountered and error. %s" % msg
@@ -1035,33 +1009,28 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
 
                     shutil.copytree(job_dir, job_output_dir)
 
-            to_timer.put('sleep')
+            to_timer.send('sleep')
 
 
 def worker_timer(from_worker, to_worker, worker_id):
     while True:
-        msg = from_worker.get()
+        msg = from_worker.recv()
 
         if msg == 'sleep':
             time.sleep(10 + (worker_id % 10))
 
-            to_worker.put('done')
+            to_worker.send('done')
 
 
 def logger(all_input_channel_readers, print_logging=True, file_logging=False):
-    all_input_guards = []
-
-    for channel_reader in all_input_channel_readers:
-        all_input_guards.append(channel_reader._reader)
-
     runner_log_file = create_localrunner_logfile(debug_mode=file_logging)
 
     while True:
-        (selected_input, [], []) = select.select(all_input_guards, [], [])
+        ready = wait(all_input_channel_readers)
 
-        for i in range(len(all_input_channel_readers)):
-            if all_input_channel_readers[i]._reader in selected_input:
-                input_message = all_input_channel_readers[i].get()
+        for reader in all_input_channel_readers:
+            if reader in ready:
+                input_message = reader.recv()
 
                 write_to_log(
                     runner_log_file,
@@ -1073,7 +1042,6 @@ def logger(all_input_channel_readers, print_logging=True, file_logging=False):
                     print(input_message[1])
 
                 continue
-
 
 class WorkflowRunner:
     def __init__(self, path, workers, patterns=None, recipes=None,
@@ -1106,31 +1074,31 @@ class WorkflowRunner:
         make_dir(get_runner_patterns(meow_data), ensure_clean=True)
         make_dir(get_runner_recipes(meow_data), ensure_clean=True)
 
-        user_to_admin = multiprocessing.Queue(maxsize=1)
-        admin_to_user = multiprocessing.Queue(maxsize=1)
-        user_to_logger = multiprocessing.Queue(maxsize=1)
+        user_to_admin_reader, user_to_admin_writer = Pipe(duplex=False)
+        admin_to_user_reader, admin_to_user_writer = Pipe(duplex=False)
+        user_to_logger_reader, user_to_logger_writer = Pipe(duplex=False)
 
-        self.user_to_admin = user_to_admin
-        self.admin_to_user = admin_to_user
+        self.user_to_admin = user_to_admin_writer
+        self.admin_to_user = admin_to_user_reader
 
-        state_to_admin = multiprocessing.Queue(maxsize=1)
-        state_to_logger = multiprocessing.Queue(maxsize=1)
+        state_to_admin_reader, state_to_admin_writer = Pipe(duplex=False)
+        state_to_logger_reader, state_to_logger_writer = Pipe(duplex=False)
 
-        file_to_admin = multiprocessing.Queue(maxsize=1)
-        file_to_logger = multiprocessing.Queue(maxsize=1)
+        file_to_admin_reader, file_to_admin_writer = Pipe(duplex=False)
+        file_to_logger_reader, file_to_logger_writer = Pipe(duplex=False)
 
-        admin_to_queue = multiprocessing.Queue(maxsize=1)
-        queue_to_admin = multiprocessing.Queue(maxsize=1)
-        admin_to_logger = multiprocessing.Queue(maxsize=1)
+        admin_to_queue_reader, admin_to_queue_writer = Pipe(duplex=False)
+        queue_to_admin_reader, queue_to_admin_writer = Pipe(duplex=False)
+        admin_to_logger_reader, admin_to_logger_writer = Pipe(duplex=False)
 
-        queue_to_logger = multiprocessing.Queue(maxsize=1)
+        queue_to_logger_reader, queue_to_logger_writer = Pipe(duplex=False)
 
         all_logger_inputs = [
-            user_to_logger,
-            state_to_logger,
-            file_to_logger,
-            admin_to_logger,
-            queue_to_logger,
+            user_to_logger_reader,
+            state_to_logger_reader,
+            file_to_logger_reader,
+            admin_to_logger_reader,
+            queue_to_logger_reader,
         ]
 
         workers_and_timers_list = []
@@ -1138,61 +1106,60 @@ class WorkflowRunner:
         worker_to_admins = []
         worker_to_queues = []
         queue_to_workers = []
-        worker_to_loggers = []
         for processor_id in range(0, workers):
-            worker_to_timer = multiprocessing.Queue(maxsize=1)
-            timer_to_worker = multiprocessing.Queue(maxsize=1)
-            admin_to_worker = multiprocessing.Queue(maxsize=1)
-            worker_to_admin = multiprocessing.Queue(maxsize=1)
-            worker_to_queue = multiprocessing.Queue(maxsize=1)
-            queue_to_worker = multiprocessing.Queue(maxsize=1)
-            worker_to_logger = multiprocessing.Queue(maxsize=1)
+            worker_to_timer_reader, worker_to_timer_writer = Pipe(duplex=False)
+            timer_to_worker_reader, timer_to_worker_writer = Pipe(duplex=False)
+            admin_to_worker_reader, admin_to_worker_writer = Pipe(duplex=False)
+            worker_to_admin_reader, worker_to_admin_writer = Pipe(duplex=False)
+            worker_to_queue_reader, worker_to_queue_writer = Pipe(duplex=False)
+            queue_to_worker_reader, queue_to_worker_writer = Pipe(duplex=False)
+            worker_to_logger_reader, worker_to_logger_writer = Pipe(duplex=False)
 
-            worker = multiprocessing.Process(
+            worker = Process(
                 target=job_processor,
                 args=(
-                    timer_to_worker,
-                    worker_to_timer,
-                    admin_to_worker,
-                    worker_to_admin,
-                    worker_to_queue,
-                    queue_to_worker,
-                    worker_to_logger,
+                    timer_to_worker_reader,
+                    worker_to_timer_writer,
+                    admin_to_worker_reader,
+                    worker_to_admin_writer,
+                    worker_to_queue_writer,
+                    queue_to_worker_reader,
+                    worker_to_logger_writer,
                     processor_id,
                     job_data,
                     output_data
                 )
             )
 
-            timer = multiprocessing.Process(
+            timer = Process(
                 target=worker_timer,
                 args=(
-                    worker_to_timer,
-                    timer_to_worker,
+                    worker_to_timer_reader,
+                    timer_to_worker_writer,
                     processor_id
                 )
             )
 
             workers_and_timers_list.append(worker)
             workers_and_timers_list.append(timer)
-            admin_to_workers.append(admin_to_worker)
-            worker_to_admins.append(worker_to_admin)
-            worker_to_queues.append(worker_to_queue)
-            queue_to_workers.append(queue_to_worker)
-            worker_to_loggers.append(worker_to_logger)
+            admin_to_workers.append(admin_to_worker_writer)
+            worker_to_admins.append(worker_to_admin_reader)
+            worker_to_queues.append(worker_to_queue_reader)
+            queue_to_workers.append(queue_to_worker_writer)
+            all_logger_inputs.append(worker_to_logger_reader)
 
-        administrator_process = multiprocessing.Process(
+        administrator_process = Process(
             target=administrator,
             args=(
-                user_to_admin,
-                admin_to_user,
-                state_to_admin,
-                file_to_admin,
-                admin_to_queue,
-                queue_to_admin,
+                user_to_admin_reader,
+                admin_to_user_writer,
+                state_to_admin_reader,
+                file_to_admin_reader,
+                admin_to_queue_writer,
+                queue_to_admin_reader,
                 admin_to_workers,
                 worker_to_admins,
-                admin_to_logger,
+                admin_to_logger_writer,
                 path,
                 job_data,
                 meow_data,
@@ -1201,18 +1168,18 @@ class WorkflowRunner:
             )
         )
 
-        job_queue_process = multiprocessing.Process(
+        job_queue_process = Process(
             target=job_queue,
             args=(
-                admin_to_queue,
-                queue_to_admin,
+                admin_to_queue_reader,
+                queue_to_admin_writer,
                 worker_to_queues,
                 queue_to_workers,
-                queue_to_logger
+                queue_to_logger_writer
             )
         )
 
-        logger_process = multiprocessing.Process(
+        logger_process = Process(
             target=logger,
             args=(
                 all_logger_inputs,
@@ -1222,12 +1189,9 @@ class WorkflowRunner:
         )
 
         process_list = [
-            # user_handler_process,
             logger_process,
             job_queue_process,
             administrator_process,
-#            state_monitor_process,
-#            file_monitor_process,
         ]
 
         self.process_list = process_list
@@ -1238,7 +1202,7 @@ class WorkflowRunner:
         self.run()
 
         state_monitor = LocalWorkflowStateMonitor(
-            state_to_admin, state_to_logger, meow_data)
+            state_to_admin_writer, state_to_logger_writer, meow_data)
         state_monitor_process = Observer()
         state_monitor_process.schedule(
             state_monitor,
@@ -1247,7 +1211,7 @@ class WorkflowRunner:
         )
 
         file_monitor = LocalWorkflowFileMonitor(
-            file_to_admin, file_to_logger)
+            file_to_admin_writer, file_to_logger_writer)
         file_monitor_process = Observer()
         file_monitor_process.schedule(
             file_monitor,
@@ -1261,17 +1225,7 @@ class WorkflowRunner:
         state_monitor_process.start()
         file_monitor_process.start()
 
-#         if not daemon:
-#             self.run()
-#         else:
-#             daemon_parallel = threading.Thread(
-#                 target=self.run,
-#                 args=()
-#             )
-# #            daemon_parallel.daemon = True
-#             daemon_parallel.start()
-
-        admin_to_logger.put(
+        admin_to_logger_writer.send(
             (
                 'WorkflowRunner._init',
                  'Started WorkflowRunner processes. '
@@ -1280,7 +1234,7 @@ class WorkflowRunner:
 
         if patterns:
             for name, pattern in patterns.items():
-                admin_to_logger.put(
+                admin_to_logger_writer.send(
                     (
                         'WorkflowRunner._init',
                         "Adding pattern %s. " % name
@@ -1289,7 +1243,7 @@ class WorkflowRunner:
 
                 write_dir_pattern(pattern, directory=meow_data)
 
-        admin_to_logger.put(
+        admin_to_logger_writer.send(
             (
                 'WorkflowRunner._init',
                 'Added all predefined patterns. '
@@ -1298,7 +1252,7 @@ class WorkflowRunner:
 
         if recipes:
             for name, recipe in recipes.items():
-                admin_to_logger.put(
+                admin_to_logger_writer.send(
                     (
                         'WorkflowRunner._init',
                         "Adding recipe %s. " % name
@@ -1307,7 +1261,7 @@ class WorkflowRunner:
 
                 write_dir_recipe(recipe, directory=meow_data)
 
-        admin_to_logger.put(
+        admin_to_logger_writer.send(
             (
                 'WorkflowRunner._init',
                  'Added all predefined recipes. '
@@ -1335,204 +1289,204 @@ class WorkflowRunner:
                 my_process.terminate()
 
     def start_workers(self):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'start_workers',
                 None
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def stop_workers(self):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'stop_workers',
                 None
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def check_running_status(self):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'check_running_status',
                 None
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def get_running_status(self):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'get_running_status',
                 None
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def stop_runner(self, clear_jobs=False):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'stop_runner',
                 clear_jobs
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         self.stop()
         return result
 
     def get_all_jobs(self):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'get_all_jobs',
                 None
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def get_queued_jobs(self):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'get_queued_jobs',
                 None
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def get_all_input_paths(self):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'get_all_input_paths',
                 None
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def check_status(self):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'check_status',
                 None
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def add_pattern(self, pattern):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'add_pattern',
                 pattern
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def modify_pattern(self, pattern):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'modify_pattern',
                 pattern
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def remove_pattern(self, pattern):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'remove_pattern',
                 pattern
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def add_recipe(self, recipe):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'add_recipe',
                 recipe
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def modify_recipe(self, recipe):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'modify_recipe',
                 recipe
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def remove_recipe(self, recipe):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'remove_recipe',
                 recipe
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def check_recipes(self):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'check_recipes',
                 None
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def check_patterns(self):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'check_patterns',
                 None
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def check_rules(self):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'check_rules',
                 None
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def check_jobs(self):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'check_jobs',
                 None
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
     def check_queue(self):
-        self.user_to_admin.put(
+        self.user_to_admin.send(
             (
                 'check_queue',
                 None
             )
         )
-        result = self.admin_to_user.get()
+        result = self.admin_to_user.recv()
         return result
 
 
@@ -1560,7 +1514,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
         self.state_patterns = {}
         self.state_recipes = {}
 
-        self.to_logger.put(
+        self.to_logger.send(
             (
                 'LocalWorkflowStateMonitor._init',
                 'Setting up new state monitor'
@@ -1578,7 +1532,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
 
                 self.add_pattern(pattern)
             except Exception as exc:
-                self.to_logger.put(
+                self.to_logger.send(
                     ('LocalWorkflowStateMonitor._init', str(exc))
                 )
 
@@ -1589,7 +1543,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
                     file_path,
                     directory=self.meow_data
                 )
-                # self.to_logger.put(
+                # self.to_logger.send(
                 #     (
                 #         'LocalWorkflowStateMonitor._init',
                 #         'Identified pre-existing recipe: %s' % pattern.name
@@ -1597,10 +1551,10 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
                 # )
                 self.add_recipe(recipe)
             except Exception as exc:
-                self.to_logger.put(
+                self.to_logger.send(
                     ('LocalWorkflowStateMonitor._init', str(exc))
                 )
-        self.to_logger.put(
+        self.to_logger.send(
             (
                 'LocalWorkflowStateMonitor._init',
                 'Finished identifying pre-existing state'
@@ -1613,7 +1567,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
         if event.is_directory:
             return
 
-        self.to_logger.put(
+        self.to_logger.send(
             (
                 'update_rules',
                 "Handling %s rule update at %s"
@@ -1626,7 +1580,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
         try:
             valid_dir_path(src_path, 'src_path')
         except ValueError as ve:
-            self.to_logger.put(
+            self.to_logger.send(
                 (
                     'update_rules',
                     "Ignoring events at %s. %s" % (src_path, ve)
@@ -1651,7 +1605,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
                             + len(runner_recipes)+1:]
                 file_type = RECIPES
         except Exception as exc:
-            self.to_logger.put(
+            self.to_logger.send(
                 (
                     'update_rules-pattern',
                     'Cannot process event at %s due to error: %s'
@@ -1660,7 +1614,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
             )
             return
         if os.path.sep in file_path:
-            self.to_logger.put(
+            self.to_logger.send(
                 (
                     'update_rules-pattern',
                     'Cannot process nested event at %s' % src_path
@@ -1676,7 +1630,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
                         directory=self.meow_data
                     )
                 except Exception as exc:
-                    self.to_logger.put(
+                    self.to_logger.send(
                         (
                             'update_rules-pattern',
                             str(exc)
@@ -1691,7 +1645,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
                         directory=self.meow_data
                     )
                 except Exception as exc:
-                    self.to_logger.put(
+                    self.to_logger.send(
                         (
                             'update_rules-recipe',
                             str(exc)
@@ -1734,9 +1688,9 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
             'operation': OP_CREATE,
             'pattern': pattern
         }
-        self.to_admin.put(msg)
+        self.to_admin.send(msg)
 
-        self.to_logger.put(
+        self.to_logger.send(
             (
                 'add_pattern',
                 '%s pattern %s' % (op, pattern)
@@ -1757,9 +1711,9 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
             'operation': OP_CREATE,
             'recipe': recipe
         }
-        self.to_admin.put(msg)
+        self.to_admin.send(msg)
 
-        self.to_logger.put(
+        self.to_logger.send(
             (
                 'add_recipe',
                 '%s recipe %s from source %s'
@@ -1775,16 +1729,16 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
                 'operation': OP_DELETED,
                 'pattern': pattern_name
             }
-            self.to_admin.put(msg)
+            self.to_admin.send(msg)
 
-            self.to_logger.put(
+            self.to_logger.send(
                 (
                     'remove_pattern',
                     'Removed pattern %s' % pattern_name
                 )
             )
         else:
-            self.to_logger.put(
+            self.to_logger.send(
                 (
                     'remove_pattern',
                     'Pattern %s was not present in the pattern list to be '
@@ -1800,16 +1754,16 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
                 'operation': OP_DELETED,
                 'recipe': recipe_name
             }
-            self.to_admin.put(msg)
+            self.to_admin.send(msg)
 
-            self.to_logger.put(
+            self.to_logger.send(
                 (
                     'remove_recipe',
                     'Removed recipe %s' % recipe_name
                 )
             )
         else:
-            self.to_logger.put(
+            self.to_logger.send(
                 (
                     'remove_recipe',
                     'Recipe %s was not present in the recipe list to be '
@@ -1841,7 +1795,7 @@ class LocalWorkflowFileMonitor(PatternMatchingEventHandler):
         self.recent_jobs = {}
         self._recent_jobs_lock = threading.Lock()
 
-        self.to_logger.put(
+        self.to_logger.send(
             (
                 'LocalWorkflowRunner',
                 'Setting up new file monitor'
@@ -1849,12 +1803,12 @@ class LocalWorkflowFileMonitor(PatternMatchingEventHandler):
         )
 
     def __handle_trigger(self, event):
-        pid = multiprocessing.current_process().pid
+        pid = current_process().pid
         event_type = event.event_type
         src_path = event.src_path
         time_stamp = event.time_stamp
 
-        self.to_logger.put(
+        self.to_logger.send(
             (
                 '__handle_trigger',
                 'Running threaded handler at (%s) to handle %s event at %s'
@@ -1872,7 +1826,7 @@ class LocalWorkflowFileMonitor(PatternMatchingEventHandler):
                 if difference <= 1:
                     self.recent_jobs[src_path] = \
                         max(recent_timestamp, time_stamp)
-                    self.to_logger.put(
+                    self.to_logger.send(
                         (
                             '__handle_trigger',
                             'Skipping due to recent hit'
@@ -1889,7 +1843,7 @@ class LocalWorkflowFileMonitor(PatternMatchingEventHandler):
             raise Exception(ex)
         self._recent_jobs_lock.release()
 
-        self.to_admin.put(event)
+        self.to_admin.send(event)
 
     def run_handler(self, event):
         waiting_for_threaded_resources = True
