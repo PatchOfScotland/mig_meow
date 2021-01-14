@@ -450,7 +450,7 @@ def administrator(
         to_logger.send(
             (
                 'handle_event',
-                'Handling %s event at %s' % (event_type, handle_path)
+                'Handling a %s event at %s' % (event_type, handle_path)
             )
         )
 
@@ -889,7 +889,7 @@ def job_queue(from_admin, to_admin, from_worker_readers, to_worker_writers,
 
 
 def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
-                  from_queue, to_logger, processor_id, job_data, output_data):
+                  from_queue, to_logger, processor_id, job_home, output_data):
     state = 'stopped'
 
     to_timer.send('sleep')
@@ -918,7 +918,7 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
                 job_id = from_queue.recv()
 
                 if job_id:
-                    job_dir = os.path.join(job_data, job_id)
+                    job_dir = os.path.join(job_home, job_id)
                     meta_path = os.path.join(job_dir, META_FILE)
                     base_path = os.path.join(job_dir, BASE_FILE)
                     param_path = os.path.join(job_dir, PARAMS_FILE)
@@ -1009,6 +1009,21 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
 
                     shutil.copytree(job_dir, job_output_dir)
 
+                    to_logger.send(
+                        (
+                            'worker %s' % processor_id,
+                            "Completed job %s" % job_data[JOB_ID]
+                        )
+                    )
+
+                else:
+                    to_logger.send(
+                        (
+                            'worker %s' % processor_id,
+                            "Worker %s found no job in queue" % processor_id
+                        )
+                    )
+
             to_timer.send('sleep')
 
 
@@ -1042,6 +1057,7 @@ def logger(all_input_channel_readers, print_logging=True, file_logging=False):
                     print(input_message[1])
 
                 continue
+
 
 class WorkflowRunner:
     def __init__(self, path, workers, patterns=None, recipes=None,
@@ -1808,13 +1824,13 @@ class LocalWorkflowFileMonitor(PatternMatchingEventHandler):
         src_path = event.src_path
         time_stamp = event.time_stamp
 
-        self.to_logger.send(
-            (
-                '__handle_trigger',
-                'Running threaded handler at (%s) to handle %s event at %s'
-                % (pid, event_type, src_path)
-            )
-        )
+        # self.to_logger.send(
+        #     (
+        #         '__handle_trigger',
+        #         'Running threaded handler at (%s) to handle %s event at %s at '
+        #         '%s' % (pid, event_type, src_path, time_stamp)
+        #     )
+        # )
 
         # This will prevent some job spamming
         self._recent_jobs_lock.acquire()
@@ -1826,12 +1842,12 @@ class LocalWorkflowFileMonitor(PatternMatchingEventHandler):
                 if difference <= 1:
                     self.recent_jobs[src_path] = \
                         max(recent_timestamp, time_stamp)
-                    self.to_logger.send(
-                        (
-                            '__handle_trigger',
-                            'Skipping due to recent hit'
-                        )
-                    )
+                    # self.to_logger.send(
+                    #     (
+                    #         '__handle_trigger',
+                    #         'Skipping due to recent hit'
+                    #     )
+                    # )
                     self._recent_jobs_lock.release()
                     return
                 else:

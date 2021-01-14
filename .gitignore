@@ -111,7 +111,11 @@ test_dir/
 job_output/
 .workflow_processing/
 .workflow_runner_data/
+examples/local_workflow_base
+examples/foam_processing
+local_workflow_base
 development_test_notebook.ipynb
 quickstart.py
 quicktest.py
+quick_foam_processing.py
 fullstart.py
