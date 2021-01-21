@@ -1530,8 +1530,8 @@ class WorkflowWidget:
         self.__close_form()
         self.__clear_feedback()
 
-        patterns_path = os.path.join(self.meow_import_export_dir, PATTERNS)
-        recipes_path = os.path.join(self.meow_import_export_dir, RECIPES)
+        patterns_path = self.meow_import_export_dir
+        recipes_path = self.meow_import_export_dir
         if not os.path.exists(self.meow_import_export_dir):
             os.mkdir(self.meow_import_export_dir)
         if not os.path.exists(patterns_path):
@@ -4650,13 +4650,7 @@ class WorkflowWidget:
         returned with first value True, and the identified MEOW definitions in
         a dict as the second value.
         """
-        buffer_meow = {
-            PATTERNS: {},
-            RECIPES: {}
-        }
 
-        patterns_path = os.path.join(self.meow_import_export_dir, PATTERNS)
-        recipes_path = os.path.join(self.meow_import_export_dir, RECIPES)
         if not os.path.exists(self.meow_import_export_dir):
             msg = "Cannot import from directory %s as it does not exist. If " \
                   "you intended to import from another directory it can be " \

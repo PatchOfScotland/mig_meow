@@ -439,6 +439,15 @@ def administrator(
 
         to_queue.send(job_dict[JOB_ID])
 
+        to_logger.send(
+            (
+                'handle_event',
+                'Scheduled new job %s from rule %s and pattern %s'
+                % (job_dict[JOB_ID], rule[RULE_ID], rule[RULE_PATTERN])
+            )
+        )
+
+
     def handle_event(event):
         src_path = event.src_path
         event_type = event.event_type
