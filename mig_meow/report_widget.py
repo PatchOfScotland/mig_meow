@@ -279,45 +279,47 @@ class ReportWidget:
                       format=self.extension,
                       node_attr={'shape': 'plaintext'})
 
-        for job_id, job_hist in self.report.items():
-            if self.pattern_filter \
-                    and self.pattern_filter.value \
-                    and not set(job_hist['pattern_name'])\
-                    .isdisjoint(self.pattern_filter.value):
-                continue
-            if self.recipe_filter \
-                    and self.recipe_filter.value \
-                    and not set(job_hist['recipes'])\
-                    .isdisjoint(self.recipe_filter.value):
-                continue
-            if self.path_filter \
-                    and self.path_filter.value \
-                    and job_hist['trigger_path'] not in self.path_filter.value:
-                continue
-            if self.job_filter \
-                    and self.job_filter.value \
-                    and job_id not in self.job_filter.value:
-                continue
-            if self.before_filter \
-                    and self.before_filter.value \
-                    and job_hist['start'] > str(self.before_filter.value):
-                continue
-            if self.after_filter \
-                    and self.after_filter.value \
-                    and job_hist['start'] < str(self.after_filter.value):
-                continue
+        if self.report:
+            for job_id, job_hist in self.report.items():
+                if self.pattern_filter \
+                        and self.pattern_filter.value \
+                        and not set(job_hist['pattern_name'])\
+                        .isdisjoint(self.pattern_filter.value):
+                    continue
+                if self.recipe_filter \
+                        and self.recipe_filter.value \
+                        and not set(job_hist['recipes'])\
+                        .isdisjoint(self.recipe_filter.value):
+                    continue
+                if self.path_filter \
+                        and self.path_filter.value \
+                        and job_hist['trigger_path'] \
+                        not in self.path_filter.value:
+                    continue
+                if self.job_filter \
+                        and self.job_filter.value \
+                        and job_id not in self.job_filter.value:
+                    continue
+                if self.before_filter \
+                        and self.before_filter.value \
+                        and job_hist['start'] > str(self.before_filter.value):
+                    continue
+                if self.after_filter \
+                        and self.after_filter.value \
+                        and job_hist['start'] < str(self.after_filter.value):
+                    continue
 
-            display_string = \
-                "Job: %s" % job_id + \
-                "\nTrigger: %s" % (job_hist['trigger_path']) + \
-                "\nOutput: %s" % (
-                    [name for name, _ in job_hist['write']]) + \
-                "\nPattern: %s" % (job_hist['pattern_name']) + \
-                "\nRecipe: %s" % (
-                    [name for name, _ in job_hist['recipes']])
-            dot.node(job_id, display_string)
-            for child in job_hist['children']:
-                dot.edge(job_id, child)
+                display_string = \
+                    "Job: %s" % job_id + \
+                    "\nTrigger: %s" % (job_hist['trigger_path']) + \
+                    "\nOutput: %s" % (
+                        [name for name, _ in job_hist['write']]) + \
+                    "\nPattern: %s" % (job_hist['pattern_name']) + \
+                    "\nRecipe: %s" % (
+                        [name for name, _ in job_hist['recipes']])
+                dot.node(job_id, display_string)
+                for child in job_hist['children']:
+                    dot.edge(job_id, child)
 
         if self.horizontal:
             dot.graph_attr['rankdir'] = 'LR'
