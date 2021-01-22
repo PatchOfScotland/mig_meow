@@ -309,17 +309,35 @@ class ReportWidget:
                         and job_hist['start'] < str(self.after_filter.value):
                     continue
 
+                unique_write = []
+                for write, _ in job_hist['write']:
+                    if write not in unique_write:
+                        unique_write.append(write)
+
                 display_string = \
                     "Job: %s" % job_id + \
                     "\nTrigger: %s" % (job_hist['trigger_path']) + \
-                    "\nOutput: %s" % (
-                        [name for name, _ in job_hist['write']]) + \
+                    "\nOutput: %s" % unique_write + \
                     "\nPattern: %s" % (job_hist['pattern_name']) + \
                     "\nRecipe: %s" % (
                         [name for name, _ in job_hist['recipes']])
                 dot.node(job_id, display_string)
+
                 for child in job_hist['children']:
-                    dot.edge(job_id, child)
+                    tail_name = dot._quote_edge(job_id)
+                    head_name = dot._quote_edge(child)
+                    edge = dot._edge % (tail_name, head_name, '')
+
+                    if edge not in dot.body:
+                        dot.edge(job_id, child)
+
+                for parent in job_hist['parents']:
+                    tail_name = dot._quote_edge(parent)
+                    head_name = dot._quote_edge(job_id)
+                    edge = dot._edge % (tail_name, head_name, '')
+
+                    if edge not in dot.body:
+                        dot.edge(parent, job_id)
 
         if self.horizontal:
             dot.graph_attr['rankdir'] = 'LR'
