@@ -88,6 +88,11 @@ class ReportWidget:
                     if trigger_path not in self.paths:
                         self.paths.append(trigger_path)
 
+                self.jobs.sort()
+                self.paths.sort()
+                self.patterns.sort()
+                self.recipes.sort()
+
                 self.__construct_image()
             else:
                 self.__display_error(result)
