@@ -339,7 +339,7 @@ def write_dir_pattern(pattern, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
 
     :param directory: (str) The directory to write the Pattern to.
 
-    :return: (No return)
+    :return: (str) The path written to.
     """
     valid, feedback = is_valid_pattern_object(pattern, integrity=True)
 
@@ -357,6 +357,8 @@ def write_dir_pattern(pattern, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
 
     write_yaml(pattern_yaml, pattern_file_path)
 
+    return  pattern_file_path
+
 
 def write_dir_recipe(recipe, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
     """
@@ -366,7 +368,7 @@ def write_dir_recipe(recipe, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
 
     :param directory: (str) The directory to write the Recipe to.
 
-    :return: (No return)
+    :return: (str) The path written to.
     """
     valid, feedback = is_valid_recipe_dict(recipe)
     dir_exists(directory, create=True)
@@ -383,6 +385,8 @@ def write_dir_recipe(recipe, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
     recipe_yaml = recipe_to_yaml_dict(recipe)
 
     write_yaml(recipe_yaml, recipe_file_path)
+
+    return recipe_file_path
 
 
 def delete_dir_pattern(pattern_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):

@@ -1541,35 +1541,31 @@ class WorkflowWidget:
 
         for pattern_name, pattern in self.meow[PATTERNS].items():
             try:
-                write_dir_pattern(pattern, directory=patterns_path)
+                written = write_dir_pattern(pattern, directory=patterns_path)
+                msg = "Exported %s %s successfully to %s. " \
+                      % (PATTERN_NAME, pattern_name, written)
+                self.__add_to_feedback(msg)
+                write_to_log(
+                    self.logfile,
+                    "export_meow_to_dir_clicked",
+                    msg
+                )
             except Exception as e:
                 self.__add_to_feedback(e)
-
-            msg = "Exported %s %s successfully to %s. " \
-                  % (PATTERN_NAME, pattern_name,
-                     os.path.join(patterns_path, pattern.name))
-            self.__add_to_feedback(msg)
-            write_to_log(
-                self.logfile,
-                "export_meow_to_dir_clicked",
-                msg
-            )
 
         for recipe_name, recipe in self.meow[RECIPES].items():
             try:
-                write_dir_recipe(recipe, directory=recipes_path)
+                written = write_dir_recipe(recipe, directory=recipes_path)
+                msg = "Exported %s %s successfully to %s. " \
+                      % (RECIPE_NAME, recipe_name, written)
+                self.__add_to_feedback(msg)
+                write_to_log(
+                    self.logfile,
+                    "export_meow_to_dir_clicked",
+                    msg
+                )
             except Exception as e:
                 self.__add_to_feedback(e)
-
-            msg = "Exported %s %s successfully to %s. " \
-                  % (RECIPE_NAME, recipe_name,
-                     os.path.join(recipes_path, recipe_name))
-            self.__add_to_feedback(msg)
-            write_to_log(
-                self.logfile,
-                "export_meow_to_dir_clicked",
-                msg
-            )
 
     def meow_save_svg_clicked(self, button):
         """
