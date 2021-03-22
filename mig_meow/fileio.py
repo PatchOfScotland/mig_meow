@@ -314,7 +314,6 @@ def read_dir_recipe(recipe_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR,
     dir_exists(recipe_dir)
 
     try:
-
         recipe_yaml_dict = read_yaml(os.path.join(recipe_dir, recipe_name))
         if '.' in recipe_name:
             recipe_name = recipe_name[:recipe_name.index('.')]
@@ -357,7 +356,7 @@ def write_dir_pattern(pattern, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
 
     write_yaml(pattern_yaml, pattern_file_path)
 
-    return  pattern_file_path
+    return pattern_file_path
 
 
 def write_dir_recipe(recipe, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
@@ -439,5 +438,95 @@ def delete_dir_recipe(recipe_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
     dir_exists(recipe_dir)
 
     file_path = os.path.join(recipe_dir, recipe_name)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+
+def read_pattern(pattern_name, print_errors=False):
+    valid_pattern_name(pattern_name)
+
+    try:
+        pattern_yaml_dict = read_yaml(pattern_name)
+        if '.' in pattern_name:
+            pattern_name = pattern_name[:pattern_name.index('.')]
+
+        pattern = pattern_from_yaml_dict(pattern_yaml_dict, pattern_name)
+
+        return pattern
+    except Exception as ex:
+        msg = "Tried to import %s '%s', but could not. %s" \
+              % (PATTERN_NAME, pattern_name, ex)
+        if print_errors:
+            print(msg)
+        else:
+            raise Exception(msg)
+
+
+def read_recipe(recipe_name, print_errors=False):
+    valid_recipe_name(recipe_name)
+
+    try:
+        recipe_yaml_dict = read_yaml(recipe_name)
+        if '.' in recipe_name:
+            recipe_name = recipe_name[:recipe_name.index('.')]
+
+        recipe = recipe_from_yaml_dict(recipe_yaml_dict, recipe_name)
+
+        return recipe
+    except Exception as ex:
+        msg = "Tried to import %s '%s', but could not. %s" \
+              % (RECIPE_NAME, recipe_name, ex)
+        if print_errors:
+            print(msg)
+        else:
+            raise Exception(msg)
+
+
+def write_pattern(pattern):
+    valid, feedback = is_valid_pattern_object(pattern, integrity=True)
+
+    if not valid:
+        msg = "Could not export %s %s. %s" \
+              % (PATTERN_NAME, pattern.name, feedback)
+        raise ValueError(msg)
+
+    pattern_file_path = pattern.name
+    pattern_yaml = patten_to_yaml_dict(pattern)
+    write_yaml(pattern_yaml, pattern_file_path)
+
+
+def write_recipe(recipe):
+    valid, feedback = is_valid_recipe_dict(recipe)
+    if not valid:
+        msg = "Could not export %s %s. %s" \
+              % (RECIPE_NAME, recipe['NAME'], feedback)
+        raise ValueError(msg)
+
+    recipe_file_path = recipe[NAME]
+    recipe_yaml = recipe_to_yaml_dict(recipe)
+
+    write_yaml(recipe_yaml, recipe_file_path)
+
+
+def delete_pattern(pattern_name):
+    if isinstance(pattern_name, Pattern):
+        pattern_name = Pattern.name
+    if not isinstance(pattern_name, str):
+        raise ValueError("'pattern_name' must be either a string or a Pattern")
+    valid_pattern_name(pattern_name)
+
+    file_path = pattern_name
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+
+def delete_recipe(recipe_name):
+    if isinstance(recipe_name, dict):
+        recipe_name = recipe_name[NAME]
+    if not isinstance(recipe_name, str):
+        raise ValueError("'recipe_name' must be either a string or a dict")
+    valid_recipe_name(recipe_name)
+
+    file_path = recipe_name
     if os.path.exists(file_path):
         os.remove(file_path)
