@@ -855,26 +855,26 @@ class WorkflowWidget:
         check_input(auto_import, bool, AUTO_IMPORT)
         self.auto_import = auto_import
 
-        if self.logfile:
-            write_to_log(
-                self.logfile,
-                "WorkflowWidget.__init__",
-                "WorkflowWidget has starting parameters ~ ["
-                + DEBUG_MODE + ": " + str(debug_mode) + "], ["
-                + MODE + ": " + self.mode + "], ["
-                + CWL_IMPORT_EXPORT_DIR_ARG + ": "
-                + self.cwl_import_export_dir + "], ["
-                + MEOW_IMPORT_EXPORT_DIR_ARG + ": "
-                + self.meow_import_export_dir + "], ["
-                + WORKFLOW_TITLE_ARG + ": " + self.workflow_title + "], ["
-                + VGRID + ": " + str(self.vgrid) + "], ["
-                + PATTERNS + ": " + str(patterns) + "], ["
-                + RECIPES + ": " + str(recipes) + "], ["
-                + WORKFLOWS + ": " + str(workflows) + "], ["
-                + STEPS + ": " + str(steps) + "], ["
-                + SETTINGS + ": " + str(settings) + "], ["
-                + AUTO_IMPORT + ": " + str(self.auto_import) + "]"
-            )
+
+        write_to_log(
+            self.logfile,
+            "WorkflowWidget.__init__",
+            "WorkflowWidget has starting parameters ~ ["
+            + DEBUG_MODE + ": " + str(debug_mode) + "], ["
+            + MODE + ": " + self.mode + "], ["
+            + CWL_IMPORT_EXPORT_DIR_ARG + ": "
+            + self.cwl_import_export_dir + "], ["
+            + MEOW_IMPORT_EXPORT_DIR_ARG + ": "
+            + self.meow_import_export_dir + "], ["
+            + WORKFLOW_TITLE_ARG + ": " + self.workflow_title + "], ["
+            + VGRID + ": " + str(self.vgrid) + "], ["
+            + PATTERNS + ": " + str(patterns) + "], ["
+            + RECIPES + ": " + str(recipes) + "], ["
+            + WORKFLOWS + ": " + str(workflows) + "], ["
+            + STEPS + ": " + str(steps) + "], ["
+            + SETTINGS + ": " + str(settings) + "], ["
+            + AUTO_IMPORT + ": " + str(self.auto_import) + "]"
+        )
 
         self.mode_toggle = widgets.ToggleButtons(
             options=[i for i in WIDGET_MODES if isinstance(i, str)],
@@ -905,11 +905,35 @@ class WorkflowWidget:
             valid, feedback = check_patterns_dict(patterns)
             if valid:
                 self.meow[PATTERNS] = patterns
+                write_to_log(
+                    self.logfile,
+                    "WorkflowWidget.__init__",
+                    "Registered given patterns: '%s'" % patterns.keys()
+                )
+            else:
+                write_to_log(
+                    self.logfile,
+                    "WorkflowWidget.__init__",
+                    "Could not register patterns: '%s', because of error '%s'"
+                    % (patterns.keys(), feedback)
+                )
+
         if recipes:
             valid, feedback = check_recipes_dict(recipes)
             if valid:
                 self.meow[RECIPES] = recipes
-
+                write_to_log(
+                    self.logfile,
+                    "WorkflowWidget.__init__",
+                    "Registered given recipes: '%s'" % recipes.keys()
+                )
+            else:
+                write_to_log(
+                    self.logfile,
+                    "WorkflowWidget.__init__",
+                    "Could not register recipes: '%s', because of error '%s'"
+                    % (recipes.keys(), feedback)
+                )
         self.cwl = {
             WORKFLOWS: {},
             STEPS: {},

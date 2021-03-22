@@ -276,24 +276,65 @@ class ReportWidget:
             display(v_box)
 
     def __refresh_image(self, *args):
+        write_to_log(
+            self.logfile,
+            '__refresh_image',
+            'Refreshing workflow image'
+        )
+
         self.__construct_image()
+
+        write_to_log(
+            self.logfile,
+            '__refresh_image',
+            'Construction complete'
+        )
+
         self.__load_image()
+
+        write_to_log(
+            self.logfile,
+            '__refresh_image',
+            'Completed refresh'
+        )
 
     def __construct_image(self):
         dot = Digraph(comment=self.filename,
                       format=self.extension,
                       node_attr={'shape': 'plaintext'})
 
+        if self.logfile:
+            msg = 'filters are:'
+            if self.job_filter and self.job_filter.value:
+                msg += '\n\tjobs: %s' % self.job_filter.value
+            if self.path_filter and self.path_filter.value:
+                msg += '\n\tpaths: %s' % self.path_filter.value
+            if self.pattern_filter and self.pattern_filter.value:
+                msg += '\n\tpatterns: %s' % self.pattern_filter.value
+            if self.recipe_filter and self.recipe_filter.value:
+                msg += '\n\trecipes: %s' % str(self.recipe_filter.value)
+            if self.after_filter and self.after_filter.value:
+                msg += '\n\tafter: %s' % self.after_filter.value
+            if self.before_filter and self.before_filter.value:
+                msg += '\n\tbefore: %s' % self.before_filter.value
+            if msg == 'filters are:':
+                msg += '\n\t(None)'
+            write_to_log(
+                self.logfile,
+                '__construct_image',
+                msg
+            )
+
         if self.report:
             for job_id, job_hist in self.report.items():
                 if self.pattern_filter \
                         and self.pattern_filter.value \
-                        and not set(job_hist['pattern_name'])\
-                        .isdisjoint(self.pattern_filter.value):
+                        and job_hist['pattern_name'] \
+                        not in self.pattern_filter.value:
                     continue
                 if self.recipe_filter \
-                        and self.recipe_filter.value \
-                        and not set(job_hist['recipes'])\
+                        and self.recipe_filter.value\
+                        and set(r for r, _ in job_hist['recipes'])\
                         .isdisjoint(self.recipe_filter.value):
                     continue
                 if self.path_filter \
@@ -313,6 +354,12 @@ class ReportWidget:
                         and self.after_filter.value \
                         and job_hist['start'] < str(self.after_filter.value):
                     continue
+
+                write_to_log(
+                    self.logfile,
+                    '__construct_image',
+                    'job %s will be displayed' % job_id
+                )
 
                 unique_write = []
                 for write, _ in job_hist['write']:
@@ -347,7 +394,19 @@ class ReportWidget:
         if self.horizontal:
             dot.graph_attr['rankdir'] = 'LR'
 
+        write_to_log(
+            self.logfile,
+            '__refresh_image',
+            'Rendering....'
+        )
+
         dot.render(self.filename)
+
+        write_to_log(
+            self.logfile,
+            '__refresh_image',
+            'Render complete'
+        )
 
     def __load_image(self):
         file = open(self.filename + '.' + self.extension, 'rb')
