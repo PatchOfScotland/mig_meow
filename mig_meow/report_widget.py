@@ -306,17 +306,17 @@ class ReportWidget:
         if self.logfile:
             msg = 'filters are:'
             if self.job_filter and self.job_filter.value:
-                msg += '\n\tjobs: %s' % self.job_filter.value
+                msg += '\n\tjobs: %s' % str(self.job_filter.value)
             if self.path_filter and self.path_filter.value:
-                msg += '\n\tpaths: %s' % self.path_filter.value
+                msg += '\n\tpaths: %s' % str(self.path_filter.value)
             if self.pattern_filter and self.pattern_filter.value:
-                msg += '\n\tpatterns: %s' % self.pattern_filter.value
+                msg += '\n\tpatterns: %s' % str(self.pattern_filter.value)
             if self.recipe_filter and self.recipe_filter.value:
                 msg += '\n\trecipes: %s' % str(self.recipe_filter.value)
             if self.after_filter and self.after_filter.value:
-                msg += '\n\tafter: %s' % self.after_filter.value
+                msg += '\n\tafter: %s' % str(self.after_filter.value)
             if self.before_filter and self.before_filter.value:
-                msg += '\n\tbefore: %s' % self.before_filter.value
+                msg += '\n\tbefore: %s' % str(self.before_filter.value)
             if msg == 'filters are:':
                 msg += '\n\t(None)'
             write_to_log(

@@ -1005,7 +1005,7 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
                         to_logger.send(
                             (
                                 'worker %s' % processor_id,
-                                "Job worker encountered and error. %s" % msg
+                                "Job worker encountered an error. %s" % msg
                             )
                         )
                         continue

@@ -805,6 +805,11 @@ class WorkflowWidget:
                 "Unsupported mode %s specified. Valid are %s. "
                 % (self.mode, WIDGET_MODES)
             )
+        write_to_log(
+            self.logfile,
+            "WorkflowWidget.__init__",
+            "Mode was set to: '%s'" % self.mode
+        )
 
         cwl_dir = kwargs.get(CWL_IMPORT_EXPORT_DIR_ARG, None)
         if cwl_dir:
@@ -854,7 +859,6 @@ class WorkflowWidget:
         auto_import = kwargs.get(AUTO_IMPORT, False)
         check_input(auto_import, bool, AUTO_IMPORT)
         self.auto_import = auto_import
-
 
         write_to_log(
             self.logfile,
@@ -934,6 +938,7 @@ class WorkflowWidget:
                     "Could not register recipes: '%s', because of error '%s'"
                     % (recipes.keys(), feedback)
                 )
+
         self.cwl = {
             WORKFLOWS: {},
             STEPS: {},
@@ -944,14 +949,50 @@ class WorkflowWidget:
             valid, feedback = check_workflows_dict(workflows)
             if valid:
                 self.cwl[WORKFLOWS] = workflows
+                write_to_log(
+                    self.logfile,
+                    "WorkflowWidget.__init__",
+                    "Registered given workflows: '%s'" % workflows.keys()
+                )
+            else:
+                write_to_log(
+                    self.logfile,
+                    "WorkflowWidget.__init__",
+                    "Could not register workflows: '%s', because of error '%s'"
+                    % (workflows.keys(), feedback)
+                )
         if steps:
             valid, feedback = check_steps_dict(steps)
             if valid:
                 self.cwl[STEPS] = steps
+                write_to_log(
+                    self.logfile,
+                    "WorkflowWidget.__init__",
+                    "Registered given steps: '%s'" % steps.keys()
+                )
+            else:
+                write_to_log(
+                    self.logfile,
+                    "WorkflowWidget.__init__",
+                    "Could not register steps: '%s', because of error '%s'"
+                    % (steps.keys(), feedback)
+                )
         if settings:
             valid, feedback = check_settings_dict(settings)
             if valid:
                 self.cwl[SETTINGS] = settings
+                write_to_log(
+                    self.logfile,
+                    "WorkflowWidget.__init__",
+                    "Registered given settings: '%s'" % settings.keys()
+                )
+            else:
+                write_to_log(
+                    self.logfile,
+                    "WorkflowWidget.__init__",
+                    "Could not register settings: '%s', because of error '%s'"
+                    % (settings.keys(), feedback)
+                )
 
         self.mig_imports = {
             PATTERNS: {},
@@ -1460,6 +1501,12 @@ class WorkflowWidget:
         self.__clear_feedback()
 
         valid, buffer_meow = self.cwl_to_meow()
+
+        write_to_log(
+            self.logfile,
+            "import_from_cwl_clicked",
+            "Valid: '%s', MEOW: '%s'" % (valid, buffer_meow)
+        )
 
         # TODO should be a confirmation here
 
@@ -4299,9 +4346,20 @@ class WorkflowWidget:
         }
 
         for workflow_name, workflow in self.cwl[WORKFLOWS].items():
+            write_to_log(
+                self.logfile,
+                "cwl_to_meow",
+                "Considering '%s', %s" % (workflow_name, workflow)
+            )
+
             status, msg = check_workflow_is_valid(workflow_name, self.cwl)
 
             if not status:
+                write_to_log(
+                    self.logfile,
+                    "cwl_to_meow",
+                    msg
+                )
                 return False, msg
 
             settings = self.cwl[SETTINGS][workflow_name][CWL_VARIABLES]
@@ -4344,18 +4402,34 @@ class WorkflowWidget:
                                 )
                                 buffer_meow[RECIPES][name] = recipe
 
+            write_to_log(
+                self.logfile,
+                "cwl_to_meow",
+                "Post argument CP for '%s'" % workflow_name
+            )
+
             key_text = '_key'
             value_text = '_value'
             for step_title, workflow_step in workflow[CWL_STEPS].items():
                 step_name = get_step_name_from_title(step_title, workflow)
                 status, msg = check_step_is_valid(step_name, self.cwl)
                 if not status:
+                    write_to_log(
+                        self.logfile,
+                        "cwl_to_meow",
+                        "step invalid: '%s'" % msg
+                    )
                     break
 
                 step = self.cwl[STEPS][step_name]
                 try:
                     pattern = Pattern(step_name)
-                except Exception:
+                except Exception as e:
+                    write_to_log(
+                        self.logfile,
+                        "cwl_to_meow",
+                        "Exception encountered: '%s'" % e
+                    )
                     break
 
                 entries = {}
@@ -4373,6 +4447,11 @@ class WorkflowWidget:
                             self.cwl[STEPS]
                         )
                         if not status:
+                            write_to_log(
+                                self.logfile,
+                                "cwl_to_meow",
+                                "output location invalid: '%s'" % glob
+                            )
                             break
 
                         status, result = get_glob_value(
@@ -4382,6 +4461,11 @@ class WorkflowWidget:
                             settings
                         )
                         if not status:
+                            write_to_log(
+                                self.logfile,
+                                "cwl_to_meow",
+                                "glob value invalid: '%s'" % result
+                            )
                             break
 
                         setting = result
@@ -4426,16 +4510,32 @@ class WorkflowWidget:
                             settings_key = workflow_step[CWL_WORKFLOW_IN][file]
                             if '/' in settings_key:
                                 # TODO potentially do something here
+                                write_to_log(
+                                    self.logfile,
+                                    "cwl_to_meow",
+                                    "Invalid / in '%s'" % settings_key
+                                )
                                 break
                             filename = \
                                 settings[settings_key][CWL_YAML_PATH]
                             extension = filename[filename.rfind('.'):]
                             if extension not in NOTEBOOK_EXTENSIONS:
+                                write_to_log(
+                                    self.logfile,
+                                    "cwl_to_meow",
+                                    "extension '%s' not in %s"
+                                    % (extension, NOTEBOOK_EXTENSIONS)
+                                )
                                 break
                             name = filename[:filename.rfind('.')]
                             pattern.add_recipe(name)
                             to_remove.append(file)
-                        except Exception:
+                        except Exception as e:
+                            write_to_log(
+                                self.logfile,
+                                "cwl_to_meow",
+                                "Encountered exception: '%s'" % e
+                            )
                             pass
                 for item in to_remove:
                     input_files.remove(item)
@@ -4477,6 +4577,11 @@ class WorkflowWidget:
                                 self.cwl[STEPS]
                             )
                             if not status:
+                                write_to_log(
+                                    self.logfile,
+                                    "cwl_to_meow",
+                                    "output lookup invalid: '%s'" % glob
+                                )
                                 break
 
                             status, result = get_glob_value(
@@ -4486,6 +4591,11 @@ class WorkflowWidget:
                                 settings
                             )
                             if not status:
+                                write_to_log(
+                                    self.logfile,
+                                    "cwl_to_meow",
+                                    "glob invalid: '%s'" % result
+                                )
                                 break
 
                             pattern.add_single_input(key, result)
@@ -4506,6 +4616,11 @@ class WorkflowWidget:
                                 output[CWL_OUTPUT_BINDING], dict
                             ) or \
                             'glob' not in output[CWL_OUTPUT_BINDING]:
+                        write_to_log(
+                            self.logfile,
+                            "cwl_to_meow",
+                            "One of many problems encountered"
+                        )
                         break
                     glob = output[CWL_OUTPUT_BINDING]['glob']
 
@@ -4521,12 +4636,23 @@ class WorkflowWidget:
                                 settings[key_setting],
                                 settings[value_setting]
                             )
+                            write_to_log(
+                                self.logfile,
+                                "cwl_to_meow",
+                                "Problem with '%s', '%s' and '%s'"
+                                % (key_setting, value_setting, settings)
+                            )
                             break
 
                     status, glob_value = \
                         get_glob_value(glob, step_title, workflow, settings)
 
                     if not status:
+                        write_to_log(
+                            self.logfile,
+                            "cwl_to_meow",
+                            "Bad glob: '%s'" % glob_value
+                        )
                         break
 
                     if glob.startswith('$(') and glob.endswith(')'):
@@ -4544,7 +4670,12 @@ class WorkflowWidget:
                 for key, entry in entries.items():
                     try:
                         pattern.add_variable(entry['key'], entry['value'])
-                    except Exception:
+                    except Exception as e:
+                        write_to_log(
+                            self.logfile,
+                            "cwl_to_meow",
+                            "Bad exception: '%s'" % e
+                        )
                         pass
 
                 for key, value in unlinked.items():
@@ -4557,7 +4688,12 @@ class WorkflowWidget:
                                 and setting[CWL_YAML_CLASS] == 'File':
                             setting = setting[CWL_YAML_PATH]
                         pattern.add_variable(key, setting)
-                    except Exception:
+                    except Exception as e:
+                        write_to_log(
+                            self.logfile,
+                            "cwl_to_meow",
+                            "Exception encountered: '%s'" % e
+                        )
                         pass
 
                 if not pattern.trigger_file:
@@ -4568,6 +4704,12 @@ class WorkflowWidget:
                     pattern.recipes = [PLACEHOLDER]
 
                 buffer_meow[PATTERNS][pattern.name] = pattern
+
+            write_to_log(
+                self.logfile,
+                "cwl_to_meow",
+                "Post step CP for '%s'" % workflow_name
+            )
 
         return True, buffer_meow
 
@@ -4771,7 +4913,7 @@ class WorkflowWidget:
                 display(self.visualisation)
         elif self.mode == CWL_MODE:
 
-            visualisation = self.__get_cwl_workflow_visualisation(
+            self.visualisation = self.__get_cwl_workflow_visualisation(
                 self.cwl[WORKFLOWS],
                 self.cwl[STEPS],
                 self.cwl[SETTINGS]
@@ -5115,16 +5257,22 @@ class WorkflowWidget:
         :return: (dict) The resulting node dictionary.
         """
 
+        write_to_log(
+            self.logfile,
+            "__set_cwl_step_dict",
+            "Setting up display for step '%s': %s" % (step[CWL_NAME], step)
+        )
+
         node_dict = {
             'label': step[CWL_NAME],
             'Name': step[CWL_NAME],
             'Base Command': step[CWL_BASE_COMMAND],
             'Inputs(s)': str(list(step[CWL_INPUTS].keys())),
             'Outputs(s)': str(step[CWL_OUTPUTS]),
-            'Argument(s)': str(step[CWL_ARGUMENTS]),
-            'Requirement(s)': str(step[CWL_REQUIREMENTS]),
-            'Hint(s)': str(step[CWL_HINTS]),
-            'Stdout': step[CWL_STDOUT],
+            'Argument(s)': str(step.get(CWL_ARGUMENTS, [])),
+            'Requirement(s)': str(step.get(CWL_REQUIREMENTS, {})),
+            'Hint(s)': str(step.get(CWL_HINTS, {})),
+            'Stdout': step.get(CWL_STDOUT, ''),
             'shape': 'circle',
             'shape_attrs': {'r': 30},
             'tooltip': CWL_MODE
@@ -5203,6 +5351,12 @@ class WorkflowWidget:
             self.feedback_area.value += "<br/>"
         self.feedback_area.value += to_add
 
+        write_to_log(
+            self.logfile,
+            "__add_to_feedback",
+            to_add
+        )
+
     def __set_feedback(self, to_set):
         """
         Removes all existing form feedback and sets the given string as the
@@ -5213,6 +5367,12 @@ class WorkflowWidget:
         :return: No return.
         """
         self.feedback_area.value = to_set
+
+        write_to_log(
+            self.logfile,
+            "__set_feedback",
+            to_set
+        )
 
     def __clear_feedback(self):
         """
