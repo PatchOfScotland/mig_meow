@@ -3,7 +3,7 @@ bqplot==0.12.13
 IPython==7.16.1
 requests==2.24.0
 ipywidgets==7.5.1
-PyYAML==5.3.1
+PyYAML==5.4
 nbformat==5.1.2
 watchdog
 notebook_parameterizer
