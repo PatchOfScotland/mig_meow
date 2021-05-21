@@ -9,43 +9,30 @@ import time
 import shutil
 import re
 import fnmatch
-#import select
 import subprocess
 import threading
-
-from multiprocessing import Process, Pipe, current_process
-from multiprocessing.connection import wait
-
-from .constants import PATTERNS, RECIPES, NAME, SOURCE, CHAR_LOWERCASE, \
-    CHAR_UPPERCASE, CHAR_NUMERIC, RECIPE, KEYWORD_DIR, KEYWORD_EXTENSION, \
-    KEYWORD_FILENAME, KEYWORD_JOB, KEYWORD_PATH, KEYWORD_PREFIX, \
-    KEYWORD_REL_DIR, KEYWORD_REL_PATH, KEYWORD_VGRID, VGRID
-from .logging import create_localrunner_logfile, write_to_log
-from .fileio import write_dir_pattern, write_dir_recipe, make_dir, \
-    read_dir_recipe, read_dir_pattern, write_notebook, write_yaml, read_yaml, \
-    delete_dir_pattern, delete_dir_recipe
-from .meow import get_parameter_sweep_values, is_valid_pattern_object, Pattern
-from .validation import valid_dir_path, check_input, is_valid_recipe_dict
+import pkg_resources
 
 from datetime import datetime
+from multiprocessing import Process, Pipe, current_process
+from multiprocessing.connection import wait
 from random import SystemRandom
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler, FileCreatedEvent, \
     FileModifiedEvent, FileDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
     DirDeletedEvent
 
-(_rate_limit_field, _settle_time_field) = ('rate_limit', 'settle_time')
-_default_period = 'm'
-_default_time = '0'
-_unit_periods = {
-    's': 1,
-    'm': 60,
-    'h': 60 * 60,
-    'd': 24 * 60 * 60,
-    'w': 7 * 24 * 60 * 60,
-}
-DEFAULT_SETTLE_TIME = 3
-SETTLE_TIME = 'settle_time'
+from .constants import PATTERNS, RECIPES, NAME, SOURCE, CHAR_LOWERCASE, \
+    CHAR_UPPERCASE, CHAR_NUMERIC, RECIPE, KEYWORD_DIR, KEYWORD_EXTENSION, \
+    KEYWORD_FILENAME, KEYWORD_JOB, KEYWORD_PATH, KEYWORD_PREFIX, \
+    KEYWORD_REL_DIR, KEYWORD_REL_PATH, KEYWORD_VGRID, VGRID, ENVIRONMENTS
+from .logging import create_localrunner_logfile, write_to_log
+from .fileio import write_dir_pattern, write_dir_recipe, make_dir, \
+    read_dir_recipe, read_dir_pattern, write_notebook, write_yaml, read_yaml, \
+    delete_dir_pattern, delete_dir_recipe
+from .meow import get_parameter_sweep_values, is_valid_pattern_object, Pattern
+from .validation import valid_dir_path, check_input, is_valid_recipe_dict, \
+    is_valid_local_environment
 
 _trigger_event = '_trigger_event'
 
@@ -91,19 +78,13 @@ JOB_CREATE_TIME = 'create'
 JOB_START_TIME = 'start'
 JOB_END_TIME = 'end'
 JOB_ERROR = 'error'
+JOB_REQUIREMENTS = 'requirements'
 
 META_FILE = 'job.yml'
 BASE_FILE = 'base.ipynb'
 PARAMS_FILE = 'params.yml'
 JOB_FILE = 'job.ipynb'
 RESULT_FILE = 'result.ipynb'
-
-rule_hits = {}
-_hits_lock = threading.Lock()
-_job_lock = threading.Lock()
-_queue_lock = threading.Lock()
-_worker_lock = threading.Lock()
-_rules_lock = threading.Lock()
 
 
 def get_runner_patterns(runner_data):
@@ -189,14 +170,6 @@ def make_fake_event(path, state, is_directory=False):
     # mark it a trigger event
     setattr(fake, _trigger_event, True)
     return fake
-
-
-def is_fake_event(event):
-    """Check if event came from our trigger-X rules rather than a real file
-    system change.
-    """
-
-    return getattr(event, _trigger_event, False)
 
 
 def administrator(
@@ -294,8 +267,6 @@ def administrator(
             )
         )
 
-        notebook_code = recipes[rule[RULE_RECIPE]][RECIPE]
-
         pattern = patterns[rule[RULE_PATTERN]]
 
         yaml_dict = {}
@@ -319,7 +290,6 @@ def administrator(
                     schedule_job(
                         rule,
                         local_path,
-                        notebook_code,
                         yaml_dict
                     )
                 else:
@@ -330,7 +300,6 @@ def administrator(
                             schedule_job(
                                 rule,
                                 local_path,
-                                notebook_code,
                                 yaml_dict
                             )
 
@@ -390,7 +359,7 @@ def administrator(
                 )
             )
 
-    def schedule_job(rule, src_path, recipe_code, yaml_dict):
+    def schedule_job(rule, src_path, yaml_dict):
         """
         Schedules a new job in the workflow runner. This creates the
         appropriate job files in a shared directory, adds the job to the
@@ -400,12 +369,18 @@ def administrator(
 
         :param src_path: (str) The path which generated the triggering event.
 
-        :param recipe_code: (dict) The recipe code to be run through.
-
         :param yaml_dict: (dict) Any variables to be applied.
 
         :return: No return.
         """
+        recipe = recipes[rule[RULE_RECIPE]]
+
+        environments = {}
+        if ENVIRONMENTS in recipe \
+                and 'local' in recipe[ENVIRONMENTS] \
+                and is_valid_local_environment(recipe[ENVIRONMENTS]['local']):
+            environments = recipe[ENVIRONMENTS]['local']
+
         job_dict = {
             JOB_ID: generate_id(),
             JOB_PATTERN: rule[RULE_PATTERN],
@@ -413,7 +388,8 @@ def administrator(
             JOB_RULE: rule[RULE_ID],
             JOB_PATH: src_path,
             JOB_STATUS: QUEUED,
-            JOB_CREATE_TIME: datetime.now()
+            JOB_CREATE_TIME: datetime.now(),
+            JOB_REQUIREMENTS: environments
         }
 
         yaml_dict = replace_keywords(
@@ -430,7 +406,7 @@ def administrator(
         write_yaml(job_dict, meta_file)
 
         base_file = os.path.join(job_dir, BASE_FILE)
-        write_notebook(recipe_code, base_file)
+        write_notebook(recipe[RECIPE], base_file)
 
         yaml_file = os.path.join(job_dir, PARAMS_FILE)
         write_yaml(yaml_dict, yaml_file)
@@ -446,7 +422,6 @@ def administrator(
                 % (job_dict[JOB_ID], rule[RULE_ID], rule[RULE_PATTERN])
             )
         )
-
 
     def handle_event(event):
         src_path = event.src_path
@@ -471,8 +446,6 @@ def administrator(
             direct_hit = re.match(direct_regexp, handle_path)
 
             if direct_hit or recursive_hit:
-                notebook_code = recipes[rule[RULE_RECIPE]][RECIPE]
-
                 pattern = patterns[rule[RULE_PATTERN]]
 
                 to_logger.send(
@@ -494,7 +467,6 @@ def administrator(
                     schedule_job(
                         rule,
                         src_path,
-                        notebook_code,
                         yaml_dict
                     )
                 else:
@@ -505,7 +477,6 @@ def administrator(
                             schedule_job(
                                 rule,
                                 src_path,
-                                notebook_code,
                                 yaml_dict
                             )
 
@@ -593,7 +564,7 @@ def administrator(
                 )
             )
 
-            return True
+            return False
         else:
             write_dir_pattern(pattern, directory=meow_data)
 
@@ -604,7 +575,7 @@ def administrator(
                 )
             )
 
-            return False
+            return True
 
     def modify_pattern_dir(pattern):
         status, msg = is_valid_pattern_object(pattern)
@@ -729,12 +700,12 @@ def administrator(
         return patterns_dict
 
     def check_rules():
-        rules_dict = copy.deepcopy(rules)
-        return rules_dict
+        rules_list = copy.deepcopy(rules)
+        return rules_list
 
     def check_jobs():
-        jobs_dict = copy.deepcopy(jobs)
-        return jobs_dict
+        jobs_list = copy.deepcopy(jobs)
+        return jobs_list
 
     def check_queue():
         return get_queued_jobs()
@@ -750,7 +721,6 @@ def administrator(
         start_workers()
 
     while True:
-
         ready = wait([
             from_state,
             from_user,
@@ -856,19 +826,28 @@ def administrator(
                 result = check_queue()
                 to_user.send(result)
 
+            elif operation == 'kill':
+                to_user.send('dead')
+                return
+
+            else:
+                raise Exception('Unknown message format: %s' % input_message)
+
         elif from_file in ready:
             input_message = from_file.recv()
             handle_event(input_message)
 
 
 def job_queue(from_admin, to_admin, from_worker_readers, to_worker_writers,
-              to_logger):
+              to_logger, job_home):
     queue = []
+    worker_module_lists = []
 
     all_inputs = [from_admin]
 
     for channel_reader in from_worker_readers:
         all_inputs.append(channel_reader)
+        worker_module_lists.append([])
 
     while True:
         ready = wait(all_inputs)
@@ -879,8 +858,13 @@ def job_queue(from_admin, to_admin, from_worker_readers, to_worker_writers,
                 current_queue = copy.deepcopy(queue)
                 to_admin.send(current_queue)
 
+            elif input_message == 'kill':
+                to_admin.send('dead')
+                return
+
             # submitting new job
             else:
+                print('appended to queue')
                 queue.append(input_message)
 
         # Is from worker
@@ -889,12 +873,49 @@ def job_queue(from_admin, to_admin, from_worker_readers, to_worker_writers,
                 if from_worker_readers[i] in ready:
                     input_message = from_worker_readers[i].recv()
                     to_worker = to_worker_writers[i]
+                    # Is module list
+                    if isinstance(input_message, list):
+                        worker_module_lists[i] = input_message
                     if input_message == 'request':
-                        if queue:
-                            first_job = queue.pop(0)
-                            to_worker.send(first_job)
-                        else:
-                            to_worker.send(None)
+                        print('got request')
+                        assigned_job = None
+                        for job_id in queue:
+                            print('considering %s' % job_id)
+                            job_dir = os.path.join(job_home, job_id)
+                            meta_path = os.path.join(job_dir, META_FILE)
+                            job_data = read_yaml(meta_path)
+
+                            requirements = job_data[JOB_REQUIREMENTS]
+                            missing_requirement = False
+                            for requirement in requirements['dependencies']:
+                                print(('has requirement %s' % requirement))
+                                if requirement not in worker_module_lists[i]:
+                                    print('missing %s' % requirement)
+                                    missing_requirement = True
+                            if not missing_requirement:
+                                assigned_job = job_id
+                                break
+                            else:
+                                to_logger.send(
+                                    (
+                                        'queue request',
+                                        "Could not assign job %s to worker "
+                                        "%s as missing one or more "
+                                        "requirement from %s."
+                                        % (job_id, i, requirements)
+                                    )
+                                )
+                        if assigned_job:
+                            queue.remove(assigned_job)
+
+                            to_logger.send(
+                                (
+                                    'queue request',
+                                    "Assigning job %s" % assigned_job
+                                )
+                            )
+                        print('sending job %s' % assigned_job)
+                        to_worker.send(assigned_job)
 
 
 def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
@@ -902,6 +923,9 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
     state = 'stopped'
 
     to_timer.send('sleep')
+
+    module_list = [p.project_name for p in pkg_resources.working_set]
+    to_queue.send(module_list)
 
     while True:
         ready = wait([from_admin, from_timer])
@@ -912,16 +936,21 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
             if input_message == 'start':
                 state = 'running'
 
-            if input_message == 'check':
+            elif input_message == 'check':
                 to_admin.send(state)
 
-            if input_message == 'stop':
+            elif input_message == 'stop':
                 state = 'stopped'
+
+            elif input_message == 'kill':
+                to_timer.send('kill')
+                to_admin.send('dead')
+                return
 
         elif from_timer in ready:
             input_message = from_timer.recv()
 
-            if state == 'running':
+            if input_message == 'done' and state == 'running':
                 to_queue.send('request')
 
                 job_id = from_queue.recv()
@@ -1036,14 +1065,17 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
             to_timer.send('sleep')
 
 
-def worker_timer(from_worker, to_worker, worker_id):
+def worker_timer(from_worker, to_worker, worker_id, wait_time=10):
     while True:
         msg = from_worker.recv()
 
         if msg == 'sleep':
-            time.sleep(10 + (worker_id % 10))
+            time.sleep(wait_time + (worker_id % wait_time))
 
             to_worker.send('done')
+        elif msg == 'kill':
+            to_worker.send('dead')
+            return
 
 
 def logger(all_input_channel_readers, print_logging=True, file_logging=False):
@@ -1200,7 +1232,8 @@ class WorkflowRunner:
                 queue_to_admin_writer,
                 worker_to_queues,
                 queue_to_workers,
-                queue_to_logger_writer
+                queue_to_logger_writer,
+                job_data
             )
         )
 

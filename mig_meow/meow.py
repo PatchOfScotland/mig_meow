@@ -12,11 +12,11 @@ from .constants import NOTEBOOK_EXTENSIONS, DESCENDANTS, WORKFLOW_INPUTS, \
     INVALID_INPUT_PATH_ERROR, SWEEP_START, SWEEP_STOP, SWEEP_JUMP, \
     MIG_TRIGGER_KEYWORDS, PERSISTENCE_ID, RECIPE_NAME, \
     PATTERN_NAME, INPUT_FILE, NAME, SWEEP, TRIGGER_PATHS, OUTPUT, RECIPES, \
-    VARIABLES, RECIPE, SOURCE
+    VARIABLES, RECIPE, SOURCE, ENVIRONMENTS
 from .validation import valid_string, is_valid_pattern_dict, \
     valid_file_path, valid_param_sweep, \
     check_input, is_valid_recipe_dict, valid_pattern_name, \
-    valid_recipe_name
+    valid_recipe_name, is_valid_environments_dict
 OUTPUT_MAGIC_CHARS = MIG_TRIGGER_KEYWORDS + ['*']
 
 
@@ -608,7 +608,7 @@ def register_recipe(source, name=None):
         return create_recipe_dict(notebook, name, source)
 
 
-def create_recipe_dict(notebook, name, source):
+def create_recipe_dict(notebook, name, source, environments=None):
     """
     Creates a recipe dictionary from the given parameters.
 
@@ -617,6 +617,8 @@ def create_recipe_dict(notebook, name, source):
     :param name: (str) name of recipe.
 
     :param source: (str) original notebook source code was extracted from.
+
+    :param environments: (dict)[optional] Additional environment definitions
 
     :return: (dict) Meow recipe dictionary. Format is {'name': str,
     'source': str, 'recipe': dict}
@@ -634,6 +636,11 @@ def create_recipe_dict(notebook, name, source):
         SOURCE: source,
         RECIPE: notebook
     }
+    if environments:
+        status, feedback = is_valid_environments_dict(environments)
+        if not status:
+            raise ValueError(feedback)
+        recipe[ENVIRONMENTS] = environments
     return recipe
 
 

@@ -10,7 +10,16 @@ from .constants import CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_UPPERCASE, \
     VALID_STEP_OPTIONAL, VALID_WORKFLOW_OPTIONAL, CWL_CLASS_WORKFLOW, \
     CWL_CLASS_COMMAND_LINE_TOOL, CWL_CLASS, TRIGGER_PATHS, TRIGGER_RECIPES, \
     INPUT_FILE, VALID_SWEEP_MIN, VALID_SWEEP_OPTIONAL, SWEEP_START, \
-    SWEEP_STOP, SWEEP_JUMP, CHAR_LINES
+    SWEEP_STOP, SWEEP_JUMP, CHAR_LINES, ENVIRONMENTS, ENVIRONMENTS_MIG, \
+    ENVIRONMENTS_LOCAL, VALID_ENVIRONMENT_TYPES, VALID_ENVIRONMENTS_MIG, \
+    VALID_ENVIRONMENTS_LOCAL, ENVIRONMENTS_LOCAL_VERSION, \
+    ENVIRONMENTS_LOCAL_DEPENDENCIES, CHAR_COMPARISON, \
+    ENVIRONMENTS_MIG_RUNTIME_ENVIRONMENTS, ENVIRONMENTS_MIG_RETRIES, \
+    ENVIRONMENTS_MIG_NOTIFICATION, ENVIRONMENTS_MIG_ENVIRONMENT_VARIABLES, \
+    ENVIRONMENTS_MIG_DISKS, ENVIRONMENTS_MIG_FILL, ENVIRONMENTS_MIG_NODES, \
+    ENVIRONMENTS_MIG_MEMORY, ENVIRONMENTS_MIG_CPU_ARCHITECTURE, \
+    ENVIRONMENTS_MIG_WALL_TIME, ENVIRONMENTS_MIG_CPU_CORES, \
+    VALID_ENVIRONMENTS_MIG_FILLS, COMPARITORS
 
 
 def is_a_number(string):
@@ -496,8 +505,9 @@ def is_valid_recipe_dict(to_test, strict=False):
     True then any extra arguments that have been provided will fail. Default
     is False.
 
-    :return: (function call to 'is_valid_dict'). Returns a function call to
-    'is_valid_dict'.
+    :return: (Tuple(bool, str)) First value is boolean. True = to_test
+    is recipe, False = to_test is not recipe. Second value is feedback
+    string and will be empty if first value is True.
     """
 
     # Note that recipe may be an empty dict if a recipe has not yet been
@@ -505,7 +515,7 @@ def is_valid_recipe_dict(to_test, strict=False):
     if isinstance(to_test, dict) and not to_test:
         return True, ''
 
-    return is_valid_dict(
+    status, feedback = is_valid_dict(
         to_test,
         VALID_RECIPE_MIN,
         VALID_RECIPE_OPTIONAL,
@@ -513,6 +523,198 @@ def is_valid_recipe_dict(to_test, strict=False):
         MEOW_MODE,
         strict=strict
     )
+
+    if not status:
+        return status, feedback
+
+    if ENVIRONMENTS in to_test:
+        return is_valid_environments_dict(to_test[ENVIRONMENTS], strict=strict)
+    else:
+        return status, feedback
+
+
+def is_valid_environments_dict(to_test, strict=False):
+    # Note that recipe environments definition may be an empty dict
+    if isinstance(to_test, dict) and not to_test:
+        return True, ''
+
+    for env, defs in to_test.items():
+        check_input(env, str, 'environment key')
+        check_input(defs, dict, 'environment values')
+
+        if env == ENVIRONMENTS_MIG:
+            return is_valid_mig_environment(to_test[env], strict=strict)
+        elif env == ENVIRONMENTS_LOCAL:
+            return is_valid_local_environment(to_test[env], strict=strict)
+        else:
+            if strict:
+                return False, "Unknown environment type '%s'. Valid are: %s" \
+                       % (env, VALID_ENVIRONMENT_TYPES)
+
+
+def is_valid_mig_environment(to_test, strict=False):
+    if isinstance(to_test, dict) and not to_test:
+        return True, ''
+
+    status, feedback = is_valid_dict(
+        to_test,
+        {},
+        VALID_ENVIRONMENTS_MIG,
+        ENVIRONMENTS_MIG,
+        MEOW_MODE)
+
+    if not status:
+        return status, feedback
+
+    if strict:
+        for k, v in to_test.items():
+            if k not in VALID_ENVIRONMENTS_MIG:
+                return False, "Unknown dependency '%s'. Valid are: %s" \
+                       % (k, VALID_ENVIRONMENTS_MIG)
+
+    if ENVIRONMENTS_MIG_NODES in to_test:
+        valid_string(
+            to_test[ENVIRONMENTS_MIG_NODES],
+            ENVIRONMENTS_MIG_NODES,
+            CHAR_NUMERIC
+        )
+    if ENVIRONMENTS_MIG_CPU_CORES in to_test:
+        valid_string(
+            to_test[ENVIRONMENTS_MIG_CPU_CORES],
+            ENVIRONMENTS_MIG_CPU_CORES,
+            CHAR_NUMERIC
+        )
+    if ENVIRONMENTS_MIG_WALL_TIME in to_test:
+        valid_string(
+            to_test[ENVIRONMENTS_MIG_WALL_TIME],
+            ENVIRONMENTS_MIG_WALL_TIME,
+            CHAR_NUMERIC
+        )
+    if ENVIRONMENTS_MIG_MEMORY in to_test:
+        valid_string(
+            to_test[ENVIRONMENTS_MIG_MEMORY],
+            ENVIRONMENTS_MIG_MEMORY,
+            CHAR_NUMERIC
+        )
+    if ENVIRONMENTS_MIG_DISKS in to_test:
+        valid_string(
+            to_test[ENVIRONMENTS_MIG_DISKS],
+            ENVIRONMENTS_MIG_DISKS,
+            CHAR_NUMERIC
+        )
+    if ENVIRONMENTS_MIG_CPU_ARCHITECTURE in to_test:
+        valid_string(
+            to_test[ENVIRONMENTS_MIG_CPU_ARCHITECTURE],
+            ENVIRONMENTS_MIG_CPU_ARCHITECTURE,
+            CHAR_NUMERIC + CHAR_UPPERCASE + CHAR_LOWERCASE + CHAR_LINES
+        )
+    if ENVIRONMENTS_MIG_FILL in to_test:
+        for fill in to_test[ENVIRONMENTS_MIG_FILL]:
+            if fill not in VALID_ENVIRONMENTS_MIG_FILLS:
+                return False, "Invalid fill '%s'. Valid are: %s" \
+                       % (fill, VALID_ENVIRONMENTS_MIG_FILLS)
+
+    if ENVIRONMENTS_MIG_ENVIRONMENT_VARIABLES in to_test:
+        for env_var in to_test[ENVIRONMENTS_MIG_ENVIRONMENT_VARIABLES]:
+            valid_string(
+                env_var,
+                'environment variable',
+                CHAR_NUMERIC + CHAR_UPPERCASE + CHAR_LOWERCASE + CHAR_LINES
+                + '= '
+            )
+            if ' ' in env_var:
+                env_var = env_var.replace(' ', '')
+            if env_var.count('=') != 1:
+                return False, "Invalid assignment in '%s'" % env_var
+            values = env_var.split('=')
+            if len(values) != 2 or not values[0] or not values[1]:
+                return False, "Invalid assignment form for '%s'" % env_var
+
+    if ENVIRONMENTS_MIG_NOTIFICATION in to_test:
+        for notification in to_test[ENVIRONMENTS_MIG_NOTIFICATION]:
+            valid_string(
+                notification,
+                'notification',
+                CHAR_NUMERIC + CHAR_UPPERCASE + CHAR_LOWERCASE + CHAR_LINES
+                + ': @.\/+'
+            )
+            if ' ' in notification:
+                notification = notification.replace(' ', '')
+            if notification.count(':') != 1:
+                return False, "Invalid assignment in '%s'" % notification
+            values = notification.split(':')
+            if len(values) != 2 or not values[0] or not values[1]:
+                return False, "Invalid assignment form for '%s'" % notification
+
+    if ENVIRONMENTS_MIG_RETRIES in to_test:
+        valid_string(
+            to_test[ENVIRONMENTS_MIG_RETRIES],
+            ENVIRONMENTS_MIG_RETRIES,
+            CHAR_NUMERIC
+        )
+    if ENVIRONMENTS_MIG_RUNTIME_ENVIRONMENTS in to_test:
+        for runtime_env in to_test[ENVIRONMENTS_MIG_RUNTIME_ENVIRONMENTS]:
+            valid_string(
+                runtime_env,
+                'runtime environment',
+                CHAR_NUMERIC + CHAR_UPPERCASE + CHAR_LOWERCASE + CHAR_LINES
+            )
+
+    return True, ''
+
+
+def is_valid_local_environment(to_test, strict=False):
+    if isinstance(to_test, dict) and not to_test:
+        return True, ''
+
+    status, feedback = is_valid_dict(
+        to_test,
+        {},
+        VALID_ENVIRONMENTS_LOCAL,
+        ENVIRONMENTS_LOCAL,
+        MEOW_MODE)
+
+    if not status:
+        return status, feedback
+
+    if strict:
+        for k, v in to_test.items():
+            if k not in VALID_ENVIRONMENTS_LOCAL:
+                return False, "Unknown dependency '%s'. Valid are: %s" \
+                       % (k, VALID_ENVIRONMENTS_LOCAL)
+
+    if ENVIRONMENTS_LOCAL_DEPENDENCIES in to_test:
+        for dependency in to_test[ENVIRONMENTS_LOCAL_DEPENDENCIES]:
+            valid_string(
+                dependency,
+                'dependency',
+                CHAR_UPPERCASE + CHAR_LOWERCASE + CHAR_NUMERIC + CHAR_LINES
+                + '.>='
+            )
+
+            matches = [x for x in COMPARITORS if x in dependency]
+            if not matches:
+                pass
+            elif len(matches) == 1:
+                match = matches[0]
+                values = dependency.split(match)
+                if len(values) != 2 or not values[0] or not values[1]:
+                    return False, "Invalid assignment form for '%s'" \
+                           % dependency
+                valid_string(
+                    values[0],
+                    'dependency package',
+                    CHAR_UPPERCASE + CHAR_LOWERCASE + CHAR_NUMERIC + CHAR_LINES
+                )
+                valid_string(
+                    values[1],
+                    'dependency package version',
+                    CHAR_NUMERIC + '.'
+                )
+            else:
+                return False, "Invalid assignment in '%s'" % dependency
+
+    return True, ''
 
 
 def is_valid_workflow_dict(to_test, strict=False):

@@ -1,0 +1,10 @@
+input_file: infile
+input_paths:
+- start/*
+output:
+  outfile: '{VGRID}/end/{FILENAME}'
+parameterize_over: {}
+recipes:
+- rAppend
+variables:
+  extra: Appended by pAppend
