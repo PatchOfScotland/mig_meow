@@ -445,6 +445,38 @@ VALID_SETTINGS_FORM_VALUES = {
 }
 
 
+def assemble_mig_requirements(testcase, valid_requirements, invalid_requirements):
+    notebook_dict = nbformat.read(EMPTY_NOTEBOOK, nbformat.NO_CONVERT)
+
+    for valid_requirement in valid_requirements:
+        recipe_dict = create_recipe_dict(
+            notebook_dict,
+            VALID_RECIPE_DICT[NAME],
+            EMPTY_NOTEBOOK,
+            environments=valid_requirement
+        )
+
+        expanded_valid_recipe_dict = copy.deepcopy(VALID_RECIPE_DICT)
+        expanded_valid_recipe_dict[ENVIRONMENTS] = valid_requirement
+
+        # Test that created recipe has expected values.
+        testcase.assertTrue(recipe_dict == expanded_valid_recipe_dict)
+
+        # Test that created recipe is valid
+        valid, msg = is_valid_recipe_dict(recipe_dict)
+        testcase.assertTrue(valid)
+        testcase.assertEqual(msg, '')
+
+    for error_type, invalid_requirement in invalid_requirements:
+        with testcase.assertRaises(error_type):
+            create_recipe_dict(
+                notebook_dict,
+                VALID_RECIPE_DICT[NAME],
+                EMPTY_NOTEBOOK,
+                environments=invalid_requirement
+            )
+
+
 class WorkflowTest(unittest.TestCase):
     def setUp(self):
         for file in REQUIRED_FILES:
@@ -3622,20 +3654,484 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(msg, '')
 
     def testRecipeEnvironmentsMiG(self):
-        notebook_dict = nbformat.read(EMPTY_NOTEBOOK, nbformat.NO_CONVERT)
+        assemble_mig_requirements(
+            self,
+            [
+                {
+                    'mig': {
+                        'nodes': '1',
+                    }
+                },
+                {
+                    'mig': {
+                        'nodes': '0',
+                    }
+                }
+            ],
+            [
+                (ValueError, {
+                    'mig': {
+                        'nodes': 1,
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'nodes': '1.0',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'nodes': 'A',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'nodes': '-1',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'nodes': '',
+                    }
+                })
+            ]
+        )
 
-        recipe_dict = create_recipe_dict(
-            notebook_dict,
-            VALID_RECIPE_DICT[NAME],
-            EMPTY_NOTEBOOK,
-            environments={
+        assemble_mig_requirements(
+            self,
+            [
+                {
+                    'mig': {
+                        'cpu cores': '1',
+                    }
+                },
+                {
+                    'mig': {
+                        'cpu cores': '0',
+                    }
+                }
+            ],
+            [
+                (ValueError, {
+                    'mig': {
+                        'cpu cores': 1,
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'cpu cores': '1.0',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'cpu cores': 'A',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'cpu cores': '-1',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'cpu cores': '',
+                    }
+                })
+            ]
+        )
+
+        assemble_mig_requirements(
+            self,
+            [
+                {
+                    'mig': {
+                        'wall time': '1',
+                    }
+                },
+                {
+                    'mig': {
+                        'wall time': '0',
+                    }
+                }
+            ],
+            [
+                (ValueError, {
+                    'mig': {
+                        'wall time': 1,
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'wall time': '1.0',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'wall time': 'A',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'wall time': '-1',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'wall time': '',
+                    }
+                })
+            ]
+        )
+
+        assemble_mig_requirements(
+            self,
+            [
+                {
+                    'mig': {
+                        'memory': '1',
+                    }
+                },
+                {
+                    'mig': {
+                        'memory': '0',
+                    }
+                }
+            ],
+            [
+                (ValueError, {
+                    'mig': {
+                        'memory': 1,
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'memory': '1.0',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'memory': 'A',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'memory': '-1',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'memory': '',
+                    }
+                })
+            ]
+        )
+
+        assemble_mig_requirements(
+            self,
+            [
+                {
+                    'mig': {
+                        'disks': '1',
+                    }
+                },
+                {
+                    'mig': {
+                        'disks': '0',
+                    }
+                }
+            ],
+            [
+                (ValueError, {
+                    'mig': {
+                        'disks': 1,
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'disks': '1.0',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'disks': 'A',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'disks': '-1',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'disks': '',
+                    }
+                })
+            ]
+        )
+
+        assemble_mig_requirements(
+            self,
+            [
+                {
+                    'mig': {
+                        'retries': '1',
+                    }
+                },
+                {
+                    'mig': {
+                        'retries': '0',
+                    }
+                }
+            ],
+            [
+                (ValueError, {
+                    'mig': {
+                        'retries': 1,
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'retries': '1.0',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'retries': 'A',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'retries': '-1',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'retries': '',
+                    }
+                })
+            ]
+        )
+
+        assemble_mig_requirements(
+            self,
+            [
+                {
+                    'mig': {
+                        'cpu-architecture': 'X86',
+                    }
+                },
+                {
+                    'mig': {
+                        'cpu-architecture': 'AMD64',
+                    }
+                }
+            ],
+            [
+                (ValueError, {
+                    'mig': {
+                        'cpu-architecture': 1,
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'cpu-architecture': 'AMD 64',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'cpu-architecture': '1234',
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'cpu-architecture': '',
+                    }
+                })
+            ]
+        )
+
+        assemble_mig_requirements(
+            self,
+            [
+                {
+                    'mig': {
+                        'fill': ['CPUCOUNT']
+                    }
+                },
+                {
+                    'mig': {
+                        'fill': ['CPUTIME']
+                    }
+                },
+                {
+                    'mig': {
+                        'fill': ['DISK']
+                    }
+                },
+                {
+                    'mig': {
+                        'fill': ['MEMORY']
+                    }
+                },
+                {
+                    'mig': {
+                        'fill': ['NODECOUNT']
+                    }
+                },
+                {
+                    'mig': {
+                        'fill': [
+                            'CPUCOUNT',
+                            'CPUTIME',
+                            'DISK',
+                            'MEMORY',
+                            'NODECOUNT'
+                        ]
+                    }
+                },
+                {
+                    'mig': {
+                        'fill': []
+                    }
+                },
+            ],
+            [
+                (ValueError, {
+                    'mig': {
+                        'fill': 'CPUCOUNT'
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'fill': 1,
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'fill': ['SOMETHING']
+                    }
+                })
+            ]
+        )
+
+        assemble_mig_requirements(
+            self,
+            [
+                {
+                    'mig': {
+                        'environment variables': ['VAR = 42']
+                    }
+                },
+                {
+                    'mig': {
+                        'environment variables': ['VAR=42']
+                    }
+                },
+                {
+                    'mig': {
+                        'environment variables': []
+                    }
+                },
+            ],
+            [
+                (ValueError, {
+                    'mig': {
+                        'environment variables': 'VAR=42'
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'environment variables': ['VAR:42']
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'environment variables': ['VAR42=']
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'environment variables': ['=VAR42']
+                    }
+                }),
+            ]
+        )
+
+        assemble_mig_requirements(
+            self,
+            [
+                {
+                    'mig': {
+                        'notification': ['email: SETTINGS']
+                    }
+                },
+                {
+                    'mig': {
+                        'notification': ['email: someone@somewhere.com']
+                    }
+                },
+                {
+                    'mig': {
+                        'notification': []
+                    }
+                },
+            ],
+            [
+                (ValueError, {
+                    'mig': {
+                        'notification': ['email= SETTINGS']
+                    }
+                }),
+                (ValueError, {
+                    'mig': {
+                        'notification': ['EMAIL: SETTINGS']
+                    }
+                }),
+            ]
+        )
+
+        assemble_mig_requirements(
+            self,
+            [
+                {
+                    'mig': {
+                        'runtime environments': ['PAPERMILL']
+                    }
+                },
+                {
+                    'mig': {
+                        'runtime environments': [
+                            'PAPERMILL',
+                            'NUMPY',
+                            'SOMETHING_ELSE',
+                        ]
+                    }
+                },
+                {
+                    'mig': {
+                        'runtime environments': []
+                    }
+                },
+            ],
+            [
+                (ValueError, {
+                    'mig': {
+                        'runtime environments': ['']
+                    }
+                }),
+            ]
+        )
+
+        assemble_mig_requirements(
+            self,
+            [{
                 'mig': {
                     'nodes': '1',
                     'cpu cores': '1',
                     'wall time': '1',
                     'memory': '1',
                     'disks': '1',
-                    'cpu-architecture': '1',
+                    'cpu-architecture': 'X1',
                     'fill': [
                         'CPUCOUNT'
                     ],
@@ -3650,38 +4146,7 @@ class WorkflowTest(unittest.TestCase):
                         'PAPERMILL'
                     ]
                 }
-            }
+            }],
+            []
         )
 
-        expanded_valid_recipe_dict = copy.deepcopy(VALID_RECIPE_DICT)
-        expanded_valid_recipe_dict[ENVIRONMENTS] = {
-            'mig': {
-                'nodes': '1',
-                'cpu cores': '1',
-                'wall time': '1',
-                'memory': '1',
-                'disks': '1',
-                'cpu-architecture': '1',
-                'fill': [
-                    'CPUCOUNT'
-                ],
-                'environment variables': [
-                    'VAR=42'
-                ],
-                'notification': [
-                    'email: SETTINGS'
-                ],
-                'retries': '1',
-                'runtime environments': [
-                    'PAPERMILL'
-                ]
-            }
-        }
-
-        # Test that created recipe has expected values.
-        self.assertTrue(recipe_dict == expanded_valid_recipe_dict)
-
-        # Test that created recipe is valid
-        valid, msg = is_valid_recipe_dict(recipe_dict)
-        self.assertTrue(valid)
-        self.assertEqual(msg, '')

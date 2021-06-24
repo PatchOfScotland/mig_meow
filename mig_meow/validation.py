@@ -1,5 +1,6 @@
 
 import os
+import re
 import unicodedata
 
 from .constants import CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_UPPERCASE, \
@@ -19,7 +20,8 @@ from .constants import CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_UPPERCASE, \
     ENVIRONMENTS_MIG_DISKS, ENVIRONMENTS_MIG_FILL, ENVIRONMENTS_MIG_NODES, \
     ENVIRONMENTS_MIG_MEMORY, ENVIRONMENTS_MIG_CPU_ARCHITECTURE, \
     ENVIRONMENTS_MIG_WALL_TIME, ENVIRONMENTS_MIG_CPU_CORES, \
-    VALID_ENVIRONMENTS_MIG_FILLS, COMPARITORS
+    VALID_ENVIRONMENTS_MIG_FILLS, COMPARITORS, VALID_NOTIFICATION_TYPES, \
+    NOTIFICATION_EMAIL
 
 
 def is_a_number(string):
@@ -157,6 +159,58 @@ def valid_string(variable, name, valid_chars):
                 "Invalid character %s in %s '%s'. Only valid characters are: "
                 "%s" % (char, name, variable, valid_chars)
             )
+
+
+def valid_numeric_string(
+        variable, name, negative=False, decimals=False, zero=True):
+    """
+    Checks that a given string expresses a numeric value. Will raise a
+    ValueError if unexpected character is encountered.
+
+    :param variable: (str) string to check.
+
+    :param name: (str) name of variable to check. Only used to clarify debug
+    messages.
+
+    :param negative: (bool) [optional] Toggle for if negative numbers are
+    allowed. Default is False.
+
+    :param decimals:  (bool) [optional] Toggle for if only decimal places are
+    allowed. Default is False.
+
+    :param zero: (bool) [optional] Toggle for if zero is allowed. Default is
+    True.
+
+    :return: No return
+    """
+    valid_chars = CHAR_NUMERIC
+    if negative:
+        valid_chars += '-'
+    if decimals:
+        valid_chars += '.'
+
+    valid_string(variable, name, valid_chars)
+
+    if negative:
+        if variable.count('-') > 1:
+            raise ValueError(
+                f"String '{variable}' does not express a valid number.")
+        if variable.count('-') == 1 and variable[0] != '-':
+            raise ValueError(
+                f"String '{variable}' does is not a valid negative number.")
+
+    if decimals:
+        if variable.count('.') > 1:
+            raise ValueError(
+                f"String '{variable}' does not express a valid number.")
+
+    if not zero:
+        if decimals:
+            num = float(variable)
+        else:
+            num = int(variable)
+        if not num:
+            raise ValueError(f"Value of '{variable}' cannot be zero.")
 
 
 def valid_dir_path(path, name):
@@ -573,34 +627,52 @@ def is_valid_mig_environment(to_test, strict=False):
                        % (k, VALID_ENVIRONMENTS_MIG)
 
     if ENVIRONMENTS_MIG_NODES in to_test:
-        valid_string(
+        valid_numeric_string(
             to_test[ENVIRONMENTS_MIG_NODES],
             ENVIRONMENTS_MIG_NODES,
-            CHAR_NUMERIC
+            negative=False,
+            decimals=False,
+            zero=True
         )
     if ENVIRONMENTS_MIG_CPU_CORES in to_test:
-        valid_string(
+        valid_numeric_string(
             to_test[ENVIRONMENTS_MIG_CPU_CORES],
             ENVIRONMENTS_MIG_CPU_CORES,
-            CHAR_NUMERIC
+            negative=False,
+            decimals=False,
+            zero=True
         )
     if ENVIRONMENTS_MIG_WALL_TIME in to_test:
-        valid_string(
+        valid_numeric_string(
             to_test[ENVIRONMENTS_MIG_WALL_TIME],
             ENVIRONMENTS_MIG_WALL_TIME,
-            CHAR_NUMERIC
+            negative=False,
+            decimals=False,
+            zero=True
         )
     if ENVIRONMENTS_MIG_MEMORY in to_test:
-        valid_string(
+        valid_numeric_string(
             to_test[ENVIRONMENTS_MIG_MEMORY],
             ENVIRONMENTS_MIG_MEMORY,
-            CHAR_NUMERIC
+            negative=False,
+            decimals=False,
+            zero=True
         )
     if ENVIRONMENTS_MIG_DISKS in to_test:
-        valid_string(
+        valid_numeric_string(
             to_test[ENVIRONMENTS_MIG_DISKS],
             ENVIRONMENTS_MIG_DISKS,
-            CHAR_NUMERIC
+            negative=False,
+            decimals=False,
+            zero=True
+        )
+    if ENVIRONMENTS_MIG_RETRIES in to_test:
+        valid_numeric_string(
+            to_test[ENVIRONMENTS_MIG_RETRIES],
+            ENVIRONMENTS_MIG_RETRIES,
+            negative=False,
+            decimals=False,
+            zero=True
         )
     if ENVIRONMENTS_MIG_CPU_ARCHITECTURE in to_test:
         valid_string(
@@ -608,6 +680,12 @@ def is_valid_mig_environment(to_test, strict=False):
             ENVIRONMENTS_MIG_CPU_ARCHITECTURE,
             CHAR_NUMERIC + CHAR_UPPERCASE + CHAR_LOWERCASE + CHAR_LINES
         )
+        if set(to_test[ENVIRONMENTS_MIG_CPU_ARCHITECTURE])\
+                .isdisjoint(CHAR_UPPERCASE + CHAR_LOWERCASE):
+            raise ValueError(
+                f"{to_test[ENVIRONMENTS_MIG_CPU_ARCHITECTURE]} cannot be a "
+                f"valid architecture without at least one alphabetic "
+                f"character")
     if ENVIRONMENTS_MIG_FILL in to_test:
         for fill in to_test[ENVIRONMENTS_MIG_FILL]:
             if fill not in VALID_ENVIRONMENTS_MIG_FILLS:
@@ -645,13 +723,18 @@ def is_valid_mig_environment(to_test, strict=False):
             values = notification.split(':')
             if len(values) != 2 or not values[0] or not values[1]:
                 return False, "Invalid assignment form for '%s'" % notification
+            if values[0] not in VALID_NOTIFICATION_TYPES:
+                return False, f"Unknown notification type '{values[0]}'. " \
+                              f"Valid are {VALID_NOTIFICATION_TYPES} "
+            if values[0] == NOTIFICATION_EMAIL:
+                # IDMC can use SETTINGS keyword to auto-fill email address
+                if values[1] != 'SETTINGS':
+                    email_regex = re.compile(r"[^@]+@[^@]+\.[^@]+")
 
-    if ENVIRONMENTS_MIG_RETRIES in to_test:
-        valid_string(
-            to_test[ENVIRONMENTS_MIG_RETRIES],
-            ENVIRONMENTS_MIG_RETRIES,
-            CHAR_NUMERIC
-        )
+                    if not email_regex.match(values[1]):
+                        return False, \
+                               f"{values[1]} is not a a valid email format"
+
     if ENVIRONMENTS_MIG_RUNTIME_ENVIRONMENTS in to_test:
         for runtime_env in to_test[ENVIRONMENTS_MIG_RUNTIME_ENVIRONMENTS]:
             valid_string(
