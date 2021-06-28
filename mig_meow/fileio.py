@@ -11,7 +11,8 @@ from .constants import NAME, PERSISTENCE_ID, INPUT_FILE, TRIGGER_PATHS, \
 from .meow import Pattern, check_patterns_dict, check_recipes_dict, \
     is_valid_pattern_object
 from .validation import valid_pattern_name, dir_exists, valid_dir_path, \
-    is_valid_recipe_dict, valid_recipe_name
+    is_valid_recipe_dict, valid_recipe_name, valid_pattern_path, \
+    valid_recipe_path
 
 
 def write_notebook(source, filename):
@@ -51,7 +52,7 @@ def read_yaml(filepath):
     :return: (object) An object read from the file.
     """
     with open(filepath, 'r') as yaml_file:
-        return yaml.full_load(yaml_file)
+        return yaml.load(yaml_file, Loader=yaml.Loader)
 
 
 def make_dir(path, can_exist=True, ensure_clean=False):
@@ -272,22 +273,7 @@ def read_dir_pattern(pattern_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR,
     pattern_dir = os.path.join(directory, PATTERNS)
     dir_exists(pattern_dir)
 
-    try:
-        pattern_yaml_dict = read_yaml(os.path.join(pattern_dir, pattern_name))
-        if '.' in pattern_name:
-            pattern_name = pattern_name[:pattern_name.index('.')]
-
-        pattern = \
-            pattern_from_yaml_dict(pattern_yaml_dict, pattern_name)
-
-        return pattern
-    except Exception as ex:
-        msg = "Tried to import %s '%s', but could not. %s" \
-              % (PATTERN_NAME, pattern_name, ex)
-        if print_errors:
-            print(msg)
-        else:
-            raise Exception(msg)
+    return read_pattern(os.path.join(pattern_dir, pattern_name))
 
 
 def read_dir_recipe(recipe_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR,
@@ -313,21 +299,7 @@ def read_dir_recipe(recipe_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR,
     recipe_dir = os.path.join(directory, RECIPES)
     dir_exists(recipe_dir)
 
-    try:
-        recipe_yaml_dict = read_yaml(os.path.join(recipe_dir, recipe_name))
-        if '.' in recipe_name:
-            recipe_name = recipe_name[:recipe_name.index('.')]
-
-        recipe = recipe_from_yaml_dict(recipe_yaml_dict, recipe_name)
-
-        return recipe
-    except Exception as ex:
-        msg = "Tried to import %s '%s', but could not. %s" \
-              % (RECIPE_NAME, recipe_name, ex)
-        if print_errors:
-            print(msg)
-        else:
-            raise Exception(msg)
+    return read_recipe(os.path.join(recipe_dir, recipe_name))
 
 
 def write_dir_pattern(pattern, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
@@ -352,9 +324,7 @@ def write_dir_pattern(pattern, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
     dir_exists(pattern_dir, create=True)
 
     pattern_file_path = os.path.join(pattern_dir, pattern.name)
-    pattern_yaml = patten_to_yaml_dict(pattern)
-
-    write_yaml(pattern_yaml, pattern_file_path)
+    write_pattern(pattern, path=pattern_file_path)
 
     return pattern_file_path
 
@@ -381,9 +351,7 @@ def write_dir_recipe(recipe, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
     dir_exists(recipe_dir, create=True)
 
     recipe_file_path = os.path.join(recipe_dir, recipe[NAME])
-    recipe_yaml = recipe_to_yaml_dict(recipe)
-
-    write_yaml(recipe_yaml, recipe_file_path)
+    write_recipe(recipe, path=recipe_file_path)
 
     return recipe_file_path
 
@@ -442,11 +410,14 @@ def delete_dir_recipe(recipe_name, directory=DEFAULT_MEOW_IMPORT_EXPORT_DIR):
         os.remove(file_path)
 
 
-def read_pattern(pattern_name, print_errors=False):
-    valid_pattern_name(pattern_name)
+def read_pattern(pattern_path, print_errors=False):
+    valid_pattern_path(pattern_path)
 
     try:
-        pattern_yaml_dict = read_yaml(pattern_name)
+        pattern_yaml_dict = read_yaml(pattern_path)
+        pattern_name = pattern_path
+        if os.path.sep in pattern_name:
+            pattern_name = pattern_name[pattern_name.rfind(os.path.sep)+1:]
         if '.' in pattern_name:
             pattern_name = pattern_name[:pattern_name.index('.')]
 
@@ -455,18 +426,21 @@ def read_pattern(pattern_name, print_errors=False):
         return pattern
     except Exception as ex:
         msg = "Tried to import %s '%s', but could not. %s" \
-              % (PATTERN_NAME, pattern_name, ex)
+              % (PATTERN_NAME, pattern_path, ex)
         if print_errors:
             print(msg)
         else:
             raise Exception(msg)
 
 
-def read_recipe(recipe_name, print_errors=False):
-    valid_recipe_name(recipe_name)
+def read_recipe(recipe_path, print_errors=False):
+    valid_recipe_path(recipe_path)
 
     try:
-        recipe_yaml_dict = read_yaml(recipe_name)
+        recipe_yaml_dict = read_yaml(recipe_path)
+        recipe_name = recipe_path
+        if os.path.sep in recipe_name:
+            recipe_name = recipe_name[recipe_name.rfind(os.path.sep)+1:]
         if '.' in recipe_name:
             recipe_name = recipe_name[:recipe_name.index('.')]
 
@@ -475,14 +449,14 @@ def read_recipe(recipe_name, print_errors=False):
         return recipe
     except Exception as ex:
         msg = "Tried to import %s '%s', but could not. %s" \
-              % (RECIPE_NAME, recipe_name, ex)
+              % (RECIPE_NAME, recipe_path, ex)
         if print_errors:
             print(msg)
         else:
             raise Exception(msg)
 
 
-def write_pattern(pattern):
+def write_pattern(pattern, path=None):
     valid, feedback = is_valid_pattern_object(pattern, integrity=True)
 
     if not valid:
@@ -490,19 +464,25 @@ def write_pattern(pattern):
               % (PATTERN_NAME, pattern.name, feedback)
         raise ValueError(msg)
 
-    pattern_file_path = pattern.name
+    if path:
+        pattern_file_path = path
+    else:
+        pattern_file_path = pattern.name
     pattern_yaml = patten_to_yaml_dict(pattern)
     write_yaml(pattern_yaml, pattern_file_path)
 
 
-def write_recipe(recipe):
+def write_recipe(recipe, path=None):
     valid, feedback = is_valid_recipe_dict(recipe)
     if not valid:
         msg = "Could not export %s %s. %s" \
               % (RECIPE_NAME, recipe['NAME'], feedback)
         raise ValueError(msg)
 
-    recipe_file_path = recipe[NAME]
+    if path:
+        recipe_file_path = path
+    else:
+        recipe_file_path = recipe[NAME]
     recipe_yaml = recipe_to_yaml_dict(recipe)
 
     write_yaml(recipe_yaml, recipe_file_path)

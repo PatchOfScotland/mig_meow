@@ -398,6 +398,44 @@ def valid_pattern_name(name):
     )
 
 
+def valid_pattern_path(path):
+    """
+    Validates that a given name is a valid pattern path.
+
+    :param path: (str) The path to test.
+
+    :return: No return
+    """
+    valid_string(
+        path,
+        'pattern path',
+        CHAR_UPPERCASE
+        + CHAR_LOWERCASE
+        + CHAR_NUMERIC
+        + CHAR_LINES
+        + os.path.sep
+    )
+
+
+def valid_recipe_path(path):
+    """
+    Validates that a given name is a valid recipe path.
+
+    :param path: (str) The path to test.
+
+    :return: No return
+    """
+    valid_string(
+        path,
+        'recipe path',
+        CHAR_UPPERCASE
+        + CHAR_LOWERCASE
+        + CHAR_NUMERIC
+        + CHAR_LINES
+        + os.path.sep
+    )
+
+
 def is_valid_dict(to_test, required_args, optional_args, name, paradigm,
                   strict=False):
     """

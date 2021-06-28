@@ -528,7 +528,7 @@ class Pattern:
         {
             'start': (int) or (float),
             'stop': (int) or (float),
-            'jump': (int) or (float)
+            'increment': (int) or (float)
         }
 
         :return: No return.

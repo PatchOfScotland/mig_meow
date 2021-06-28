@@ -2,6 +2,7 @@ import unittest
 import copy
 import nbformat
 import os
+import shutil
 
 from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
     DEFAULT_WORKFLOW_TITLE, DEFAULT_CWL_IMPORT_EXPORT_DIR, PATTERNS, RECIPES, \
@@ -20,6 +21,8 @@ from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
     VALID_ENVIRONMENTS_MIG, ENVIRONMENTS, ENVIRONMENTS_MIG, ENVIRONMENTS_LOCAL
 from mig_meow.cwl import check_workflows_dict, check_steps_dict, \
     check_settings_dict
+from mig_meow.fileio import write_dir_pattern, write_dir_recipe, \
+    read_dir_pattern, read_dir_recipe
 from mig_meow.validation import is_valid_recipe_dict, is_valid_pattern_dict, \
     is_valid_workflow_dict, is_valid_step_dict, is_valid_setting_dict, \
     is_valid_environments_dict
@@ -51,6 +54,13 @@ REQUIRED_FILES = [
     ANALYSIS_NOTEBOOK,
     PLOTTING_NOTEBOOK
 ]
+
+IMPORT_EXPORT_DIR = 'testing_import_exports'
+
+REQUIRED_DIRS = [
+    IMPORT_EXPORT_DIR
+]
+
 
 REQUIRED_ABSENT_FILES = [
     DOES_NOT_EXIST
@@ -482,15 +492,19 @@ class WorkflowTest(unittest.TestCase):
         for file in REQUIRED_FILES:
             if os.path.exists(file):
                 raise Exception(
-                    "Required test location '%s' is already in use"
-                    % file
+                    "Required test location '%s' is already in use" % file
                 )
 
         for file in REQUIRED_ABSENT_FILES:
             if os.path.exists(file):
                 raise Exception(
-                    "Required test location '%s' is already in use"
-                    % file
+                    "Required test location '%s' is already in use" % file
+                )
+
+        for directory in REQUIRED_DIRS:
+            if os.path.exists(directory):
+                raise Exception(
+                    "Required test location '%s' is already in use" % directory
                 )
 
         for file in NOTEBOOKS:
@@ -508,6 +522,9 @@ class WorkflowTest(unittest.TestCase):
     def tearDown(self):
         for file in REQUIRED_FILES:
             os.remove(file)
+        for directory in REQUIRED_DIRS:
+            if os.path.exists(directory):
+                shutil.rmtree(directory)
 
     def testPatternDictCheck(self):
         # Test valid pattern dict is accepted
@@ -3367,7 +3384,7 @@ class WorkflowTest(unittest.TestCase):
                 'wall time': '1',
                 'memory': '1',
                 'disks': '1',
-                'cpu-architecture': '1',
+                'cpu-architecture': 'X1',
                 'fill': [
                     'CPUCOUNT'
                 ],
@@ -3391,7 +3408,7 @@ class WorkflowTest(unittest.TestCase):
                 'wall time': '1',
                 'memory': '1',
                 'disks': '1',
-                'cpu-architecture': '1',
+                'cpu-architecture': 'X1',
                 'fill': [
                     'CPUCOUNT'
                 ],
@@ -3641,9 +3658,6 @@ class WorkflowTest(unittest.TestCase):
                 ]
             }
         }
-
-        print(recipe_dict)
-        print(expanded_valid_recipe_dict)
 
         # Test that created recipe has expected values.
         self.assertTrue(recipe_dict == expanded_valid_recipe_dict)
@@ -4150,3 +4164,192 @@ class WorkflowTest(unittest.TestCase):
             []
         )
 
+    def testReadWriteLocalPattern(self):
+        self.assertFalse(os.path.exists(IMPORT_EXPORT_DIR))
+
+        pattern_one = Pattern('pattern_one')
+        pattern_one.add_single_input('infile', 'path/*')
+        pattern_one.add_recipe('recipe')
+
+        status, msg = pattern_one.integrity_check()
+        self.assertTrue(status)
+
+        written_to = write_dir_pattern(
+            pattern_one,
+            directory=IMPORT_EXPORT_DIR
+        )
+
+        self.assertTrue(os.path.exists(IMPORT_EXPORT_DIR))
+        self.assertEqual(
+            os.path.join(IMPORT_EXPORT_DIR, PATTERNS, pattern_one.name),
+            written_to
+        )
+        self.assertTrue(os.path.exists(written_to))
+
+        pattern_one_copy = read_dir_pattern(
+            'pattern_one',
+            directory=IMPORT_EXPORT_DIR
+        )
+
+        self.assertTrue(isinstance(pattern_one_copy, Pattern))
+        self.assertEqual(pattern_one, pattern_one_copy)
+
+        pattern_two = Pattern('pattern_two')
+        pattern_two.add_single_input('infile', 'path/*')
+        pattern_two.add_recipe('recipe')
+        pattern_two.add_variable('first', 1)
+        pattern_two.add_variable('second', 'II')
+        pattern_two.add_param_sweep(
+            'third', {'start': 0, 'stop': 2, 'increment': 1}
+        )
+        pattern_two.add_output('outfile', 'path/{FILENAME}')
+
+        status, msg = pattern_two.integrity_check()
+        self.assertTrue(status)
+
+        written_to = write_dir_pattern(
+            pattern_two,
+            directory=IMPORT_EXPORT_DIR
+        )
+
+        self.assertEqual(
+            os.path.join(IMPORT_EXPORT_DIR, PATTERNS, pattern_two.name),
+            written_to
+        )
+        self.assertTrue(os.path.exists(written_to))
+
+        pattern_two_copy = read_dir_pattern(
+            'pattern_two',
+            directory=IMPORT_EXPORT_DIR
+        )
+
+        self.assertTrue(isinstance(pattern_two_copy, Pattern))
+        self.assertEqual(pattern_two, pattern_two_copy)
+
+    def testReadWriteLocalRecipe(self):
+        self.assertFalse(os.path.exists(IMPORT_EXPORT_DIR))
+
+        notebook_dict = nbformat.read(EMPTY_NOTEBOOK, nbformat.NO_CONVERT)
+
+        recipe_one = create_recipe_dict(
+            notebook_dict,
+            VALID_RECIPE_DICT[NAME],
+            EMPTY_NOTEBOOK
+        )
+
+        self.assertTrue(recipe_one == VALID_RECIPE_DICT)
+
+        valid, msg = is_valid_recipe_dict(recipe_one)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        written_to = write_dir_recipe(
+            recipe_one,
+            directory=IMPORT_EXPORT_DIR
+        )
+
+        self.assertTrue(os.path.exists(IMPORT_EXPORT_DIR))
+        self.assertEqual(
+            os.path.join(IMPORT_EXPORT_DIR, RECIPES, recipe_one[NAME]),
+            written_to
+        )
+        self.assertTrue(os.path.exists(written_to))
+
+        recipe_one_copy = read_dir_recipe(
+            VALID_RECIPE_DICT[NAME],
+            directory=IMPORT_EXPORT_DIR
+        )
+
+        self.assertTrue(isinstance(recipe_one_copy, dict))
+        self.assertEqual(recipe_one, recipe_one_copy)
+
+        recipe_two = create_recipe_dict(
+            notebook_dict,
+            VALID_RECIPE_DICT[NAME],
+            EMPTY_NOTEBOOK,
+            environments={
+                'local': {
+                    'dependencies': [
+                        'watchdog',
+                        'mig_meow'
+                    ]
+                }
+            }
+        )
+
+        valid, msg = is_valid_recipe_dict(recipe_two)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        written_to = write_dir_recipe(
+            recipe_two,
+            directory=IMPORT_EXPORT_DIR
+        )
+
+        self.assertTrue(os.path.exists(IMPORT_EXPORT_DIR))
+        self.assertEqual(
+            os.path.join(IMPORT_EXPORT_DIR, RECIPES, recipe_two[NAME]),
+            written_to
+        )
+        self.assertTrue(os.path.exists(written_to))
+
+        recipe_two_copy = read_dir_recipe(
+            VALID_RECIPE_DICT[NAME],
+            directory=IMPORT_EXPORT_DIR
+        )
+
+        self.assertTrue(isinstance(recipe_two_copy, dict))
+        self.assertEqual(recipe_two, recipe_two_copy)
+
+        recipe_three = create_recipe_dict(
+            notebook_dict,
+            VALID_RECIPE_DICT[NAME],
+            EMPTY_NOTEBOOK,
+            environments={
+                'mig': {
+                    'nodes': '1',
+                    'cpu cores': '1',
+                    'wall time': '1',
+                    'memory': '1',
+                    'disks': '1',
+                    'cpu-architecture': 'X86',
+                    'fill': [
+                        'CPUCOUNT'
+                    ],
+                    'environment variables': [
+                        'VAR=42'
+                    ],
+                    'notification': [
+                        'email: SETTINGS'
+                    ],
+                    'retries': '1',
+                    'runtime environments': [
+                        'PAPERMILL'
+                    ]
+                }
+            }
+        )
+
+        valid, msg = is_valid_recipe_dict(recipe_three)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        written_to = write_dir_recipe(
+            recipe_three,
+            directory=IMPORT_EXPORT_DIR
+        )
+
+        self.assertTrue(os.path.exists(IMPORT_EXPORT_DIR))
+        self.assertEqual(
+            os.path.join(IMPORT_EXPORT_DIR, RECIPES, recipe_three[NAME]),
+            written_to
+        )
+        self.assertTrue(os.path.exists(written_to))
+
+        recipe_three_copy = read_dir_recipe(
+            VALID_RECIPE_DICT[NAME],
+            directory=IMPORT_EXPORT_DIR
+        )
+
+        self.assertTrue(isinstance(recipe_three_copy, dict))
+        self.assertEqual(recipe_three, recipe_three_copy)
