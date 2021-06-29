@@ -9,7 +9,8 @@ from .constants import VGRID_PATTERN_OBJECT_TYPE, VGRID_RECIPE_OBJECT_TYPE, \
     VALID_OPERATIONS, VALID_WORKFLOW_TYPES, VALID_JOB_TYPES, \
     DEFAULT_JSON_TIMEOUT, PATTERNS, VGRID_WORKFLOWS_OBJECT, VGRID_TEXT_TYPE, \
     OBJECT_TYPE, VGRID_ERROR_TYPE, RECIPE_NAME, RECIPE, SOURCE, VGRID_UPDATE, \
-    PERSISTENCE_ID, PATTERN_NAME, SWEEP, VGRID_REPORT_OBJECT_TYPE
+    PERSISTENCE_ID, PATTERN_NAME, SWEEP, VGRID_REPORT_OBJECT_TYPE, \
+    ENVIRONMENTS, ENVIRONMENTS_MIG
 from .validation import check_input, valid_recipe_name, is_valid_recipe_dict, \
     valid_pattern_name
 from .logging import write_to_log
@@ -17,6 +18,37 @@ from .meow import Pattern, is_valid_pattern_object
 
 
 MRSL_VGRID = 'VGRID'
+
+
+def _get_pattern_attributes(pattern):
+    """
+    Turns a pattern into a dictionary of attributes to be sent to the MiG.
+
+    :param pattern: (Pattern) The Pattern object to be expressed.
+
+    :return: (dict) A dictionary object expressing the given Pattern.
+    """
+    return {
+        NAME: pattern.name,
+        INPUT_FILE: pattern.trigger_file,
+        TRIGGER_PATHS: pattern.trigger_paths,
+        OUTPUT: pattern.outputs,
+        RECIPES: pattern.recipes,
+        VARIABLES: pattern.variables
+    }
+
+
+def _get_recipe_attributes(recipe):
+    """
+    Turns a recipe into a dictionary of attributes to be sent to the MiG.
+    Currently this is just a straight copy of the recipe dict but may differ
+    in future.
+
+    :param recipe: (dict) The recipe object to be expressed.
+
+    :return: (dict) A dictionary object expressing the given recipe.
+    """
+    return recipe
 
 
 def export_pattern_to_vgrid(vgrid, pattern, timeout=DEFAULT_JSON_TIMEOUT):
@@ -49,14 +81,8 @@ def export_pattern_to_vgrid(vgrid, pattern, timeout=DEFAULT_JSON_TIMEOUT):
             'The provided pattern is not a valid Pattern. %s' % msg
         )
 
-    attributes = {
-        NAME: pattern.name,
-        INPUT_FILE: pattern.trigger_file,
-        TRIGGER_PATHS: pattern.trigger_paths,
-        OUTPUT: pattern.outputs,
-        RECIPES: pattern.recipes,
-        VARIABLES: pattern.variables
-    }
+    attributes = _get_pattern_attributes(pattern)
+
     return vgrid_workflow_json_call(
         vgrid,
         VGRID_CREATE,
@@ -92,11 +118,13 @@ def export_recipe_to_vgrid(vgrid, recipe, timeout=DEFAULT_JSON_TIMEOUT):
     if not status:
         raise ValueError('The provided recipe is not valid. %s' % msg)
 
+    attributes = _get_recipe_attributes(recipe)
+
     return vgrid_workflow_json_call(
         vgrid,
         VGRID_CREATE,
         VGRID_RECIPE_OBJECT_TYPE,
-        recipe,
+        attributes,
         timeout=timeout
     )
 
