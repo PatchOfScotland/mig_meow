@@ -28,7 +28,7 @@ from mig_meow.validation import is_valid_recipe_dict, is_valid_pattern_dict, \
     is_valid_environments_dict
 from mig_meow.meow import Pattern, check_patterns_dict, \
     build_workflow_object, create_recipe_dict, check_recipes_dict, \
-    parameter_sweep_entry, get_parameter_sweep_values
+    parameter_sweep_entry, get_parameter_sweep_values, register_recipe
 from mig_meow.workflow_widget import WorkflowWidget, NAME_KEY, VALUE_KEY, \
     SWEEP_START_KEY, SWEEP_STOP_KEY, SWEEP_JUMP_KEY
 
@@ -4233,11 +4233,13 @@ class WorkflowTest(unittest.TestCase):
 
         recipe_one = create_recipe_dict(
             notebook_dict,
-            VALID_RECIPE_DICT[NAME],
+            'recipe_one',
             EMPTY_NOTEBOOK
         )
 
-        self.assertTrue(recipe_one == VALID_RECIPE_DICT)
+        recipe_one_check = copy.deepcopy(VALID_RECIPE_DICT)
+        recipe_one_check[NAME] = 'recipe_one'
+        self.assertTrue(recipe_one == recipe_one_check)
 
         valid, msg = is_valid_recipe_dict(recipe_one)
         self.assertTrue(valid)
@@ -4256,7 +4258,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertTrue(os.path.exists(written_to))
 
         recipe_one_copy = read_dir_recipe(
-            VALID_RECIPE_DICT[NAME],
+            recipe_one[NAME],
             directory=IMPORT_EXPORT_DIR
         )
 
@@ -4265,7 +4267,7 @@ class WorkflowTest(unittest.TestCase):
 
         recipe_two = create_recipe_dict(
             notebook_dict,
-            VALID_RECIPE_DICT[NAME],
+            'recipe_two',
             EMPTY_NOTEBOOK,
             environments={
                 'local': {
@@ -4294,7 +4296,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertTrue(os.path.exists(written_to))
 
         recipe_two_copy = read_dir_recipe(
-            VALID_RECIPE_DICT[NAME],
+            recipe_two[NAME],
             directory=IMPORT_EXPORT_DIR
         )
 
@@ -4303,7 +4305,7 @@ class WorkflowTest(unittest.TestCase):
 
         recipe_three = create_recipe_dict(
             notebook_dict,
-            VALID_RECIPE_DICT[NAME],
+            'recipe_three',
             EMPTY_NOTEBOOK,
             environments={
                 'mig': {
@@ -4347,9 +4349,123 @@ class WorkflowTest(unittest.TestCase):
         self.assertTrue(os.path.exists(written_to))
 
         recipe_three_copy = read_dir_recipe(
-            VALID_RECIPE_DICT[NAME],
+            recipe_three[NAME],
             directory=IMPORT_EXPORT_DIR
         )
 
         self.assertTrue(isinstance(recipe_three_copy, dict))
         self.assertEqual(recipe_three, recipe_three_copy)
+
+        recipe_four = create_recipe_dict(
+            notebook_dict,
+            'recipe_four',
+            EMPTY_NOTEBOOK,
+            environments={
+                'local': {
+                    'dependencies': [
+                        'watchdog',
+                        'mig_meow'
+                    ]
+                },
+                'mig': {
+                    'nodes': '1',
+                    'cpu cores': '1',
+                    'wall time': '1',
+                    'memory': '1',
+                    'disks': '1',
+                    'cpu-architecture': 'X86',
+                    'fill': [
+                        'CPUCOUNT'
+                    ],
+                    'environment variables': [
+                        'VAR=42'
+                    ],
+                    'notification': [
+                        'email: SETTINGS'
+                    ],
+                    'retries': '1',
+                    'runtime environments': [
+                        'PAPERMILL'
+                    ]
+                }
+            }
+        )
+
+        valid, msg = is_valid_recipe_dict(recipe_four)
+        self.assertTrue(valid)
+        self.assertEqual(msg, '')
+
+        written_to = write_dir_recipe(
+            recipe_four,
+            directory=IMPORT_EXPORT_DIR
+        )
+
+        self.assertTrue(os.path.exists(IMPORT_EXPORT_DIR))
+        self.assertEqual(
+            os.path.join(IMPORT_EXPORT_DIR, RECIPES, recipe_four[NAME]),
+            written_to
+        )
+        self.assertTrue(os.path.exists(written_to))
+
+        recipe_four_copy = read_dir_recipe(
+            recipe_four[NAME],
+            directory=IMPORT_EXPORT_DIR
+        )
+
+        self.assertTrue(isinstance(recipe_four_copy, dict))
+        self.assertEqual(recipe_four, recipe_four_copy)
+
+    def testRegisterRecipe(self):
+        registered_recipe_no_name = register_recipe(EMPTY_NOTEBOOK)
+
+        self.assertTrue(registered_recipe_no_name)
+        self.assertIsInstance(registered_recipe_no_name, dict)
+        self.assertEqual(registered_recipe_no_name['name'], 'test_notebook')
+
+        registered_recipe_name = \
+            register_recipe(EMPTY_NOTEBOOK, name='test_rec')
+
+        self.assertTrue(registered_recipe_name)
+        self.assertIsInstance(registered_recipe_name, dict)
+
+        notebook_dict = nbformat.read(EMPTY_NOTEBOOK, nbformat.NO_CONVERT)
+
+        recipe_dict = create_recipe_dict(
+            notebook_dict,
+            'test_rec',
+            EMPTY_NOTEBOOK
+        )
+
+        self.assertEqual(registered_recipe_name, recipe_dict)
+
+        registered_recipe_environments = register_recipe(
+            EMPTY_NOTEBOOK,
+            name = 'env_rec',
+            environments={
+                'local': {
+                    'dependencies': [
+                        'watchdog',
+                        'mig_meow'
+                    ]
+                }
+            }
+        )
+
+        env_recipe_dict = create_recipe_dict(
+            notebook_dict,
+            'env_rec',
+            EMPTY_NOTEBOOK,
+            environments={
+                'local': {
+                    'dependencies': [
+                        'watchdog',
+                        'mig_meow'
+                    ]
+                }
+            }
+        )
+
+        self.assertTrue(registered_recipe_environments)
+        self.assertIsInstance(registered_recipe_environments, dict)
+        self.assertEqual(registered_recipe_environments, env_recipe_dict)
+

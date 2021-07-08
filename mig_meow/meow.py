@@ -580,7 +580,7 @@ class Pattern:
         return display_dict
 
 
-def register_recipe(source, name=None):
+def register_recipe(source, name=None, environments=None):
     """
     Registers a new Recipe dict.
 
@@ -588,6 +588,8 @@ def register_recipe(source, name=None):
 
     :param name: (str)[optional] The name the Recipe is to be registered under.
     If not provided then the source filename will be used instead.
+
+    :param environments: (dict)[optional] Additional environment definitions.
 
     :return: (dict) A dict object expressing the Recipe notebook at the given
     source
@@ -605,7 +607,8 @@ def register_recipe(source, name=None):
 
     with open(source, "r") as read_file:
         notebook = json.load(read_file)
-        return create_recipe_dict(notebook, name, source)
+        return create_recipe_dict(
+            notebook, name, source, environments=environments)
 
 
 def create_recipe_dict(notebook, name, source, environments=None):
