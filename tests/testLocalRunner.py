@@ -20,7 +20,7 @@ from mig_meow.localrunner import WorkflowRunner, RUNNER_DATA, RULE_PATH, \
     RULE_PATTERN, RULE_RECIPE, replace_keywords, worker_timer, job_processor, \
     JOB_DIR, OUTPUT_DATA, job_queue, LocalWorkflowFileMonitor, \
     LocalWorkflowStateMonitor, administrator, OP_CREATE, OP_DELETED, \
-    META_FILE, BASE_FILE, PARAMS_FILE
+    META_FILE, BASE_FILE, PARAMS_FILE, local_processing
 from mig_meow.meow import Pattern
 
 TESTING_VGRID = 'testing_directory'
@@ -124,6 +124,7 @@ class WorkflowTest(unittest.TestCase):
         worker = Process(
             target=job_processor,
             args=(
+                local_processing,
                 timer_to_worker_reader,
                 worker_to_timer_writer,
                 admin_to_worker_reader,
@@ -755,6 +756,7 @@ class WorkflowTest(unittest.TestCase):
         worker = Process(
             target=job_processor,
             args=(
+                local_processing,
                 timer_to_worker_reader,
                 worker_to_timer_writer,
                 admin_to_worker_reader,
@@ -1012,6 +1014,7 @@ class WorkflowTest(unittest.TestCase):
         worker = Process(
             target=job_processor,
             args=(
+                local_processing,
                 timer_to_worker_reader,
                 worker_to_timer_writer,
                 admin_to_worker_reader,

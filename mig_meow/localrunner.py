@@ -922,8 +922,9 @@ def job_queue(from_admin, to_admin, from_worker_readers, to_worker_writers,
                         to_worker.send(assigned_job)
 
 
-def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
-                  from_queue, to_logger, processor_id, job_home, output_data):
+def job_processor(processing_method, from_timer, to_timer, from_admin,
+                  to_admin, to_queue, from_queue, to_logger, processor_id,
+                  job_home, output_data):
     state = 'stopped'
 
     to_timer.send('sleep')
@@ -960,104 +961,30 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
                 job_id = from_queue.recv()
 
                 if job_id:
-                    job_dir = os.path.join(job_home, job_id)
-                    meta_path = os.path.join(job_dir, META_FILE)
-                    base_path = os.path.join(job_dir, BASE_FILE)
-                    param_path = os.path.join(job_dir, PARAMS_FILE)
-                    job_path = os.path.join(job_dir, JOB_FILE)
-                    result_path = os.path.join(job_dir, RESULT_FILE)
-
-                    job_data = read_yaml(meta_path)
-
-                    job_data[JOB_STATUS] = RUNNING
-                    job_data[JOB_START_TIME] = datetime.now()
-
-                    write_yaml(job_data, meta_path)
-
                     to_logger.send(
                         (
                             'job_processor.worker %s' % processor_id,
-                            "Found job %s" % job_data[JOB_ID]
+                            "Found job %s" % job_id
                         )
                     )
 
-                    error = False
-                    cmd = 'notebook_parameterizer ' \
-                          + base_path + ' ' \
-                          + param_path + ' ' \
-                          + '-o ' + job_path
-                    try:
-                        sub = subprocess.Popen(cmd,
-                                               stdout=subprocess.PIPE,
-                                               stderr=subprocess.PIPE,
-                                               shell=True)
-                        # TODO: implement a timeout (max simulation time)
-                        (stdout, stderr) = sub.communicate()
+                    status, msg = processing_method(
+                        job_id, job_home, output_data)
 
-                    except Exception as ex:
-                        error = ex
-
-                    if not os.path.exists(job_path) or error:
-                        job_data[JOB_STATUS] = FAILED
-                        job_data[JOB_END_TIME] = datetime.now()
-                        msg = 'Job file %s was not created successfully' \
-                              % job_id
-                        if error:
-                            msg += '. %s' % error
-                        job_data[JOB_ERROR] = msg
-                        write_yaml(job_data, meta_path)
+                    if not status:
                         to_logger.send(
                             (
                                 'job_processor.worker %s' % processor_id,
                                 "Job worker encountered an error. %s" % msg
                             )
                         )
-                        continue
-
-                    cmd = 'papermill ' \
-                          + job_path + ' ' \
-                          + result_path
-                    try:
-                        sub = subprocess.Popen(cmd,
-                                               stdout=subprocess.PIPE,
-                                               stderr=subprocess.PIPE,
-                                               shell=True)
-                        # TODO: implement a timeout (max simulation time)
-                        (stdout, stderr) = sub.communicate()
-                    except Exception as ex:
-                        error = ex
-
-                    if not os.path.exists(result_path) or error:
-                        job_data[JOB_STATUS] = FAILED
-                        job_data[JOB_END_TIME] = datetime.now()
-                        msg = 'Result file %s was not created successfully'
-                        if error:
-                            msg += '. %s' % error
-                        job_data[JOB_ERROR] = msg
-                        write_yaml(job_data, meta_path)
-                        to_logger.send(
-                            (
-                                'job_processor.worker %s' % processor_id,
-                                "Job worker encountered an error. %s" % msg
-                            )
-                        )
-                        continue
-
-                    job_data[JOB_STATUS] = DONE
-                    job_data[JOB_END_TIME] = datetime.now()
-                    write_yaml(job_data, meta_path)
-
-                    job_output_dir = os.path.join(output_data, job_id)
-
-                    shutil.copytree(job_dir, job_output_dir)
 
                     to_logger.send(
                         (
                             'job_processor.worker %s' % processor_id,
-                            "Completed job %s" % job_data[JOB_ID]
+                            "Completed job %s" % job_id
                         )
                     )
-
                 else:
                     to_logger.send(
                         (
@@ -1067,6 +994,82 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
                     )
 
             to_timer.send('sleep')
+
+
+def local_processing(job_id, job_home, output_data):
+    job_dir = os.path.join(job_home, job_id)
+    meta_path = os.path.join(job_dir, META_FILE)
+    base_path = os.path.join(job_dir, BASE_FILE)
+    param_path = os.path.join(job_dir, PARAMS_FILE)
+    job_path = os.path.join(job_dir, JOB_FILE)
+    result_path = os.path.join(job_dir, RESULT_FILE)
+
+    job_data = read_yaml(meta_path)
+
+    job_data[JOB_STATUS] = RUNNING
+    job_data[JOB_START_TIME] = datetime.now()
+
+    write_yaml(job_data, meta_path)
+
+    error = False
+    cmd = 'notebook_parameterizer ' \
+          + base_path + ' ' \
+          + param_path + ' ' \
+          + '-o ' + job_path
+    try:
+        sub = subprocess.Popen(cmd,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE,
+                               shell=True)
+        # TODO: implement a timeout (max simulation time)
+        (stdout, stderr) = sub.communicate()
+
+    except Exception as ex:
+        error = ex
+
+    if not os.path.exists(job_path) or error:
+        job_data[JOB_STATUS] = FAILED
+        job_data[JOB_END_TIME] = datetime.now()
+        msg = 'Job file %s was not created successfully' \
+              % job_id
+        if error:
+            msg += '. %s' % error
+        job_data[JOB_ERROR] = msg
+        write_yaml(job_data, meta_path)
+        return False, msg
+
+    cmd = 'papermill ' \
+          + job_path + ' ' \
+          + result_path
+    try:
+        sub = subprocess.Popen(cmd,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE,
+                               shell=True)
+        # TODO: implement a timeout (max simulation time)
+        (stdout, stderr) = sub.communicate()
+    except Exception as ex:
+        error = ex
+
+    if not os.path.exists(result_path) or error:
+        job_data[JOB_STATUS] = FAILED
+        job_data[JOB_END_TIME] = datetime.now()
+        msg = 'Result file %s was not created successfully'
+        if error:
+            msg += '. %s' % error
+        job_data[JOB_ERROR] = msg
+        write_yaml(job_data, meta_path)
+        return False, msg
+
+    job_data[JOB_STATUS] = DONE
+    job_data[JOB_END_TIME] = datetime.now()
+    write_yaml(job_data, meta_path)
+
+    job_output_dir = os.path.join(output_data, job_id)
+
+    shutil.copytree(job_dir, job_output_dir)
+
+    return True, ''
 
 
 def worker_timer(from_worker, to_worker, worker_id, wait_time=10):
@@ -1179,6 +1182,7 @@ class WorkflowRunner:
             worker = Process(
                 target=job_processor,
                 args=(
+                    local_processing,
                     timer_to_worker_reader,
                     worker_to_timer_writer,
                     admin_to_worker_reader,
