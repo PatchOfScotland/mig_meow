@@ -637,7 +637,8 @@ def create_recipe_dict(notebook, name, source, environments=None):
     recipe = {
         NAME: name,
         SOURCE: source,
-        RECIPE: notebook
+        RECIPE: notebook,
+        ENVIRONMENTS: {}
     }
     if environments:
         status, feedback = is_valid_environments_dict(environments)

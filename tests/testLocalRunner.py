@@ -549,7 +549,7 @@ class WorkflowTest(unittest.TestCase):
         check_logger_input(
             self,
             msg,
-            'add_pattern',
+            'administrator.add_pattern',
             "%s pattern %s" % (OP_CREATE, pattern)
         )
 
@@ -558,7 +558,7 @@ class WorkflowTest(unittest.TestCase):
         check_logger_input(
             self,
             msg,
-            'remove_pattern',
+            'administrator.remove_pattern',
             "%s pattern %s" % (OP_DELETED, pattern.name)
         )
 
@@ -568,7 +568,7 @@ class WorkflowTest(unittest.TestCase):
         check_logger_input(
             self,
             msg,
-            'add_recipe',
+            'administrator.add_recipe',
             "%s recipe %s from source %s"
             % (OP_CREATE, recipe[NAME], recipe[SOURCE])
         )
@@ -578,7 +578,7 @@ class WorkflowTest(unittest.TestCase):
         check_logger_input(
             self,
             msg,
-            'remove_recipe',
+            'administrator.remove_recipe',
             "%s recipe %s" % (OP_DELETED, recipe[NAME])
         )
 
@@ -588,12 +588,12 @@ class WorkflowTest(unittest.TestCase):
         check_logger_input(
             self,
             msg,
-            'add_pattern',
+            'administrator.add_pattern',
             "%s pattern %s" % (OP_CREATE, pattern)
         )
         msg = admin_to_logger_reader.recv()
         self.assertEqual(len(msg), 2)
-        self.assertEqual(msg[0], 'create_new_rule')
+        self.assertEqual(msg[0], 'administrator.create_new_rule')
         self.assertIn("Created rule for path: %s" % pattern.trigger_paths[0],
                       msg[1])
         rule_id = msg[1][msg[1].index(' with id ')+9:-1]
@@ -602,7 +602,7 @@ class WorkflowTest(unittest.TestCase):
         check_logger_input(
             self,
             msg,
-            'add_recipe',
+            'administrator.add_recipe',
             "%s recipe %s from source %s"
             % (OP_CREATE, recipe[NAME], recipe[SOURCE])
         )
@@ -641,7 +641,7 @@ class WorkflowTest(unittest.TestCase):
         check_logger_input(
             self,
             msg,
-            'handle_event',
+            'administrator.handle_event',
             'Handling a created event at start/data.txt'
         )
 
@@ -649,7 +649,7 @@ class WorkflowTest(unittest.TestCase):
         check_logger_input(
             self,
             msg,
-            'run_handler',
+            'administrator.handle_event',
             'Starting new job for %s using rule %s'
             % (target_path, expected_rule))
 
@@ -658,7 +658,7 @@ class WorkflowTest(unittest.TestCase):
         check_logger_input(
             self,
             msg,
-            'handle_event',
+            'administrator.schedule_job',
             'Scheduled new job %s from rule %s and pattern %s'
             % (job_id, rule_id, pattern.name))
 
@@ -796,7 +796,7 @@ class WorkflowTest(unittest.TestCase):
         check_logger_input(
             self,
             msg,
-            'worker 0',
+            'job_processor.worker 0',
             "Worker 0 found no job in queue"
         )
 
@@ -808,14 +808,14 @@ class WorkflowTest(unittest.TestCase):
         check_logger_input(
             self,
             msg,
-            'worker 0',
+            'job_processor.worker 0',
             "Found job %s" % job_id
         )
         msg = worker_to_logger_reader.recv()
         check_logger_input(
             self,
             msg,
-            'worker 0',
+            'job_processor.worker 0',
             "Completed job %s" % job_id
         )
 
@@ -913,7 +913,7 @@ class WorkflowTest(unittest.TestCase):
         check_logger_input(
             self,
             msg,
-            'queue request',
+            'job_queue.queue request',
             'Assigning job %s' % job_id
         )
 
@@ -936,7 +936,7 @@ class WorkflowTest(unittest.TestCase):
         check_logger_input(
             self,
             msg,
-            'queue request',
+            'job_queue.queue request',
             "Could not assign job %s to worker 0 as missing one or more "
             "requirement from %s." % (job_id, job['requirements'])
         )
@@ -1076,13 +1076,13 @@ class WorkflowTest(unittest.TestCase):
         self.assertTrue(administrator_process.is_alive())
 
         worker.start()
-        self.assertTrue(administrator_process.is_alive())
+        self.assertTrue(worker.is_alive())
 
         job_queue_process.start()
-        self.assertTrue(administrator_process.is_alive())
+        self.assertTrue(job_queue_process.is_alive())
 
         timer.start()
-        self.assertTrue(administrator_process.is_alive())
+        self.assertTrue(timer.is_alive())
 
         write_dir_pattern(pattern, directory=RUNNER_DATA)
         write_dir_recipe(recipe, directory=RUNNER_DATA)
@@ -1093,15 +1093,16 @@ class WorkflowTest(unittest.TestCase):
         msg = queue_to_logger_reader.recv()
         self.assertIsInstance(msg, tuple)
         self.assertEqual(len(msg), 2)
-        self.assertEqual(msg[0], 'queue request')
+        self.assertEqual(msg[0], 'job_queue.queue request')
         job_id = msg[1][14:]
         self.assertEqual(msg[1], "Assigning job %s" % job_id)
 
         msg = worker_to_logger_reader.recv()
-        check_logger_input(self, msg, 'worker 0', "Found job %s" % job_id)
+        check_logger_input(self, msg, 'job_processor.worker 0',
+                           "Found job %s" % job_id)
 
         msg = worker_to_logger_reader.recv()
-        check_logger_input(self, msg, 'worker 0',
+        check_logger_input(self, msg, 'job_processor.worker 0',
                            "Completed job %s" % job_id)
 
         output_path = os.path.join(TESTING_VGRID, 'end', 'data.txt')
@@ -1622,7 +1623,7 @@ Appended by pAppend"""
             0,
             daemon=True,
             retro_active_jobs=False,
-            print_logging=False
+            print_logging=True
         )
 
         self.assertEqual(runner.check_patterns(), {})

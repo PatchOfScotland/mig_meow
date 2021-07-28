@@ -189,7 +189,7 @@ def administrator(
         identify_rules(new_pattern=pattern)
         to_logger.send(
             (
-                'add_pattern',
+                'administrator.add_pattern',
                 '%s pattern %s' % (op, pattern)
             )
         )
@@ -206,7 +206,7 @@ def administrator(
         identify_rules(new_recipe=recipe)
         to_logger.send(
             (
-                'add_recipe',
+                'administrator.add_recipe',
                 '%s recipe %s from source %s'
                 % (op, recipe[NAME], recipe[SOURCE])
             )
@@ -218,14 +218,14 @@ def administrator(
             remove_rules(deleted_pattern_name=pattern_name)
             to_logger.send(
                 (
-                    'remove_pattern',
+                    'administrator.remove_pattern',
                     'Removed pattern %s' % pattern_name
                 )
             )
         else:
             to_logger.send(
                 (
-                    'remove_pattern',
+                    'administrator.remove_pattern',
                     'Pattern %s was not present in the pattern list to be '
                     'removed' % pattern_name
                 )
@@ -237,14 +237,14 @@ def administrator(
             remove_rules(deleted_recipe_name=recipe_name)
             to_logger.send(
                 (
-                    'remove_recipe',
+                    'administrator.remove_recipe',
                     'Removed recipe %s' % recipe_name
                 )
             )
         else:
             to_logger.send(
                 (
-                    'remove_recipe',
+                    'administrator.remove_recipe',
                     'Recipe %s was not present in the recipe list to be '
                     'removed' % recipe_name
                 )
@@ -261,7 +261,7 @@ def administrator(
 
         to_logger.send(
             (
-                'create_new_rule',
+                'administrator.create_new_rule',
                 'Created rule for path: %s with id %s.'
                 % (path, rule[RULE_ID])
             )
@@ -308,7 +308,7 @@ def administrator(
             if len(new_pattern.recipes) > 1:
                 to_logger.send(
                     (
-                        'identify_rules-pattern',
+                        'administrator.identify_rules-pattern',
                         'Rule creation aborted. Currently only supports one '
                         'recipe per pattern.'
                     )
@@ -327,7 +327,7 @@ def administrator(
                 if len(pattern.recipes) > 1:
                     to_logger.send(
                         (
-                            'identify_rules-recipe',
+                            'administrator.identify_rules-recipe',
                             'Rule creation avoided for %s. Currently only '
                             'supports one recipe per pattern.' % name
                         )
@@ -354,7 +354,7 @@ def administrator(
             rules.remove(delete)
             to_logger.send(
                 (
-                    'remove_rules',
+                    'administrator.remove_rules',
                     'Removing rule: %s.' % delete
                 )
             )
@@ -417,7 +417,7 @@ def administrator(
 
         to_logger.send(
             (
-                'handle_event',
+                'administrator.schedule_job',
                 'Scheduled new job %s from rule %s and pattern %s'
                 % (job_dict[JOB_ID], rule[RULE_ID], rule[RULE_PATTERN])
             )
@@ -433,7 +433,7 @@ def administrator(
 
         to_logger.send(
             (
-                'handle_event',
+                'administrator.handle_event',
                 'Handling a %s event at %s' % (event_type, handle_path)
             )
         )
@@ -450,7 +450,7 @@ def administrator(
 
                 to_logger.send(
                     (
-                        'run_handler',
+                        'administrator.handle_event',
                         'Starting new job for %s using rule %s'
                         % (src_path, rule)
                     )
@@ -479,6 +479,13 @@ def administrator(
                                 src_path,
                                 yaml_dict
                             )
+            else:
+                to_logger.send(
+                    (
+                        'administrator.handle_event',
+                        'No matching rule for %s.' % src_path
+                    )
+                )
 
     def start_workers():
         for to_worker in to_worker_writers:
@@ -559,7 +566,7 @@ def administrator(
         if not status:
             to_logger.send(
                 (
-                    'add_pattern',
+                    'administrator.add_pattern',
                     'Could not add pattern. %s' % msg
                 )
             )
@@ -570,7 +577,7 @@ def administrator(
 
             to_logger.send(
                 (
-                    'add_pattern',
+                    'administrator.add_pattern',
                     'Added pattern: %s' % msg
                 )
             )
@@ -582,7 +589,7 @@ def administrator(
         if not status:
             to_logger.send(
                 (
-                    'modify_pattern',
+                    'administrator.modify_pattern',
                     'Could not modify pattern. %s' % msg
                 )
             )
@@ -593,7 +600,7 @@ def administrator(
 
             to_logger.send(
                 (
-                    'modify_pattern',
+                    'administrator.modify_pattern',
                     'Modified pattern: %s' % msg
                 )
             )
@@ -608,7 +615,7 @@ def administrator(
         else:
             to_logger.send(
                 (
-                    'remove_pattern',
+                    'administrator.remove_pattern',
                     'Invalid pattern parameter. Must be either Pattern '
                     'object, or a str name. '
                 )
@@ -618,7 +625,7 @@ def administrator(
         delete_dir_pattern(name, directory=meow_data)
         to_logger.send(
             (
-                'remove_pattern',
+                'administrator.remove_pattern',
                 'Removed pattern: %s' % name
             )
         )
@@ -630,7 +637,7 @@ def administrator(
         if not status:
             to_logger.send(
                 (
-                    'add_recipe',
+                    'administrator.add_recipe',
                     'Could not add recipe. %s' % msg
                 )
             )
@@ -640,7 +647,7 @@ def administrator(
 
             to_logger.send(
                 (
-                    'add_recipe',
+                    'administrator.add_recipe',
                     'Added user recipe: %s' % msg
                 )
             )
@@ -651,7 +658,7 @@ def administrator(
         if not status:
             to_logger.send(
                 (
-                    'modify_recipe',
+                    'administrator.modify_recipe',
                     'Could not modify recipe. %s' % msg
                 )
             )
@@ -661,7 +668,7 @@ def administrator(
 
             to_logger.send(
                 (
-                    'modify_recipe',
+                    'administrator.modify_recipe',
                     'Modified recipe: %s' % msg
                 )
             )
@@ -675,7 +682,7 @@ def administrator(
         else:
             to_logger.send(
                 (
-                    'remove_recipe',
+                    'administrator.remove_recipe',
                     'Invalid recipe parameter. Must be either recipe dict, '
                     'or a str name. '
                 )
@@ -685,7 +692,7 @@ def administrator(
         delete_dir_recipe(name, directory=meow_data)
         to_logger.send(
             (
-                'remove_recipe',
+                'administrator.remove_recipe',
                 'Removed recipe: %s' % name
             )
         )
@@ -864,7 +871,6 @@ def job_queue(from_admin, to_admin, from_worker_readers, to_worker_writers,
 
             # submitting new job
             else:
-                print('appended to queue')
                 queue.append(input_message)
 
         # Is from worker
@@ -877,28 +883,27 @@ def job_queue(from_admin, to_admin, from_worker_readers, to_worker_writers,
                     if isinstance(input_message, list):
                         worker_module_lists[i] = input_message
                     if input_message == 'request':
-                        print('got request')
                         assigned_job = None
                         for job_id in queue:
-                            print('considering %s' % job_id)
                             job_dir = os.path.join(job_home, job_id)
                             meta_path = os.path.join(job_dir, META_FILE)
                             job_data = read_yaml(meta_path)
 
                             requirements = job_data[JOB_REQUIREMENTS]
                             missing_requirement = False
-                            for requirement in requirements['dependencies']:
-                                print(('has requirement %s' % requirement))
-                                if requirement not in worker_module_lists[i]:
-                                    print('missing %s' % requirement)
-                                    missing_requirement = True
+                            if 'dependencies' in requirements:
+                                for requirement in \
+                                        requirements['dependencies']:
+                                    if requirement not in \
+                                            worker_module_lists[i]:
+                                        missing_requirement = True
                             if not missing_requirement:
                                 assigned_job = job_id
                                 break
                             else:
                                 to_logger.send(
                                     (
-                                        'queue request',
+                                        'job_queue.queue request',
                                         "Could not assign job %s to worker "
                                         "%s as missing one or more "
                                         "requirement from %s."
@@ -910,11 +915,10 @@ def job_queue(from_admin, to_admin, from_worker_readers, to_worker_writers,
 
                             to_logger.send(
                                 (
-                                    'queue request',
+                                    'job_queue.queue request',
                                     "Assigning job %s" % assigned_job
                                 )
                             )
-                        print('sending job %s' % assigned_job)
                         to_worker.send(assigned_job)
 
 
@@ -972,7 +976,7 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
 
                     to_logger.send(
                         (
-                            'worker %s' % processor_id,
+                            'job_processor.worker %s' % processor_id,
                             "Found job %s" % job_data[JOB_ID]
                         )
                     )
@@ -1004,7 +1008,7 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
                         write_yaml(job_data, meta_path)
                         to_logger.send(
                             (
-                                'worker %s' % processor_id,
+                                'job_processor.worker %s' % processor_id,
                                 "Job worker encountered an error. %s" % msg
                             )
                         )
@@ -1033,7 +1037,7 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
                         write_yaml(job_data, meta_path)
                         to_logger.send(
                             (
-                                'worker %s' % processor_id,
+                                'job_processor.worker %s' % processor_id,
                                 "Job worker encountered an error. %s" % msg
                             )
                         )
@@ -1049,7 +1053,7 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
 
                     to_logger.send(
                         (
-                            'worker %s' % processor_id,
+                            'job_processor.worker %s' % processor_id,
                             "Completed job %s" % job_data[JOB_ID]
                         )
                     )
@@ -1057,7 +1061,7 @@ def job_processor(from_timer, to_timer, from_admin, to_admin, to_queue,
                 else:
                     to_logger.send(
                         (
-                            'worker %s' % processor_id,
+                            'job_processor.worker %s' % processor_id,
                             "Worker %s found no job in queue" % processor_id
                         )
                     )
@@ -1095,7 +1099,7 @@ def logger(all_input_channel_readers, print_logging=True, file_logging=False):
                 )
 
                 if print_logging:
-                    print(input_message[1])
+                    print(str(input_message[0]) + ': ' + str(input_message[1]))
 
                 continue
 
@@ -1627,7 +1631,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
 
         self.to_logger.send(
             (
-                'update_rules',
+                'LocalWorkflowStateMonitor.update_rules',
                 "Handling %s rule update at %s"
                 % (event.event_type, event.src_path)
             )
@@ -1640,7 +1644,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
         except ValueError as ve:
             self.to_logger.send(
                 (
-                    'update_rules',
+                    'LocalWorkflowStateMonitor.update_rules',
                     "Ignoring events at %s. %s" % (src_path, ve)
                 )
             )
@@ -1665,7 +1669,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
         except Exception as exc:
             self.to_logger.send(
                 (
-                    'update_rules-pattern',
+                    'LocalWorkflowStateMonitor.update_rules-pattern',
                     'Cannot process event at %s due to error: %s'
                     % (src_path, exc)
                 )
@@ -1674,7 +1678,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
         if os.path.sep in file_path:
             self.to_logger.send(
                 (
-                    'update_rules-pattern',
+                    'LocalWorkflowStateMonitor.update_rules-pattern',
                     'Cannot process nested event at %s' % src_path
                 )
             )
@@ -1687,10 +1691,16 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
                         file_path,
                         directory=self.meow_data
                     )
+                    self.to_logger.send(
+                        (
+                            'LocalWorkflowStateMonitor.update_rules-pattern',
+                            "Found pattern: '%s'" % pattern
+                        )
+                    )
                 except Exception as exc:
                     self.to_logger.send(
                         (
-                            'update_rules-pattern',
+                            'LocalWorkflowStateMonitor.update_rules-pattern',
                             str(exc)
                         )
                     )
@@ -1705,7 +1715,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
                 except Exception as exc:
                     self.to_logger.send(
                         (
-                            'update_rules-recipe',
+                            'LocalWorkflowStateMonitor.update_rules-recipe',
                             str(exc)
                         )
                     )
@@ -1750,7 +1760,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
 
         self.to_logger.send(
             (
-                'add_pattern',
+                'LocalWorkflowStateMonitor.add_pattern',
                 '%s pattern %s' % (op, pattern)
             )
         )
@@ -1773,7 +1783,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
 
         self.to_logger.send(
             (
-                'add_recipe',
+                'LocalWorkflowStateMonitor.add_recipe',
                 '%s recipe %s from source %s'
                 % (op, recipe[NAME], recipe[SOURCE])
             )
@@ -1791,14 +1801,14 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
 
             self.to_logger.send(
                 (
-                    'remove_pattern',
+                    'LocalWorkflowStateMonitor.remove_pattern',
                     'Removed pattern %s' % pattern_name
                 )
             )
         else:
             self.to_logger.send(
                 (
-                    'remove_pattern',
+                    'LocalWorkflowStateMonitor.remove_pattern',
                     'Pattern %s was not present in the pattern list to be '
                     'removed' % pattern_name
                 )
@@ -1816,14 +1826,14 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
 
             self.to_logger.send(
                 (
-                    'remove_recipe',
+                    'LocalWorkflowStateMonitor.remove_recipe',
                     'Removed recipe %s' % recipe_name
                 )
             )
         else:
             self.to_logger.send(
                 (
-                    'remove_recipe',
+                    'LocalWorkflowStateMonitor.remove_recipe',
                     'Recipe %s was not present in the recipe list to be '
                     'removed' % recipe_name
                 )
@@ -1855,7 +1865,7 @@ class LocalWorkflowFileMonitor(PatternMatchingEventHandler):
 
         self.to_logger.send(
             (
-                'LocalWorkflowRunner',
+                'LocalWorkflowFileMonitor.__init__',
                 'Setting up new file monitor'
             )
         )
@@ -1866,13 +1876,13 @@ class LocalWorkflowFileMonitor(PatternMatchingEventHandler):
         src_path = event.src_path
         time_stamp = event.time_stamp
 
-        # self.to_logger.send(
-        #     (
-        #         '__handle_trigger',
-        #         'Running threaded handler at (%s) to handle %s event at %s at '
-        #         '%s' % (pid, event_type, src_path, time_stamp)
-        #     )
-        # )
+        self.to_logger.send(
+            (
+                'LocalWorkflowFileMonitor.__handle_trigger',
+                'Running threaded handler at (%s) to handle %s event at %s at '
+                '%s' % (pid, event_type, src_path, time_stamp)
+            )
+        )
 
         # This will prevent some job spamming
         self._recent_jobs_lock.acquire()
@@ -1886,7 +1896,7 @@ class LocalWorkflowFileMonitor(PatternMatchingEventHandler):
                         max(recent_timestamp, time_stamp)
                     # self.to_logger.send(
                     #     (
-                    #         '__handle_trigger',
+                    #         'LocalWorkflowFileMonitor.__handle_trigger',
                     #         'Skipping due to recent hit'
                     #     )
                     # )
@@ -1900,6 +1910,13 @@ class LocalWorkflowFileMonitor(PatternMatchingEventHandler):
             self._recent_jobs_lock.release()
             raise Exception(ex)
         self._recent_jobs_lock.release()
+
+        self.to_logger.send(
+            (
+                'LocalWorkflowFileMonitor.__handle_trigger',
+                'Event at (%s) sent to admin.' % src_path
+            )
+        )
 
         self.to_admin.send(event)
 

@@ -406,14 +406,9 @@ def valid_pattern_path(path):
 
     :return: No return
     """
-    valid_string(
+    valid_dir_path(
         path,
-        'pattern path',
-        CHAR_UPPERCASE
-        + CHAR_LOWERCASE
-        + CHAR_NUMERIC
-        + CHAR_LINES
-        + os.path.sep
+        'pattern path'
     )
 
 
@@ -425,14 +420,9 @@ def valid_recipe_path(path):
 
     :return: No return
     """
-    valid_string(
+    valid_dir_path(
         path,
-        'recipe path',
-        CHAR_UPPERCASE
-        + CHAR_LOWERCASE
-        + CHAR_NUMERIC
-        + CHAR_LINES
-        + os.path.sep
+        'recipe path'
     )
 
 

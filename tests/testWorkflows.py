@@ -111,7 +111,8 @@ VALID_RECIPE_DICT = {
         'metadata': {},
         'nbformat': 4,
         'nbformat_minor': 5
-    }
+    },
+    ENVIRONMENTS: {}
 }
 
 VALID_WORKFLOW_DICT = {

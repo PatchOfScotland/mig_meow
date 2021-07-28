@@ -754,7 +754,8 @@ def write_vgrid_recipe(recipe, vgrid, ssl=True, timeout=DEFAULT_JSON_TIMEOUT):
     attributes = {
         NAME: recipe[NAME],
         RECIPE: recipe[RECIPE],
-        SOURCE: recipe[SOURCE]
+        SOURCE: recipe[SOURCE],
+        ENVIRONMENTS: recipe[ENVIRONMENTS]
     }
 
     if PERSISTENCE_ID in recipe:
