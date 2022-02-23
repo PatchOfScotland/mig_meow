@@ -21,7 +21,8 @@ from .constants import CHAR_LOWERCASE, CHAR_NUMERIC, CHAR_UPPERCASE, \
     ENVIRONMENTS_MIG_MEMORY, ENVIRONMENTS_MIG_CPU_ARCHITECTURE, \
     ENVIRONMENTS_MIG_WALL_TIME, ENVIRONMENTS_MIG_CPU_CORES, \
     VALID_ENVIRONMENTS_MIG_FILLS, COMPARITORS, VALID_NOTIFICATION_TYPES, \
-    NOTIFICATION_EMAIL
+    NOTIFICATION_EMAIL, VALID_SSH_WORKER_MIN, VALID_SSH_WORKER_OPTIONAL, \
+    SSH_MOUNT, SSH_CERT, SSH_USER, SSH_HOSTNAME
 
 
 def is_a_number(string):
@@ -424,6 +425,115 @@ def valid_recipe_path(path):
         path,
         'recipe path'
     )
+
+
+def valid_runner_workers(workers_input):
+    if isinstance(workers_input, int):
+        if workers_input < 0:
+            raise ValueError(f"Cannot have negative amount of local workers. "
+                             f"Was given '{workers_input}'")
+        return
+    if isinstance(workers_input, list):
+        for worker in workers_input:
+            if not isinstance(worker, dict):
+                raise ValueError(f"Unknown worker type '{type(worker)}'. "
+                                 f"Must be a dictionary. Use an empty dict "
+                                 f"to denote a local worker. ")
+        return
+    raise TypeError(f"Given unknown input '{type(workers_input)}' for "
+                    f"workers. Currently supported inputs are an Int to "
+                    f"specify local number of local workers. ")
+
+
+def is_valid_ssh_worker(worker_def):
+    valid, msg = is_valid_dict(
+        worker_def,
+        VALID_SSH_WORKER_MIN,
+        VALID_SSH_WORKER_OPTIONAL,
+        "SSH worker",
+        "LocalRunner",
+        strict=False
+    )
+
+    if not valid:
+        return False, msg
+
+    valid, msg = is_valid_hostname(worker_def[SSH_HOSTNAME])
+
+    if not valid:
+        return False, msg
+
+    valid, msg = is_valid_username(worker_def[SSH_USER])
+
+    if not valid:
+        return False, msg
+
+    valid, msg = is_valid_certificate(worker_def[SSH_CERT])
+
+    if not valid:
+        return False, msg
+
+    valid, msg = is_valid_mountpoint(worker_def[SSH_MOUNT])
+
+    if not valid:
+        return False, msg
+
+    if not worker_def[SSH_MOUNT]:
+        return False, f"Invalid {SSH_MOUNT}: {worker_def[SSH_MOUNT]}. " \
+                      f"Must be defined"
+
+    if not worker_def[SSH_CERT]:
+        return False, f"Invalid {SSH_CERT}: {worker_def[SSH_CERT]}. " \
+                      f"Must be defined"
+
+    return True, ""
+
+
+def is_valid_hostname(to_test):
+    if not to_test:
+        return False, f"Invalid {SSH_HOSTNAME}: {to_test}. Must be defined"
+    try:
+        valid_string(
+            to_test,
+            SSH_HOSTNAME,
+            + CHAR_LOWERCASE
+            + CHAR_NUMERIC
+            + '-'
+        )
+    except ValueError as e:
+        return False, str(e)
+    if to_test[0] == '-':
+        return False, f"{SSH_HOSTNAME} '{to_test}' may not start with a '-' " \
+                      f"character. "
+    if len(to_test) > 253:
+        return False, f"{SSH_HOSTNAME} '{to_test}' is longer than the " \
+                      f"permitted 253 chars. "
+
+
+def is_valid_username(to_test):
+    # Validating username seems to be a whole can of worms in itself, as
+    # although users are advised to stick to lowercase and dashes, this is
+    # not a formal requirement. For now, we will stick with the
+    # recommendations.
+    if not to_test:
+        return False, f"Invalid {SSH_USER}: {to_test}. " \
+                      f"Must be defined"
+    if len(to_test) > 32:
+        return False, f"{SSH_USER} '{to_test}' is " \
+                      f"longer than the permitted 32 chars. "
+    if to_test[0] == '-':
+        return False, f"{SSH_USER} '{to_test}' may not " \
+                      f"start with a '-' character. "
+    try:
+        valid_string(
+            to_test,
+            SSH_USER,
+            + CHAR_LOWERCASE
+            + CHAR_NUMERIC
+            + '-_'
+        )
+    except ValueError as e:
+        return False, str(e)
 
 
 def is_valid_dict(to_test, required_args, optional_args, name, paradigm,
@@ -916,7 +1026,6 @@ def is_valid_setting_dict(to_test, strict=False):
         CWL_MODE,
         strict=strict
     )
-
 
 def prep_html(prep):
     """

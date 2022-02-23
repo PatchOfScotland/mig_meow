@@ -9,10 +9,16 @@ import time
 import shutil
 import re
 import fnmatch
+import socket
 import subprocess
+import stat
 import threading
+import paramiko
 import pkg_resources
 
+from cryptography.hazmat.primitives import serialization as cryptography_serialisation
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.backends import default_backend as cryptography_default_backend
 from datetime import datetime
 from multiprocessing import Process, Pipe, current_process
 from multiprocessing.connection import wait
@@ -32,7 +38,7 @@ from .fileio import write_dir_pattern, write_dir_recipe, make_dir, \
     delete_dir_pattern, delete_dir_recipe
 from .meow import get_parameter_sweep_values, is_valid_pattern_object, Pattern
 from .validation import valid_dir_path, check_input, is_valid_recipe_dict, \
-    is_valid_local_environment
+    is_valid_local_environment, valid_runner_workers, is_valid_ssh_worker
 
 _trigger_event = '_trigger_event'
 
@@ -922,9 +928,9 @@ def job_queue(from_admin, to_admin, from_worker_readers, to_worker_writers,
                         to_worker.send(assigned_job)
 
 
-def job_processor(processing_method, from_timer, to_timer, from_admin,
-                  to_admin, to_queue, from_queue, to_logger, processor_id,
-                  job_home, output_data):
+def job_processor(processing_method, processing_method_args, from_timer,
+                  to_timer, from_admin, to_admin, to_queue, from_queue,
+                  to_logger, processor_id, job_home, output_data):
     state = 'stopped'
 
     to_timer.send('sleep')
@@ -968,8 +974,11 @@ def job_processor(processing_method, from_timer, to_timer, from_admin,
                         )
                     )
 
-                    status, msg = processing_method(
-                        job_id, job_home, output_data)
+                    processing_method_args["job_id"] = job_id
+                    processing_method_args["job_home"] = job_home
+                    processing_method_args["output_data"] = output_data
+
+                    status, msg = processing_method(processing_method_args)
 
                     if not status:
                         to_logger.send(
@@ -996,7 +1005,11 @@ def job_processor(processing_method, from_timer, to_timer, from_admin,
             to_timer.send('sleep')
 
 
-def local_processing(job_id, job_home, output_data):
+def local_processing(processing_method_args):
+    job_id = processing_method_args["job_id"]
+    job_home = processing_method_args["job_home"]
+    output_data = processing_method_args["output_data"]
+
     job_dir = os.path.join(job_home, job_id)
     meta_path = os.path.join(job_dir, META_FILE)
     base_path = os.path.join(job_dir, BASE_FILE)
@@ -1072,6 +1085,108 @@ def local_processing(job_id, job_home, output_data):
     return True, ''
 
 
+def ssh_processing(processing_method_args):
+    job_id = processing_method_args["job_id"]
+    job_home = processing_method_args["job_home"]
+    output_data = processing_method_args["output_data"]
+
+    resource_hostname = "localhost"
+    resource_username = "patch_of_scotland"
+    resource_rsa = "/home/patch_of_scotland/.ssh/id_rsa_skimbleshanks.pub"
+    resource_mount_point = "test_tmp_dir/mountpoint"
+
+    server_hostname = socket.getfqdn()
+    server_username = os.getlogin()
+    server_rsa_private = "/home/patch_of_scotland/.ssh/id_rsa_sshfs_testing"
+    server_rsa_public = "/home/patch_of_scotland/.ssh/id_rsa_sshfs_testing.pub"
+    server_known_hosts = "/home/patch_of_scotland/.ssh/known_hosts_sshfs_testing"
+    server_authorised_keys = "/home/patch_of_scotland/.ssh/authorized_keys"
+    server_mount_target = "/home/patch_of_scotland/TestSpace/sshfs/onHost"
+
+    ssh_client = paramiko.SSHClient()
+    # This will do for now but should be more rigorous in future
+    ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh_client.connect(
+        hostname=resource_hostname,
+        username=resource_username,
+        key_filename=resource_rsa,
+    )
+    sftp_client = ssh_client.open_sftp()
+
+    ssh_client.exec_command(f"mkdir -p {resource_mount_point}")
+
+    sftp_client.put("/home/patch_of_scotland/.ssh/id_rsa_skimbleshanks test_tmp_dir/id_rsa_skimbleshanks")
+
+    ssh_client.exec_command(f"mkdir {resource_mount_point}")
+
+    _, stdout, stderr = ssh_client.exec_command(f"sshfs {server_username}@{server_hostname}:{server_mount_target} {resource_mount_point} -oIdentityFile={server_rsa_private} -oUserKnownHostsFile={server_known_hosts} -o reconnect -C")
+
+    print(stdout.readlines())
+    print(stderr.readlines())
+
+    _, stdout, stderr = ssh_client.exec_command(f"fusermount -u {resource_mount_point}")
+
+    print(stdout.readlines())
+    print(stderr.readlines())
+
+    ssh_client.exec_command("rm -rf test_tmp_dir")
+
+    sftp_client.close()
+    ssh_client.close()
+
+
+def setup_ssh_files():
+    key = rsa.generate_private_key(
+        backend=cryptography_default_backend(),
+        public_exponent=65537,
+        key_size=2048
+    )
+    private_key = key.private_bytes(
+        cryptography_serialisation.Encoding.PEM,
+        cryptography_serialisation.PrivateFormat.PKCS8,
+        cryptography_serialisation.NoEncryption()
+    )
+    public_key = key.public_key().public_bytes(
+        cryptography_serialisation.Encoding.OpenSSH,
+        cryptography_serialisation.PublicFormat.OpenSSH
+    )
+    with open(server_rsa_private, 'xb') as private_key_file:
+        private_key_file.write(private_key)
+    os.chmod(server_rsa_private, stat.S_IRUSR | stat.S_IWUSR)
+
+    with open(server_rsa_public, 'xb') as public_key_file:
+        public_key_file.write(public_key)
+    os.chmod(server_rsa_public,
+             stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
+
+    with open(server_authorised_keys, 'ab') as authorised_keys_file:
+        authorised_keys_file.write(public_key)
+        authorised_keys_file.write(bytes("\n", 'utf-8'))
+
+    cmd = f"ssh-keyscan -H localhost"
+    process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+    output, error = process.communicate()
+    with open(server_known_hosts, 'xb') as known_hosts_file:
+        known_hosts_file.write(output)
+
+
+def clean_up_ssh():
+    if os.path.exists(server_rsa_private):
+        os.remove(server_rsa_private)
+    if os.path.exists(server_rsa_public):
+        os.remove(server_rsa_public)
+    if os.path.exists(server_known_hosts):
+        os.remove(server_known_hosts)
+
+    authorised_keys_lines = []
+    with open(server_authorised_keys, 'r') as authorised_keys_file:
+        authorised_keys_lines = authorised_keys_file.readlines()
+    with open(server_authorised_keys, 'w') as authorised_keys_file:
+        for line in authorised_keys_lines:
+            if line.strip("\n") != public_key.decode('utf-8'):
+                authorised_keys_file.write(line)
+
+
 def worker_timer(from_worker, to_worker, worker_id, wait_time=10):
     while True:
         msg = from_worker.recv()
@@ -1115,7 +1230,7 @@ class WorkflowRunner:
                  print_logging=True, file_logging=False):
 
         valid_dir_path(path, 'path')
-        check_input(workers, int, 'workers', or_none=True)
+        valid_runner_workers(workers)
         check_input(patterns, dict, PATTERNS, or_none=True)
         check_input(recipes, dict, RECIPES, or_none=True)
         valid_dir_path(meow_data, 'meow_data')
@@ -1170,7 +1285,10 @@ class WorkflowRunner:
         worker_to_admins = []
         worker_to_queues = []
         queue_to_workers = []
-        for processor_id in range(0, workers):
+        # Local processing = {}
+        if isinstance(workers, int):
+            workers = [{}] * workers
+        for processor_id, worker_type in enumerate(workers):
             worker_to_timer_reader, worker_to_timer_writer = Pipe(duplex=False)
             timer_to_worker_reader, timer_to_worker_writer = Pipe(duplex=False)
             admin_to_worker_reader, admin_to_worker_writer = Pipe(duplex=False)
@@ -1179,10 +1297,19 @@ class WorkflowRunner:
             queue_to_worker_reader, queue_to_worker_writer = Pipe(duplex=False)
             worker_to_logger_reader, worker_to_logger_writer = Pipe(duplex=False)
 
+            # Defaults, used in local processing
+            processing_type = local_processing
+            processing_arguments = {}
+
+            if is_valid_ssh_worker(worker_type):
+                processing_type = ssh_processing
+                processing_arguments = {}
+
             worker = Process(
                 target=job_processor,
                 args=(
-                    local_processing,
+                    processing_type,
+                    processing_arguments,
                     timer_to_worker_reader,
                     worker_to_timer_writer,
                     admin_to_worker_reader,
@@ -1340,6 +1467,9 @@ class WorkflowRunner:
                     time.sleep(1)
             except KeyboardInterrupt:
                 self.stop_runner()
+
+    def __del__(self):
+        clean_up_ssh()
 
     def run(self):
         for my_process in self.process_list:

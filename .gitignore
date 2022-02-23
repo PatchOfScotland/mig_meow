@@ -121,3 +121,20 @@ quick_foam_processing.py
 fullstart.py
 
 pat
+abstract/
+add.ipynb
+append_text.ipynb
+basic/
+choo.ipynb
+conftest.py
+div.ipynb
+meow_directory/
+run_abstract_workflow.py
+run_basic_example.py
+run_scientific_example.py
+run_self_modifying_example.py
+scientific/
+self-modifying/
+state/
+temp_phantom.h5
+temp_phantom_info.h5
