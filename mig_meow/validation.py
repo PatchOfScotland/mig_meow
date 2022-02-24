@@ -157,7 +157,7 @@ def valid_string(variable, name, valid_chars):
     for char in variable:
         if char not in valid_chars:
             raise ValueError(
-                "Invalid character %s in %s '%s'. Only valid characters are: "
+                "Invalid character '%s' in %s '%s'. Only valid characters are: "
                 "%s" % (char, name, variable, valid_chars)
             )
 

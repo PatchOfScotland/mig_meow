@@ -1171,20 +1171,35 @@ def setup_ssh_files():
 
 
 def clean_up_ssh():
-    if os.path.exists(server_rsa_private):
-        os.remove(server_rsa_private)
-    if os.path.exists(server_rsa_public):
-        os.remove(server_rsa_public)
-    if os.path.exists(server_known_hosts):
-        os.remove(server_known_hosts)
+    try:
+        if os.path.exists(server_rsa_private):
+            os.remove(server_rsa_private)
+    except NameError:
+        pass
+    try:
+        if os.path.exists(server_rsa_public):
+            os.remove(server_rsa_public)
+    except NameError:
+        pass
+    try:
+        if os.path.exists(server_known_hosts):
+            os.remove(server_known_hosts)
+    except NameError:
+        pass
 
     authorised_keys_lines = []
-    with open(server_authorised_keys, 'r') as authorised_keys_file:
-        authorised_keys_lines = authorised_keys_file.readlines()
-    with open(server_authorised_keys, 'w') as authorised_keys_file:
-        for line in authorised_keys_lines:
-            if line.strip("\n") != public_key.decode('utf-8'):
-                authorised_keys_file.write(line)
+    try:
+        with open(server_authorised_keys, 'r') as authorised_keys_file:
+            authorised_keys_lines = authorised_keys_file.readlines()
+    except NameError:
+        pass
+    try:
+        with open(server_authorised_keys, 'w') as authorised_keys_file:
+            for line in authorised_keys_lines:
+                if line.strip("\n") != public_key.decode('utf-8'):
+                    authorised_keys_file.write(line)
+    except NameError:
+        pass
 
 
 def worker_timer(from_worker, to_worker, worker_id, wait_time=10):
