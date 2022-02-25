@@ -1397,12 +1397,12 @@ class WorkflowRunner:
         )
 
         process_list = [
-            logger_process,
             job_queue_process,
             administrator_process,
         ]
 
         self.process_list = process_list
+        self.logger_process = logger_process
         for worker_or_timer in workers_and_timers_list:
             process_list.append(worker_or_timer)
 
@@ -1487,12 +1487,14 @@ class WorkflowRunner:
         clean_up_ssh()
 
     def run(self):
+        self.logger_process.start()
         for my_process in self.process_list:
             my_process.start()
 
     def join(self):
         for my_process in self.process_list:
             my_process.join()
+        self.logger_process.join()
 
     def stop(self):
         for my_process in self.process_list:
@@ -1501,6 +1503,8 @@ class WorkflowRunner:
             else:
                 my_process.stop()
             my_process.join()
+        self.logger_process.terminate()
+        self.logger_process.join()
 
     def start_workers(self):
         self.user_to_admin.send(
