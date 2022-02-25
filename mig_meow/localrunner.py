@@ -1498,6 +1498,9 @@ class WorkflowRunner:
         for my_process in self.process_list:
             if hasattr(my_process, 'terminate'):
                 my_process.terminate()
+            else:
+                my_process.stop()
+            my_process.join()
 
     def start_workers(self):
         self.user_to_admin.send(
@@ -1548,6 +1551,7 @@ class WorkflowRunner:
         )
         result = self.admin_to_user.recv()
         self.stop()
+        self.join()
         return result
 
     def get_all_jobs(self):
