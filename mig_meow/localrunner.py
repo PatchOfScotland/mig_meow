@@ -1396,23 +1396,22 @@ class WorkflowRunner:
             )
         )
 
-        process_list = [
+        self.process_list = [
             job_queue_process,
             administrator_process,
         ]
 
-        self.process_list = process_list
         self.logger_process = logger_process
         for worker_or_timer in workers_and_timers_list:
-            process_list.append(worker_or_timer)
+            self.process_list.append(worker_or_timer)
 
         # Start all non-monitoring processes
         self.run()
 
         state_monitor = LocalWorkflowStateMonitor(
             state_to_admin_writer, state_to_logger_writer, meow_data)
-        state_monitor_process = Observer()
-        state_monitor_process.schedule(
+        self.state_monitor_process = Observer()
+        self.state_monitor_process.schedule(
             state_monitor,
             meow_data,
             recursive=True
@@ -1420,18 +1419,16 @@ class WorkflowRunner:
 
         file_monitor = LocalWorkflowFileMonitor(
             file_to_admin_writer, file_to_logger_writer)
-        file_monitor_process = Observer()
-        file_monitor_process.schedule(
+        self.file_monitor_process = Observer()
+        self.file_monitor_process.schedule(
             file_monitor,
             path,
             recursive=True
         )
 
-        self.process_list.append(state_monitor_process)
-        self.process_list.append(file_monitor_process)
 
-        state_monitor_process.start()
-        file_monitor_process.start()
+        self.state_monitor_process.start()
+        self.file_monitor_process.start()
 
         admin_to_logger_writer.send(
             (
@@ -1492,11 +1489,17 @@ class WorkflowRunner:
             my_process.start()
 
     def join(self):
+        self.file_monitor_process.join()
+        self.state_monitor_process.join()
         for my_process in self.process_list:
             my_process.join()
         self.logger_process.join()
 
     def stop(self):
+        self.file_monitor_process.stop()
+        self.file_monitor_process.join()
+        self.state_monitor_process.stop()
+        self.state_monitor_process.join()
         for my_process in self.process_list:
             if hasattr(my_process, 'terminate'):
                 my_process.terminate()
