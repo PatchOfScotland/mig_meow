@@ -446,14 +446,15 @@ def valid_runner_workers(workers_input):
 
 
 def is_valid_ssh_worker(worker_def):
-    valid, msg = is_valid_dict(
-        worker_def,
-        VALID_SSH_WORKER_MIN,
-        VALID_SSH_WORKER_OPTIONAL,
-        "SSH worker",
-        "LocalRunner",
-        strict=False
-    )
+    #valid, msg = is_valid_dict(
+    #    worker_def,
+    #    VALID_SSH_WORKER_MIN,
+    #    VALID_SSH_WORKER_OPTIONAL,
+    #    "SSH worker",
+    #    "LocalRunner",
+    #    strict=False
+    #)
+    return False, "Not yet implemented"
 
     if not valid:
         return False, msg

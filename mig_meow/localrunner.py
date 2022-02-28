@@ -6,9 +6,9 @@ import copy
 import glob
 import os
 import time
-import shutil
 import re
 import fnmatch
+import shutil
 import socket
 import subprocess
 import stat
@@ -35,7 +35,7 @@ from .constants import PATTERNS, RECIPES, NAME, SOURCE, CHAR_LOWERCASE, \
 from .logging import create_localrunner_logfile, write_to_log
 from .fileio import write_dir_pattern, write_dir_recipe, make_dir, \
     read_dir_recipe, read_dir_pattern, write_notebook, write_yaml, read_yaml, \
-    delete_dir_pattern, delete_dir_recipe
+    delete_dir_pattern, delete_dir_recipe, rmtree
 from .meow import get_parameter_sweep_values, is_valid_pattern_object, Pattern
 from .validation import valid_dir_path, check_input, is_valid_recipe_dict, \
     is_valid_local_environment, valid_runner_workers, is_valid_ssh_worker
@@ -532,13 +532,13 @@ def administrator(
         if os.path.exists(meow_data) \
                 and os.path.isdir(meow_data) \
                 and meow_data == RUNNER_DATA:
-            shutil.rmtree(meow_data)
+            rmtree(meow_data)
 
         if clear_jobs and os.path.exists(job_data):
             for job in jobs:
                 job_dir = os.path.join(job_data, job)
                 if os.path.exists(job_dir):
-                    shutil.rmtree(job_dir)
+                    rmtree(job_dir)
             if len(os.listdir(job_data)) == 0:
                 os.rmdir(job_data)
         return True
@@ -1242,7 +1242,7 @@ class WorkflowRunner:
                  meow_data=RUNNER_DATA, job_data=JOB_DIR,
                  output_data=OUTPUT_DATA, daemon=False, reuse_vgrid=True,
                  start_workers=True, retro_active_jobs=True,
-                 print_logging=True, file_logging=False):
+                 print_logging=True, file_logging=False, wait_time=10):
 
         valid_dir_path(path, 'path')
         valid_runner_workers(workers)
@@ -1257,6 +1257,7 @@ class WorkflowRunner:
         check_input(retro_active_jobs, bool, 'retro_active_jobs')
         check_input(print_logging, bool, 'print_logging')
         check_input(file_logging, bool, 'file_logging')
+        check_input(wait_time, int, 'wait_time')
 
         make_dir(path, can_exist=reuse_vgrid)
         make_dir(job_data)
@@ -1316,7 +1317,7 @@ class WorkflowRunner:
             processing_type = local_processing
             processing_arguments = {}
 
-            if is_valid_ssh_worker(worker_type):
+            if is_valid_ssh_worker(worker_type)[0]:
                 processing_type = ssh_processing
                 processing_arguments = {}
 
@@ -1343,7 +1344,8 @@ class WorkflowRunner:
                 args=(
                     worker_to_timer_reader,
                     timer_to_worker_writer,
-                    processor_id
+                    processor_id,
+                    wait_time
                 )
             )
 

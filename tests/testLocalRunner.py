@@ -17,7 +17,8 @@ from mig_meow.constants import PATTERNS, RECIPES, KEYWORD_DIR, KEYWORD_JOB, \
     SSH_MOUNT, SSH_CERT, SSH_USER, SSH_HOSTNAME
 from mig_meow.fileio import read_dir, read_dir_pattern, read_dir_recipe, \
     make_dir, write_yaml, write_dir_pattern, write_dir_recipe, \
-    patten_to_yaml_dict, recipe_to_yaml_dict, read_yaml, write_notebook
+    patten_to_yaml_dict, recipe_to_yaml_dict, read_yaml, write_notebook, \
+    rmtree
 from mig_meow.localrunner import WorkflowRunner, RUNNER_DATA, RULE_PATH, \
     RULE_PATTERN, RULE_RECIPE, replace_keywords, worker_timer, job_processor, \
     JOB_DIR, OUTPUT_DATA, job_queue, LocalWorkflowFileMonitor, \
@@ -72,13 +73,13 @@ class WorkflowTest(unittest.TestCase):
 
     def tearDown(self):
         if os.path.exists(TESTING_VGRID):
-            shutil.rmtree(TESTING_VGRID)
+            rmtree(TESTING_VGRID)
         if os.path.exists(RUNNER_DATA):
-            shutil.rmtree(RUNNER_DATA)
+            rmtree(RUNNER_DATA)
         if os.path.exists(JOB_DIR):
-            shutil.rmtree(JOB_DIR)
+            rmtree(JOB_DIR)
         if os.path.exists(OUTPUT_DATA):
-            shutil.rmtree(OUTPUT_DATA)
+            rmtree(OUTPUT_DATA)
 
     # TODO
     @pytest.mark.timeout(5)

@@ -2,7 +2,6 @@ import unittest
 import copy
 import nbformat
 import os
-import shutil
 
 from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
     DEFAULT_WORKFLOW_TITLE, DEFAULT_CWL_IMPORT_EXPORT_DIR, PATTERNS, RECIPES, \
@@ -22,7 +21,7 @@ from mig_meow.constants import NO_OUTPUT_SET_WARNING, MEOW_MODE, CWL_MODE, \
 from mig_meow.cwl import check_workflows_dict, check_steps_dict, \
     check_settings_dict
 from mig_meow.fileio import write_dir_pattern, write_dir_recipe, \
-    read_dir_pattern, read_dir_recipe
+    read_dir_pattern, read_dir_recipe, rmtree
 from mig_meow.validation import is_valid_recipe_dict, is_valid_pattern_dict, \
     is_valid_workflow_dict, is_valid_step_dict, is_valid_setting_dict, \
     is_valid_environments_dict
@@ -525,7 +524,7 @@ class WorkflowTest(unittest.TestCase):
             os.remove(file)
         for directory in REQUIRED_DIRS:
             if os.path.exists(directory):
-                shutil.rmtree(directory)
+                rmtree(directory)
 
     def testPatternDictCheck(self):
         # Test valid pattern dict is accepted

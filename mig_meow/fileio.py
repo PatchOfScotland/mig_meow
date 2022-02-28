@@ -1,7 +1,6 @@
 
 import os
 import json
-import shutil
 import yaml
 
 from .constants import NAME, PERSISTENCE_ID, INPUT_FILE, TRIGGER_PATHS, \
@@ -13,6 +12,23 @@ from .meow import Pattern, check_patterns_dict, check_recipes_dict, \
 from .validation import valid_pattern_name, dir_exists, valid_dir_path, \
     is_valid_recipe_dict, valid_recipe_name, valid_pattern_path, \
     valid_recipe_path
+
+
+def rmtree(directory):
+    """
+    Remove a directory and all its contents. 
+    Should be faster than shutil.rmtree
+    
+    :param: (str) The firectory to empty and remove
+
+    :return: No return
+    """
+    for root, dirs, files in os.walk(directory, topdown=False):
+        for file in files:
+            os.remove(os.path.join(root, file))
+        for dir in dirs:
+            rmtree(os.path.join(root, dir))
+    os.rmdir(directory)
 
 
 def write_notebook(source, filename):
@@ -79,7 +95,7 @@ def make_dir(path, can_exist=True, ensure_clean=False):
     else:
         if not can_exist:
             if ensure_clean:
-                shutil.rmtree(path)
+                rmtree(path)
                 os.mkdir(path)
             else:
                 raise ValueError("Directory %s already exists. " % path)
