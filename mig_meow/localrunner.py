@@ -1301,7 +1301,6 @@ class WorkflowRunner:
         worker_to_admins = []
         worker_to_queues = []
         queue_to_workers = []
-        # Local processing = {}
         if isinstance(workers, int):
             workers = [{}] * workers
         for processor_id, worker_type in enumerate(workers):
