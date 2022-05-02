@@ -281,15 +281,6 @@ def valid_file_path(path, name, extensions=None):
     valid_chars = \
         CHAR_NUMERIC + CHAR_UPPERCASE + CHAR_LOWERCASE + '-_.' + os.path.sep
 
-    if path.count('.') > 1:
-        raise ValueError(
-            "Too many '.' characters in %s path. Should only be one. " % name
-        )
-    if path.count('.') == 0:
-        raise ValueError(
-            "No file extension found in %s path. Please define one. " % name
-        )
-
     if extensions:
         extension = path[path.index('.'):]
         if extension not in extensions:
