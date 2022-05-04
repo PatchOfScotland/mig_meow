@@ -485,13 +485,6 @@ def administrator(
                                 src_path,
                                 yaml_dict
                             )
-            else:
-                to_logger.send(
-                    (
-                        'administrator.handle_event',
-                        'No matching rule for %s.' % src_path
-                    )
-                )
 
     def start_workers():
         for to_worker in to_worker_writers:
