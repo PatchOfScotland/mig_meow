@@ -1036,6 +1036,8 @@ def local_processing(processing_method_args):
                                shell=True)
         # TODO: implement a timeout (max simulation time)
         (stdout, stderr) = sub.communicate()
+        if stderr:
+            error = stderr
 
     except Exception as ex:
         error = ex
@@ -1080,7 +1082,7 @@ def local_processing(processing_method_args):
 
     job_output_dir = os.path.join(output_data, job_id)
 
-    shutil.copytree(job_dir, job_output_dir)
+    shutil.move(job_dir, job_output_dir)
 
     return True, ''
 

@@ -1,4 +1,4 @@
-version_num = (0, 36)
+version_num = (0, 37)
 
 __name__ = 'mig_meow'
 __fullname__ = 'Managing Event Oriented Workflows'
