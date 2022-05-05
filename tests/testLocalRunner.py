@@ -681,8 +681,8 @@ class WorkflowTest(unittest.TestCase):
             msg,
             'administrator.handle_event',
             [
-                'Handling a created event at start/data.txt',
-                'Handling a modified event at start/data.txt'
+                "Handling a created event at 'start/data.txt'",
+                "Handling a modified event at 'start/data.txt'"
             ]
         )
 

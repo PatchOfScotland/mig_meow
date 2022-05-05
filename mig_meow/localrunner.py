@@ -440,7 +440,7 @@ def administrator(
         to_logger.send(
             (
                 'administrator.handle_event',
-                'Handling a %s event at %s' % (event_type, handle_path)
+                "Handling a %s event at '%s'" % (event_type, handle_path)
             )
         )
 
@@ -1826,7 +1826,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
             self.to_logger.send(
                 (
                     'LocalWorkflowStateMonitor.update_rules-pattern',
-                    'Cannot process event at %s due to error: %s'
+                    "Cannot process event at '%s' due to error: %s"
                     % (src_path, exc)
                 )
             )
@@ -1835,7 +1835,7 @@ class LocalWorkflowStateMonitor(PatternMatchingEventHandler):
             self.to_logger.send(
                 (
                     'LocalWorkflowStateMonitor.update_rules-pattern',
-                    'Cannot process nested event at %s' % src_path
+                    "Cannot process nested event at '%s'" % src_path
                 )
             )
             return
@@ -2035,7 +2035,7 @@ class LocalWorkflowFileMonitor(PatternMatchingEventHandler):
         self.to_logger.send(
             (
                 'LocalWorkflowFileMonitor.__handle_trigger',
-                'Running threaded handler at (%s) to handle %s event at %s at '
+                "Running threaded handler at (%s) to handle %s event at '%s' at "
                 '%s' % (pid, event_type, src_path, time_stamp)
             )
         )
@@ -2070,7 +2070,7 @@ class LocalWorkflowFileMonitor(PatternMatchingEventHandler):
         self.to_logger.send(
             (
                 'LocalWorkflowFileMonitor.__handle_trigger',
-                'Event at (%s) sent to admin.' % src_path
+                "Event at '%s' sent to admin." % src_path
             )
         )
 
